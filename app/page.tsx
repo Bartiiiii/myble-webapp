@@ -308,36 +308,36 @@ export default function HomePage() {
       </header>
 
       {/* 1) HERO: mixed “A better way…” + rounded rectangle like “Close every deal.” */}
-      <section id="product" className="mx-auto w-full max-w-6xl px-6 pb-10 pt-4">
-        <div className="relative overflow-hidden rounded-[2.5rem] bg-[linear-gradient(135deg,rgba(255,255,255,0.9),rgba(255,255,255,0.6))] p-8 shadow-[0_25px_80px_-40px_rgba(0,0,0,0.35)] ring-1 ring-zinc-900/10 md:p-12">
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(900px_500px_at_70%_20%,rgba(99,102,241,0.20),transparent_55%),radial-gradient(900px_520px_at_20%_40%,rgba(217,70,239,0.14),transparent_55%)]" />
-          <div className="relative grid items-center gap-10 md:grid-cols-2">
-            <div>
+<section id="product" className="mx-auto w-full max-w-6xl px-4 pb-8 pt-4 sm:px-6 sm:pb-10">
+  <div className="relative overflow-hidden rounded-[2rem] bg-[linear-gradient(135deg,rgba(255,255,255,0.9),rgba(255,255,255,0.6))] p-5 shadow-[0_25px_80px_-40px_rgba(0,0,0,0.35)] ring-1 ring-zinc-900/10 sm:rounded-[2.5rem] sm:p-8 md:p-12">
+    <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(900px_500px_at_70%_20%,rgba(99,102,241,0.20),transparent_55%),radial-gradient(900px_520px_at_20%_40%,rgba(217,70,239,0.14),transparent_55%)]" />
+    <div className="relative grid items-start gap-8 md:grid-cols-2 md:gap-10">
+      <div className="min-w-0">
+        <h1 className="mt-2 max-w-[12ch] text-4xl font-semibold leading-tight tracking-tight text-zinc-900 sm:mt-4 sm:text-5xl md:mt-7 md:text-6xl">
+          Create your own furniture
+        </h1>
 
-              <h1 className="mt-7 text-5xl font-semibold tracking-tight text-zinc-900 md:text-6xl">
-                Create your own furniture
-              </h1>
+        <p className="mt-4 max-w-xl text-base leading-7 text-zinc-600 sm:mt-6 sm:text-lg">
+          Create custom furniture with a fast, structured workflow: choose a base,
+          tweak dimensions, validate materials, order and assemble at home.
+        </p>
 
-              <p className="mt-6 max-w-xl text-lg leading-7 text-zinc-600">
-                Create custom furniture with a fast, structured workflow: choose a base,
-                tweak dimensions, validate materials, order and assemble at home.
-              </p>
+        <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
+          <Link
+            href="/design"
+            className="inline-flex w-full items-center justify-center rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 sm:w-auto"
+          >
+            Start designing
+          </Link>
 
-              <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
-                <Link
-                  href="/design"
-                  className="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500"
-                >
-                  Start designing
-                </Link>
-                <a
-                  href="#community"
-                  className="inline-flex items-center justify-center rounded-xl bg-white/70 px-5 py-3 text-sm font-semibold text-zinc-900 ring-1 ring-zinc-900/10 hover:bg-white"
-                >
-                  Learn more →
-                </a>
-              </div>
-            </div>
+          <a
+            href="#community"
+            className="inline-flex w-full items-center justify-center rounded-xl bg-white/70 px-5 py-3 text-sm font-semibold text-zinc-900 ring-1 ring-zinc-900/10 hover:bg-white sm:w-auto"
+          >
+            Learn more →
+          </a>
+        </div>
+      </div>
 
             <div className="relative">
               <PhoneMock />

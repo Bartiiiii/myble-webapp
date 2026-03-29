@@ -5,7 +5,7 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import { Environment, OrbitControls, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 
-function CabinetModel({ baseRotationY }: { baseRotationY: number }) {
+function CabinetModel() {
   const group = useRef<THREE.Group>(null);
   const gltf = useGLTF("/models/cabinet.glb");
 
@@ -13,7 +13,7 @@ function CabinetModel({ baseRotationY }: { baseRotationY: number }) {
     if (!group.current) return;
     const t = state.clock.getElapsedTime();
     // Auto-rotate around the base rotation from slider:
-    group.current.rotation.y = baseRotationY + t * 0.5;
+    group.current.rotation.y = t * 0.5;
   });
 
   return (
@@ -24,8 +24,7 @@ function CabinetModel({ baseRotationY }: { baseRotationY: number }) {
 }
 
 export function CabinetViewer() {
-  const [deg, setDeg] = useState(0);
-  const baseRotationY = useMemo(() => (deg * Math.PI) / 180, [deg]);
+  
 
   return (
     <div className="w-full">
@@ -35,23 +34,14 @@ export function CabinetViewer() {
           <directionalLight position={[3, 5, 2]} intensity={1.3} />
           <Environment preset="city" />
 
-          <CabinetModel baseRotationY={baseRotationY} />
+          <CabinetModel />
 
           {/* Jeśli chcesz TYLKO suwak i żadnego obracania myszką, usuń tę linijkę */}
           <OrbitControls enablePan={false} enableZoom={false} />
         </Canvas>
       </div>
 
-      <div className="mt-3">
-        <input
-          type="range"
-          min={-180}
-          max={180}
-          value={deg}
-          onChange={(e) => setDeg(Number(e.target.value))}
-          className="w-full"
-        />
-      </div>
+      
     </div>
   );
 }
