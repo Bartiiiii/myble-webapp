@@ -331,7 +331,7 @@ export default function HomePage() {
           </Link>
 
           <a
-            href="#community"
+            href="#how"
             className="inline-flex w-full items-center justify-center rounded-xl bg-white/70 px-5 py-3 text-sm font-semibold text-zinc-900 ring-1 ring-zinc-900/10 hover:bg-white sm:w-auto"
           >
             Learn more →
@@ -500,7 +500,7 @@ export default function HomePage() {
 
               <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
                 <a
-                  href="#"
+                  href="/design"
                   className="inline-flex items-center justify-center rounded-xl bg-zinc-900 px-6 py-3 text-sm font-semibold text-white hover:bg-zinc-800"
                 >
                   Start designing

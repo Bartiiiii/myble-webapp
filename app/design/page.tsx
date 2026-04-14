@@ -321,18 +321,13 @@ export default function DesignPage() {
             </div>
 
             <div className="flex flex-wrap gap-3">
-              <button
-                onClick={resetExample}
-                className="inline-flex items-center justify-center rounded-xl bg-white px-4 py-2 text-sm font-semibold text-zinc-900 ring-1 ring-zinc-300 hover:bg-zinc-100"
-              >
-                Reset design
-              </button>
-
-              <button
+              
+              <Link
+                href="/order/login"
                 className="inline-flex items-center justify-center rounded-xl bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-800"
               >
                 Order
-              </button>
+              </Link>
             </div>
           </div>
         </div>
