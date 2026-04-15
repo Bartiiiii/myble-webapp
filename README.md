@@ -20,6 +20,22 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Google Login Setup
+
+Copy `.env.example` to `.env.local` and set the values below:
+
+```bash
+AUTH_SECRET=replace-with-a-long-random-string
+AUTH_GOOGLE_ID=your-google-oauth-client-id
+AUTH_GOOGLE_SECRET=your-google-oauth-client-secret
+```
+
+In your Google OAuth app settings, add this callback URL:
+
+`http://localhost:3000/api/auth/callback/google`
+
+After that, run `npm run dev` and use the Google button on `/order/login`.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

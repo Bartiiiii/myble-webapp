@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import React from "react";
+import { useRouter } from "next/navigation";
 import { Canvas } from "@react-three/fiber";
 import { Environment, Grid, OrbitControls } from "@react-three/drei";
+import { useSession } from "next-auth/react";
 
 type PreviewPlank = {
   id: string;
@@ -108,6 +110,23 @@ function CheckoutPreviewScene() {
 }
 
 export default function OrderPage() {
+  const { status } = useSession();
+  const router = useRouter();
+
+  React.useEffect(() => {
+    if (status === "unauthenticated") {
+      router.replace("/order/login?callbackUrl=%2Forder");
+    }
+  }, [router, status]);
+
+  if (status !== "authenticated") {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-zinc-50 px-4">
+        <p className="text-sm font-medium text-zinc-600">Loading checkout...</p>
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-zinc-50 text-zinc-900">
       <div className="mx-auto w-full max-w-7xl px-4 py-6 lg:px-6">

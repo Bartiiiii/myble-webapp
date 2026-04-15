@@ -1,8 +1,16 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { signIn, useSession } from "next-auth/react";
 
 export default function OrderLoginPage() {
+  const { status } = useSession();
+  const searchParams = useSearchParams();
+  const callbackUrl = searchParams.get("callbackUrl") || "/order";
+  const isLoading = status === "loading";
+  const isSignedIn = status === "authenticated";
+
   return (
     <main className="min-h-screen bg-zinc-50 text-zinc-900">
       <div className="mx-auto w-full max-w-7xl px-4 py-6 lg:px-6">
@@ -36,76 +44,41 @@ export default function OrderLoginPage() {
             <div className="mx-auto max-w-md">
               <h2 className="text-2xl font-semibold tracking-tight">Welcome back</h2>
               <p className="mt-2 text-sm text-zinc-600">
-                Continue with your account or choose a faster option below.
+                Sign in with Google to continue your order.
               </p>
 
-              <form className="mt-8 space-y-4">
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-zinc-700">
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    placeholder="you@example.com"
-                    className="w-full rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-indigo-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-zinc-700">
-                    Password
-                  </label>
-                  <input
-                    type="password"
-                    placeholder="Enter your password"
-                    className="w-full rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-indigo-500"
-                  />
-                </div>
-
-                <div className="flex items-center justify-between pt-1 text-sm">
-                  <label className="flex items-center gap-2 text-zinc-600">
-                    <input type="checkbox" className="rounded border-zinc-300" />
-                    Remember me
-                  </label>
-
-                  <a href="#" className="font-medium text-indigo-600 hover:text-indigo-500">
-                    Forgot password?
-                  </a>
-                </div>
-
-                <Link
-                  href="/order"
-                  className="inline-flex w-full items-center justify-center rounded-2xl bg-zinc-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-zinc-800"
-                >
-                  Continue to checkout
-                </Link>
-              </form>
-
-              <div className="my-6 flex items-center gap-3">
-                <div className="h-px flex-1 bg-zinc-200" />
-                <span className="text-xs font-medium uppercase tracking-wide text-zinc-400">
-                  or
-                </span>
-                <div className="h-px flex-1 bg-zinc-200" />
-              </div>
-
-              <button className="inline-flex w-full items-center justify-center gap-3 rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm font-semibold text-zinc-800 transition hover:bg-zinc-50">
+              <button
+                type="button"
+                onClick={() => signIn("google", { callbackUrl })}
+                disabled={isLoading || isSignedIn}
+                className="mt-8 inline-flex w-full items-center justify-center gap-3 rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm font-semibold text-zinc-800 transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-70"
+              >
                 <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
                   <path
                     fill="#EA4335"
                     d="M12 10.2v3.9h5.5c-.2 1.3-1.5 3.8-5.5 3.8-3.3 0-6-2.7-6-6s2.7-6 6-6c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.7 3.4 14.6 2.5 12 2.5 6.8 2.5 2.5 6.8 2.5 12S6.8 21.5 12 21.5c6.1 0 10.1-4.3 10.1-10.3 0-.7-.1-1.2-.2-1.7H12Z"
                   />
                 </svg>
-                Quick login with Google
+                {isLoading
+                  ? "Checking session..."
+                  : isSignedIn
+                    ? "Already signed in"
+                    : "Continue with Google"}
               </button>
+
+              {isSignedIn ? (
+                <Link
+                  href={callbackUrl}
+                  className="mt-4 inline-flex w-full items-center justify-center rounded-2xl bg-zinc-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-zinc-800"
+                >
+                  Continue to checkout
+                </Link>
+              ) : null}
 
               <div className="mt-6 rounded-2xl bg-zinc-50 p-4 ring-1 ring-zinc-200">
                 <p className="text-sm text-zinc-600">
-                  Don’t have an account yet?
+                  We use your Google account only for secure sign-in and order tracking.
                 </p>
-                <button className="mt-3 inline-flex w-full items-center justify-center rounded-2xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-indigo-500">
-                  Create account
-                </button>
               </div>
             </div>
           </section>
