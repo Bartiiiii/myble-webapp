@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { CabinetViewer } from "../components/CabinetViewer";
+import { HomeNavAuth } from "../components/HomeNavAuth";
 
 import React, { useMemo, useState } from "react";
 
@@ -297,13 +298,7 @@ export default function HomePage() {
         </nav>
 
         <div className="flex items-center gap-3">
-          <a
-            href="#"
-            className="hidden rounded-xl px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-900/5 md:inline-flex"
-          >
-            Log in
-          </a>
-          
+          <HomeNavAuth />
         </div>
       </header>
 
