@@ -1,8 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { signOut, useSession } from "next-auth/react";
 import React from "react";
+
+const loginLinkClass =
+  "inline-flex rounded-xl px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-900/5";
 
 export function HomeNavAuth() {
   const { data: session, status } = useSession();
@@ -18,23 +20,11 @@ export function HomeNavAuth() {
     return () => document.removeEventListener("click", onDocClick);
   }, []);
 
-  if (status === "loading") {
+  if (status !== "authenticated") {
     return (
-      <div
-        className="h-9 w-9 shrink-0 rounded-full bg-zinc-200/80 animate-pulse ring-1 ring-zinc-900/10"
-        aria-hidden
-      />
-    );
-  }
-
-  if (status === "unauthenticated") {
-    return (
-      <Link
-        href="/login"
-        className="inline-flex rounded-xl px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-900/5"
-      >
+      <a href="/login" className={loginLinkClass}>
         Log in
-      </Link>
+      </a>
     );
   }
 
