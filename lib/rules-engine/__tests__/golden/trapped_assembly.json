@@ -1,0 +1,291 @@
+{
+  "health": "CANNOT_MANUFACTURE",
+  "design_hash": "1cfab9fcf775dc3483c731402811705fd8f6fe984d36a6b628c7871bb4e73182",
+  "findings": [
+    {
+      "rule_id": "ASM-INSTR-006",
+      "verdict": "NOT_APPLICABLE",
+      "severity": 4
+    },
+    {
+      "rule_id": "ASM-PEOPLE-004",
+      "verdict": "OK",
+      "severity": 0
+    },
+    {
+      "rule_id": "ASM-SEQ-001",
+      "verdict": "VIOLATED",
+      "severity": 4
+    },
+    {
+      "rule_id": "ASM-TILT-005",
+      "verdict": "NOT_APPLICABLE",
+      "severity": 2
+    },
+    {
+      "rule_id": "ASM-TOOL-002",
+      "verdict": "OK",
+      "severity": 4
+    },
+    {
+      "rule_id": "ASM-TOOLKIT-003",
+      "verdict": "OK",
+      "severity": 4
+    },
+    {
+      "rule_id": "CONN-EDGE-002",
+      "verdict": "OK",
+      "severity": 4
+    },
+    {
+      "rule_id": "CONN-HINGE-004",
+      "verdict": "NOT_APPLICABLE",
+      "severity": 4
+    },
+    {
+      "rule_id": "CONN-PIN-005",
+      "verdict": "OK",
+      "severity": 3
+    },
+    {
+      "rule_id": "CONN-REUSE-007",
+      "verdict": "OK",
+      "severity": 1
+    },
+    {
+      "rule_id": "CONN-RUNNER-006",
+      "verdict": "NOT_APPLICABLE",
+      "severity": 4
+    },
+    {
+      "rule_id": "CONN-SPACING-003",
+      "verdict": "OK",
+      "severity": 4
+    },
+    {
+      "rule_id": "CONN-SYS-001",
+      "verdict": "OK",
+      "severity": 4
+    },
+    {
+      "rule_id": "MAT-DECOR-005",
+      "verdict": "NOT_APPLICABLE",
+      "severity": 2
+    },
+    {
+      "rule_id": "MAT-EDGE-003",
+      "verdict": "OK",
+      "severity": 4
+    },
+    {
+      "rule_id": "MAT-EDGE-004",
+      "verdict": "OK",
+      "severity": 2
+    },
+    {
+      "rule_id": "MAT-MOIST-006",
+      "verdict": "NOT_APPLICABLE",
+      "severity": 3
+    },
+    {
+      "rule_id": "MAT-SIZE-002",
+      "verdict": "OK",
+      "severity": 4
+    },
+    {
+      "rule_id": "MAT-THK-001",
+      "verdict": "OK",
+      "severity": 4
+    },
+    {
+      "rule_id": "MFG-COMPLEX-007",
+      "verdict": "OK",
+      "severity": 5
+    },
+    {
+      "rule_id": "MFG-EDGE-005",
+      "verdict": "OK",
+      "severity": 4
+    },
+    {
+      "rule_id": "MFG-HOLE-003",
+      "verdict": "OK",
+      "severity": 4
+    },
+    {
+      "rule_id": "MFG-LABEL-006",
+      "verdict": "NOT_APPLICABLE",
+      "severity": 4
+    },
+    {
+      "rule_id": "MFG-MIN-001",
+      "verdict": "OK",
+      "severity": 4
+    },
+    {
+      "rule_id": "MFG-TOL-002",
+      "verdict": "OK",
+      "severity": 0
+    },
+    {
+      "rule_id": "SCOPE-CAT-001",
+      "verdict": "OK",
+      "severity": 4
+    },
+    {
+      "rule_id": "SCOPE-CAT-002",
+      "verdict": "OK",
+      "severity": 4
+    },
+    {
+      "rule_id": "SCOPE-REV-004",
+      "verdict": "OK",
+      "severity": 5
+    },
+    {
+      "rule_id": "SCOPE-SIZE-003",
+      "verdict": "OK",
+      "severity": 4
+    },
+    {
+      "rule_id": "SHIP-ECON-004",
+      "verdict": "OK",
+      "severity": 1
+    },
+    {
+      "rule_id": "SHIP-MASS-002",
+      "verdict": "OK",
+      "severity": 4
+    },
+    {
+      "rule_id": "SHIP-PANEL-001",
+      "verdict": "OK",
+      "severity": 4
+    },
+    {
+      "rule_id": "SHIP-PROT-003",
+      "verdict": "NOT_APPLICABLE",
+      "severity": 4
+    },
+    {
+      "rule_id": "STAB-ANCHOR-002",
+      "verdict": "VIOLATED",
+      "severity": 3
+    },
+    {
+      "rule_id": "STAB-CALC-003",
+      "verdict": "VIOLATED",
+      "severity": 3
+    },
+    {
+      "rule_id": "STAB-DRAWER-004",
+      "verdict": "NOT_APPLICABLE",
+      "severity": 5
+    },
+    {
+      "rule_id": "STAB-SHELF-005",
+      "verdict": "OK",
+      "severity": 4
+    },
+    {
+      "rule_id": "STAB-TRIG-001",
+      "verdict": "OK",
+      "severity": 0
+    },
+    {
+      "rule_id": "STRUCT-BACK-003",
+      "verdict": "OK",
+      "severity": 3
+    },
+    {
+      "rule_id": "STRUCT-BACK-004",
+      "verdict": "NOT_APPLICABLE",
+      "severity": 3
+    },
+    {
+      "rule_id": "STRUCT-DESK-008",
+      "verdict": "NOT_APPLICABLE",
+      "severity": 3
+    },
+    {
+      "rule_id": "STRUCT-DIV-005",
+      "verdict": "OK",
+      "severity": 3
+    },
+    {
+      "rule_id": "STRUCT-FIX-006",
+      "verdict": "OK",
+      "severity": 3
+    },
+    {
+      "rule_id": "STRUCT-GEOM-009",
+      "verdict": "OK",
+      "severity": 4
+    },
+    {
+      "rule_id": "STRUCT-SHELF-001",
+      "verdict": "OK",
+      "severity": 3
+    },
+    {
+      "rule_id": "STRUCT-SHELF-001",
+      "verdict": "OK",
+      "severity": 3
+    },
+    {
+      "rule_id": "STRUCT-SHELF-002",
+      "verdict": "OK",
+      "severity": 3
+    },
+    {
+      "rule_id": "STRUCT-SHELF-002",
+      "verdict": "OK",
+      "severity": 3
+    },
+    {
+      "rule_id": "STRUCT-TOP-007",
+      "verdict": "NOT_APPLICABLE",
+      "severity": 3
+    },
+    {
+      "rule_id": "SYS32-BACK-004",
+      "verdict": "OK",
+      "severity": 4
+    },
+    {
+      "rule_id": "SYS32-GAP-003",
+      "verdict": "NOT_APPLICABLE",
+      "severity": 4
+    },
+    {
+      "rule_id": "SYS32-GRID-001",
+      "verdict": "OK",
+      "severity": 0
+    },
+    {
+      "rule_id": "SYS32-PLINTH-005",
+      "verdict": "NOT_APPLICABLE",
+      "severity": 2
+    },
+    {
+      "rule_id": "SYS32-SNAP-002",
+      "verdict": "OK",
+      "severity": 0
+    },
+    {
+      "rule_id": "UX-AI-003",
+      "verdict": "OK",
+      "severity": 0
+    },
+    {
+      "rule_id": "UX-CONF-002",
+      "verdict": "NOT_APPLICABLE",
+      "severity": 0
+    },
+    {
+      "rule_id": "UX-SEV-001",
+      "verdict": "OK",
+      "severity": 0
+    }
+  ]
+}

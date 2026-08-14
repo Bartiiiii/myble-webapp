@@ -1,0 +1,1007 @@
+"use client";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Lightweight client-side localisation. Default = English (US). A footer switcher
+// flips to Czech; the choice persists in localStorage + a cookie and updates
+// <html lang>. No URL routing — the app is client-rendered, so a context is the
+// pragmatic fit. Add a locale by extending LOCALES + the `messages` dictionary.
+// ─────────────────────────────────────────────────────────────────────────────
+
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+
+export type Locale = "en" | "cs";
+export const DEFAULT_LOCALE: Locale = "en";
+export const LOCALES: { id: Locale; label: string; short: string; flag: string }[] = [
+  { id: "en", label: "English", short: "EN", flag: "🇬🇧" },
+  { id: "cs", label: "Čeština", short: "CZ", flag: "🇨🇿" },
+];
+
+const STORAGE_KEY = "myble.locale";
+
+type Msg = string | ((p: Record<string, string | number>) => string);
+// Values are strings, parameterized functions, nested trees, or raw arrays
+// (compare-table rows, FAQ list, review chips) accessed via `tList`.
+type Tree = { [k: string]: Msg | Tree | readonly unknown[] };
+
+// ── Dictionary ───────────────────────────────────────────────────────────────
+const en: Tree = {
+  nav: {
+    howItWorks: "How it works",
+    products: "What we make",
+    pricing: "Pricing",
+    trust: "Trust",
+    design: "Design yours",
+    backHome: "Back to home",
+    menu: "Menu",
+  },
+  auth: { login: "Log in", logout: "Sign out", account: "Account", signedIn: "Signed in" },
+  common: {
+    delivery: "Delivery",
+    from: "from",
+    cm: "cm",
+    mm: "mm",
+    loadingShort: "Preview…",
+  },
+  colors: { white: "White", black: "Black" },
+  roles: { wall: "Wall", shelf: "Shelf", divider: "Divider" },
+  rules: {
+    checking: "Checking your design…",
+    allGood: "Looks great, ready to order",
+    recommendations: "A few recommendations",
+    recommendationsHint: "Your design is fine to order. These are our expert tips, so apply them or order as-is.",
+    recommendationsCount: (p) => `(${p.n})`,
+    anchorTitle: "Wall anchoring included",
+    anchorHint: "Tall units ship with a wall-anchor kit and instructions for safety. Please confirm you'll fix it to the wall.",
+    reviewTitle: "We'll double-check this design",
+    reviewHint: "We can take your order. Our team will review this design and confirm before production.",
+    blockedTitle: "We'll double-check this design",
+    blockedHint: "You can order as-is. Our team will confirm these details before production.",
+    fixLabel: "Our tip",
+    recommendation: "Recommendation",
+    orderAnyway: "Order anyway",
+    severityTip: "Tip",
+    severityRec: "Recommendation",
+    severityConfirm: "Please confirm",
+    severityBlock: "Needs a change",
+    severityReview: "Worth a look",
+  },
+  presets: {
+    police: { label: "Alcove shelves", desc: "A classic for a chimney alcove or between two walls." },
+    skrinka: { label: "Slim cabinet", desc: "Shelves plus a vertical divider for more storage." },
+    stolek: { label: "Side table", desc: "Bedside, accent, or tucked beside the sofa." },
+  },
+  home: {
+    heroTitle: "Design furniture that doesn't exist yet.",
+    heroBody: "Made-to-measure furniture, exact to the centimetre.",
+    heroCta: "Design yours",
+    heroHow: "How it works →",
+    heroLibrary: "Browse designs →",
+    heroFromPre: "Custom shelves from",
+    heroFromPost: "· delivery across Czechia",
+    trustBar: {
+      fast: "Ready in 5–8 days, not 8 weeks",
+      precise: "Exact to the centimetre",
+      shipping: "Delivery by Zásilkovna / PPL",
+    },
+    stepsTitle: "From a gap to finished furniture in three steps",
+    steps: {
+      design: { t: "Design", s: "Your size, your colour.", b: "Enter your alcove dimensions and pick a colour. You see the price instantly." },
+      order: { t: "Order", s: "Cut, labelled, shipped.", b: "We cut each part precisely, label it, and ship it to you. No consultation, no 8-week wait." },
+      assemble: { t: "Assemble", s: "Done in 30 minutes.", b: "Numbered parts and a simple guide. Done in about 30 minutes, almost no tools." },
+    },
+    teaserTitle: "Fits your space exactly, to the millimetre",
+    teaserBody: "Start from a ready template, enter your dimensions, and watch the piece change in real time. The configurator won't let you build the impossible and recalculates the price as you go.",
+    teaserL1: "Real-time design, so you see what you're buying",
+    teaserL2: "Dimensions accurate to the centimetre",
+    teaserL3: "Fits in a parcel, so we deliver anywhere",
+    teaserCta: "Design yours →",
+    productsTitle: "What people are designing",
+    productsBody: "Shelves, tables, a bench for the cat. Every piece here was built in the configurator and can be yours in a few clicks.",
+    products: {
+      police: { title: "Custom shelves", body: "For an alcove, under the stairs, in a bookcase." },
+      skrinka: { title: "Cabinets & dressers", body: "Storage that uses every centimetre." },
+      stolek: { title: "Tables & side tables", body: "Bedside, accent, for a corner." },
+    },
+    compareTitle: "IKEA doesn't fit, a carpenter is pricey and slow",
+    compareBody: "Myble takes the best of both: made-to-measure like a carpenter, speed and price closer to IKEA.",
+    compare: {
+      ikea: "IKEA",
+      myble: "Myble",
+      carpenter: "Carpenter",
+      r1k: "Made to the centimetre",
+      r1: ["Fixed sizes only", "Yes", "Yes"],
+      r2k: "Price",
+      r2: ["Low", "A fraction of a carpenter", "2–4× more"],
+      r3k: "When you get it",
+      r3: ["Now", "5–8 days", "8–16 weeks"],
+      r4k: "Price known up front",
+      r4: ["Yes", "Instantly online", "Only after a site visit"],
+      r5k: "Assembly",
+      r5: ["You", "You, ~30 min", "Included"],
+    },
+    materialsTitle: "What you pay for",
+    materialsBody: "The board is the easy part. We use laminated panels and edging from the European mills that supply the continent's biggest furniture names. It's the same material a good carpenter would order, chosen for how it looks after ten years, not for how cheap it is today. The rest of the price is everything that turns that board into furniture which fits your room and goes together in half an hour.",
+    // Phones get the condensed version; the full paragraph reads as a wall of
+    // text on a narrow column. Both say the same thing.
+    materialsBodyShort: "The board is the easy part. We use panels and edging from the European mills that supply the continent's biggest furniture names. The rest of the price is everything that turns that board into furniture which fits your room and goes together in half an hour.",
+    materialsSuppliers: "Our board and edging suppliers",
+    materials: {
+      m1t: "Freedom in every dimension",
+      m1b: "You describe the space and what has to live in it. A bed for the dog, room for five plants, a shelf sized to the record player. Priced live as you build.",
+      m2t: "Time saved on cutting",
+      m2b: "Every part arrives finished to the millimetre with the joints already drilled. No workshop, no borrowed saw, no board ruined on the first cut.",
+      m3t: "Packed to survive the courier",
+      m3b: "Five-ply cartons, corner protectors and a drop-tested layout, so what leaves the workshop is what reaches your door.",
+      m4t: "Instructions drawn for your piece",
+      m4b: "Not a generic leaflet. A guide for the exact design you ordered, with numbered parts. Most people are done in about 30 minutes.",
+    },
+    trustTitle: "So nothing catches you off guard",
+    trustBody: "You're buying online and can't touch the furniture. Here's how we address every worry.",
+    trust: {
+      c1t: "Afraid you'll measure wrong?",
+      c1b: "Our measuring guide walks you through it step by step, and you confirm the dimensions before we build.",
+      c2t: "Not sure the shade fits?",
+      c2b: "We'll mail you a colour sample for 99 Kč, and we deduct it from your order.",
+      c3t: "What if it arrives damaged?",
+      c3b: "We pack in five-ply cardboard with corner protectors and drop-test the packaging. We sort out any defects right away.",
+      c4t: "Can I assemble it myself?",
+      c4b: "Numbered parts, a custom guide, and smart joints. Most people are done within 30 minutes.",
+    },
+    sampleTitle: "Want to feel the colour first?",
+    sampleBody: "We'll mail a white and black sample for 99 Kč, deducted from your order.",
+    sampleCta: "Order a sample",
+    reviewsTag: "REVIEWS",
+    reviewsTitle: "We're collecting our first reviews right now",
+    reviewsBody: "Ratings from real customers and photos from their homes will appear here, pulled from Google and Trustpilot. No made-up quotes.",
+    reviewsChips: ["Google reviews", "Trustpilot", "Customer photos"],
+    pricingTitle: "You see the price instantly. No questionnaires, no consultation.",
+    pricingBody: "Most carpenters quote you only after a visit and measurement. Here you enter dimensions and the price is on your screen, exact and including delivery.",
+    pricingCta: "Price my piece →",
+    faqTitle: "Frequently asked questions",
+    faq: [
+      { q: "How do I measure my space?", a: "Just a tape measure and our guide. Measure the width in three places (top, middle, bottom) and enter the smallest value. You confirm the dimensions before we build." },
+      { q: "How long does it take?", a: "Production usually 5–8 business days, then delivery by Zásilkovna or PPL. You see the exact date with your order." },
+      { q: "Can I assemble it myself?", a: "Yes. The parts are numbered, the joints are simple, and the guide is tailored to your piece. Most people are done in 30–45 minutes." },
+      { q: "Can I return made-to-measure furniture?", a: "Because we build to measure, the order is non-returnable by law. But we handle defects fairly and quickly." },
+      { q: "What if it arrives damaged?", a: "We pack sturdily and drop-test. If something still arrives damaged, send a photo and we'll sort it out with you." },
+      { q: "What colours do you have?", a: "We're launching with white and black: clean, timeless shades in 18 or 36 mm." },
+    ],
+    footerCtaTitle: "Solve your gap today.",
+    footerCtaBody: "Enter dimensions, pick a colour, and see the price in a few minutes.",
+    footerCta: "Design yours",
+    footerTagline: "Made-to-measure furniture, exact to the centimetre.",
+    footerProduct: "Product",
+    footerConfigurator: "Configurator",
+    footerOffer: "What we offer",
+    footerPrice: "Pricing",
+    footerTrust: "Trust",
+    footerLibrary: "Design library",
+    footerMeasuring: "Measuring & samples",
+    footerShipping: "Delivery",
+    footerContact: "Contact",
+    language: "Language",
+  },
+  library: {
+    title: "Design library",
+    intro: "Real pieces built in the configurator, by us and soon by you. Open any of them, fit the dimensions to your space, and order.",
+    by: "Myble Studio",
+    open: "Open in configurator →",
+    fireLabel: "Mark as hot",
+    shareTitle: "Designed something good?",
+    shareBody: "Share your design straight from the configurator. We pick the best ones for the library.",
+    categories: {
+      all: "All",
+      shelves: "Shelves",
+      tables: "Tables",
+      storage: "Storage",
+      media: "Music & TV",
+      office: "Office",
+      pets: "Pets",
+    },
+    items: {
+      staggered: { n: "Staggered bookcase", d: "Offset shelves and one tall nook for the things that never fit a straight row." },
+      catbench: { n: "Cat box bench", d: "A bench with an open bay for the litter box and a storage shelf next to it. Cushion goes on top." },
+      record: { n: "Record sideboard", d: "Low sideboard with slots sized for LPs and room for the player on top." },
+      police: { n: "Alcove classic", d: "Three shelves, 73 cm wide. The alcove piece Myble started with." },
+      coffee: { n: "Coffee table", d: "A low top with a magazine shelf underneath. Coffee above, clutter below." },
+      grid: { n: "Grid bookcase", d: "A calm two-column grid that holds a lot without looking like it." },
+      nightstand: { n: "Nightstand", d: "An open tray for the book and phone, a taller bay below for the rest." },
+      tvbench: { n: "TV bench", d: "Long and low, with compartments for the box, the console and the cables." },
+      skrinka: { n: "Slim cabinet", d: "Four shelves and a centre divider. Maximum storage on a 60 cm footprint." },
+      shoebench: { n: "Shoe bench", d: "Three open bays by the door. Sit down, lace up, go." },
+      worknook: { n: "Work nook", d: "A desk surface with shelving above and below. A home office in one footprint." },
+      stolek: { n: "Side table", d: "Bedside or sofa-side, with one shelf in between." },
+    },
+  },
+  design: {
+    loading: "Loading 3D editor…",
+    title: "Build your furniture part by part",
+    subtitle: "No fixed types. Add shelves, dividers, and walls and edit them right in the preview. You see the price instantly.",
+    addShelf: "Shelf",
+    addDivider: "Divider",
+    addWall: "Wall",
+    clear: "Clear",
+    size: "Furniture size",
+    sizeHint: "Resizing scales the whole piece proportionally.",
+    width: "Width",
+    height: "Height",
+    depth: "Depth",
+    material: "Material",
+    thickness: "Board thickness",
+    thick36Warn: "36 mm is sold as whole sheets, so it's much pricier for small parts.",
+    quickStart: "Quick start",
+    quickStartHint: "A template, or fully from scratch, then tweak everything.",
+    inspirationTitle: "Need inspiration?",
+    inspirationBody: "Real designs from the library. Tap one to load it here, then adjust it to your space.",
+    inspirationBrowseAll: "Browse all →",
+    inspirationShowMore: "Show more designs",
+    inspirationUse: "Use this design",
+    priceLabel: "Kit price",
+    plusDelivery: (p) => `+ delivery ${p.price}`,
+    dontBandBack: "Don't band the back edge",
+    order: "Continue to order →",
+    orderShort: "Continue →",
+    priceVat: "Price",
+    floating: "Some parts are floating. Snap them together, otherwise you can't order.",
+    cuttingNote: "Cutting is an estimate. We finalise the exact amount when ordering from the maker.",
+    bdKit: "Kit",
+    bdTotal: "Total",
+    share: "Share",
+    shareCopied: "Link copied ✓",
+    shareErr: "Sharing failed",
+  },
+  breakdown: {
+    board: "Material (board)",
+    edge: "Edge banding",
+    cutting: "Cutting",
+    gluing: "Edge gluing",
+    drilling: "Joint drilling",
+    accessories: "Hardware & guide",
+    packaging: "Packaging",
+    inbound: "Inbound freight",
+    margin: "Margin & fees",
+    estimate: "estimate",
+  },
+  validate: {
+    min: (p) => `${p.field}: minimum is ${p.value} cm.`,
+    max: (p) => `${p.field}: maximum is ${p.value} cm.`,
+    nan: (p) => `${p.field}: enter a number.`,
+    tooMany: (p) => `Too many parts (max ${p.max}).`,
+    maxEdge: (p) => `Pieces taller and wider than ${p.cm} cm are coming. For now we fit in a parcel.`,
+    floating: "Some parts don't touch the rest of the furniture. Connect them before continuing.",
+  },
+  parts: { count: (p) => `${p.n} ${Number(p.n) === 1 ? "part" : "parts"}`, label: "Custom furniture" },
+  order: {
+    title: "Complete your order",
+    subtitle: "Fill in your contact and delivery details. We'll build the kit exactly to your design.",
+    back: "← Back to design",
+    contact: "Contact details",
+    firstName: "First name",
+    lastName: "Last name",
+    email: "Email",
+    phone: "Phone",
+    address: "Delivery address",
+    street: "Street and number",
+    city: "City",
+    zip: "ZIP",
+    country: "Country",
+    cz: "Czech Republic",
+    sk: "Slovakia",
+    shipping: "Delivery",
+    ship1: "Zásilkovna",
+    ship1sub: "5–8 business days",
+    ship2: "PPL to address",
+    ship2sub: "5–8 business days",
+    confirmTitle: "Confirm dimensions",
+    confirmBody: "We build to measure, so please double-check the dimensions.",
+    colour: "Colour",
+    thickness: "Thickness",
+    partsLbl: "Parts",
+    backEdge: (p) => `Back edge: ${p.v}.`,
+    backEdgeOn: "banded",
+    backEdgeOff: "raw",
+    editIn: "Edit in the configurator →",
+    measuredOk1: "Measured per the",
+    measuredGuide: "measuring guide",
+    measuredOk2: "and I confirm the dimensions are correct.",
+    cutTitle: "Cut list for production",
+    cutBody: "A list of every part in millimetres (edges, drilling) for the cut-to-size order.",
+    cutUnits: (p) => `${p.n} pcs`,
+    colDil: "Part",
+    colSize: "Size (mm)",
+    colQty: "Qty",
+    colEdges: "Edges",
+    colDrill: "Drilling",
+    yes: "yes",
+    no: "no",
+    downloadCsv: "Download CSV",
+    downloadJson: "Download JSON",
+    yourDesign: "Your design",
+    summaryKit: (p) => `Custom kit (${p.dims} cm)`,
+    summaryDelivery: "Delivery",
+    summaryTotal: "Total price",
+    place: "Order with obligation to pay",
+    confirmFirst: "Please confirm the dimensions above first.",
+    badge1: "Secure payment · made in Czechia",
+    badge2: "Five-ply cardboard, defects handled fairly and fast",
+    badge3: "Custom guide, assembly in ~30 minutes",
+  },
+  confirmation: {
+    received: "Order received",
+    no: (p) => `· no. ${p.n}`,
+    title: "Your gap has a solution.",
+    body: "Thanks for choosing Myble. We have your design and we're sending it to production. A confirmation with details will arrive by email.",
+    whatsNext: "What happens next",
+    n1: "We email you an order confirmation.",
+    n2: "Made-to-measure production usually 5–8 business days.",
+    n3: "Once shipped, you get tracking.",
+    n4: "We include the assembly guide in the box and by email.",
+    backHome: "Back to home",
+    designAnother: "Design another piece",
+    helpedTitle: "Did we help?",
+    helpedH: "Rate us",
+    helpedBody: "Once you've assembled your piece, we'd love a review and a photo. It helps others with a similar gap.",
+    changeTitle: "Need a change?",
+    changeH: "Get in touch",
+    changeBody: "Until production starts, we can still adjust most things.",
+  },
+  login: {
+    title: "Log in",
+    body: "Sign in with Google. You stay signed in on this device until you sign out.",
+    orderTitle: "Log in and continue",
+    orderBody: "Signing in saves your design and makes order tracking easier. It's optional, though.",
+    verifying: "Verifying…",
+    already: "You're already signed in",
+    withGoogle: "Sign in with Google",
+    continue: "Continue",
+    continueOrder: "Continue to order",
+    privacy: "We use Google only to verify your identity. We never post anything on your behalf.",
+    noRegister: "Don't want to register?",
+    designYours: "Design yours →",
+    skipTitle: "Don't want to sign in?",
+    asGuest: "Continue as guest",
+  },
+  viewer: { remove: "Remove" },
+  // Seller identification / imprint (B9).
+  imprint: {
+    name: "Bartłomiej Karol Kwaśnica",
+    ico: "Business ID (IČO): 24439673",
+    address: "Uralská 689/7, 160 00 Praha 6 – Bubeneč, Czech Republic",
+    email: "myble.eu@gmail.com",
+  },
+  footer: {
+    legal: "Legal",
+    cookieSettings: "Cookie settings",
+    contactLink: "Get in touch",
+    aboutLink: "About us",
+    newsTitle: "Tips for awkward spaces",
+    newsBody: "Occasional e-mails on measuring, materials and new pieces. No spam.",
+    newsPlaceholder: "you@example.com",
+    newsCta: "Subscribe",
+    newsOk: "Thanks, you're on the list.",
+    newsErr: "That didn't work. Check the address and try again.",
+    newsConsent: "By subscribing you agree to the processing of your e-mail per the Privacy Policy.",
+  },
+  // /newsletter/unsubscribed — landing page for the e-mail unsubscribe link.
+  newsletter: {
+    unsubTitle: "You're unsubscribed.",
+    unsubBody: "We won't send you any more newsletter e-mails. You can re-subscribe anytime.",
+    unsubErrTitle: "That link isn't valid",
+    unsubErrBody:
+      "This unsubscribe link is invalid or was already used. Write to myble.eu@gmail.com and we'll remove you manually.",
+    backHome: "Back to homepage",
+  },
+  legal: {
+    downloadWithdrawal: "Download the form (DOCX)",
+    print: "Print",
+    fileComplaint: "File a complaint by e-mail",
+    complaintSubject: "Complaint: order no. ",
+    complaintBody: "Order number:\nDescription of the defect:\n\nName:\nContact:\n",
+    docs: {
+      "terms-and-conditions": { title: "Terms & Conditions" },
+      "privacy-policy": { title: "Privacy Policy" },
+      "cookies-policy": { title: "Cookies Policy" },
+      "withdrawal-form": { title: "Withdrawal Form" },
+      "complaints-procedure": { title: "Complaints Procedure" },
+      "product-safety": { title: "Product Safety & Assembly" },
+    },
+  },
+  consent: {
+    title: "We value your privacy",
+    body: "We use essential cookies to run the site. With your consent we also use analytics and marketing cookies. You can change your choice any time. See our",
+    cookiesLink: "Cookies Policy",
+    acceptAll: "Accept all",
+    rejectAll: "Reject all",
+    customise: "Customise",
+    settingsTitle: "Cookie settings",
+    settingsBody: "Choose which cookies we may use. Essential cookies are always on because the site cannot work without them.",
+    essentialTitle: "Essential",
+    essentialBody: "Required for the site to function (e.g. your language and consent choice). Always active.",
+    analyticsTitle: "Analytics",
+    analyticsBody: "Helps us understand how the site is used (PostHog). Off until you allow it.",
+    marketingTitle: "Marketing",
+    marketingBody: "Used to measure and improve advertising (Google Ads). Off until you allow it.",
+    savePrefs: "Save preferences",
+    close: "Close",
+  },
+  checkout: {
+    customTitle: "Made to your specification",
+    customNotice: "This piece is made to the dimensions you entered. Because it is custom-made, the 14-day right of withdrawal does not apply (§ 1837 of the Civil Code).",
+    customAck: "I understand this piece is made to my specification and that the 14-day right of withdrawal does not apply.",
+    termsPre: "I have read and accept the",
+    termsSep: ", ",
+    termsAnd: "and",
+    termsEnd: ".",
+    mustAccept: "Please accept the Terms & Conditions, Complaints Procedure and Privacy Policy to continue.",
+    mustAckCustom: "Please confirm you understand the custom-made notice.",
+    czOnly: "We currently deliver within the Czech Republic only.",
+  },
+  receipt: {
+    title: "Your documents",
+    body: "Keep these for your records. They are part of your order confirmation on a durable medium.",
+    terms: "Terms & Conditions",
+    withdrawal: "Model withdrawal form (DOCX)",
+    privacy: "Privacy Policy",
+    emailNote: "A confirmation with these documents is also sent to your e-mail.",
+  },
+  contact: {
+    title: "Contact",
+    intro: "Get in touch",
+    body: "Questions about your design, an order, or anything else. We're happy to help.",
+    emailLabel: "Email",
+    emailNote: "We reply primarily by e-mail.",
+    sellerTitle: "Seller",
+    docsTitle: "Related documents",
+    formTitle: "Send us a message",
+    formName: "Name",
+    formEmail: "Email",
+    formMessage: "Message",
+    formSend: "Send message",
+    formSending: "Sending…",
+    formOk: "Thanks, we'll get back to you within one business day.",
+    formErr: "Sending failed. Please try again or use the e-mail above.",
+  },
+  about: {
+    title: "About Myble",
+    body: "Myble makes made-to-measure furniture, exact to the centimetre. You design it in our configurator, we produce it as a flat-pack kit and ship it to your door in Czechia. Furniture that fits your space precisely, without the showroom markup.",
+    cta: "Design yours",
+  },
+};
+
+const cs: Tree = {
+  nav: {
+    howItWorks: "Jak to funguje",
+    products: "Co nabízíme",
+    pricing: "Cena",
+    trust: "Důvěra",
+    design: "Navrhnout svůj kus",
+    backHome: "Zpět na úvod",
+    menu: "Menu",
+  },
+  auth: { login: "Přihlásit", logout: "Odhlásit se", account: "Účet", signedIn: "Přihlášeno" },
+  common: { delivery: "Doprava", from: "už od", cm: "cm", mm: "mm", loadingShort: "Náhled…" },
+  colors: { white: "Bílá", black: "Černá" },
+  roles: { wall: "Stěna", shelf: "Police", divider: "Příčka" },
+  rules: {
+    checking: "Kontrolujeme váš návrh…",
+    allGood: "Vypadá skvěle, připraveno k objednání",
+    recommendations: "Několik doporučení",
+    recommendationsHint: "Návrh je možné objednat. Toto jsou naše odborná doporučení. Použijte je, nebo objednejte tak, jak je.",
+    recommendationsCount: (p) => `(${p.n})`,
+    anchorTitle: "Kotvení ke zdi je součástí",
+    anchorHint: "Vysoké kusy se dodávají se sadou pro ukotvení ke zdi a návodem. Potvrďte prosím, že nábytek ukotvíte ke stěně.",
+    reviewTitle: "Návrh ještě zkontrolujeme",
+    reviewHint: "Objednávku můžeme přijmout. Náš tým návrh před výrobou zkontroluje a potvrdí.",
+    blockedTitle: "Návrh ještě zkontrolujeme",
+    blockedHint: "Objednat můžete i tak, jak je. Náš tým detaily před výrobou potvrdí.",
+    fixLabel: "Náš tip",
+    recommendation: "Doporučení",
+    orderAnyway: "Přesto objednat",
+    severityTip: "Tip",
+    severityRec: "Doporučení",
+    severityConfirm: "Potvrďte prosím",
+    severityBlock: "Vyžaduje úpravu",
+    severityReview: "Stojí za pozornost",
+  },
+  presets: {
+    police: { label: "Police do niky", desc: "Klasika do komínové niky nebo mezi stěny." },
+    skrinka: { label: "Úzká skříňka", desc: "Police i svislá příčka pro víc úložného prostoru." },
+    stolek: { label: "Odkládací stolek", desc: "Noční nebo do koutu k pohovce." },
+  },
+  home: {
+    heroTitle: "Navrhněte nábytek, který zatím neexistuje.",
+    heroBody: "Nábytek na míru přesně na centimetr.",
+    heroCta: "Navrhnout svůj kus",
+    heroHow: "Jak to funguje →",
+    heroLibrary: "Prohlédnout návrhy →",
+    heroFromPre: "Police na míru už od",
+    heroFromPost: "· doručení po celé ČR",
+    trustBar: {
+      fast: "Hotovo za 5–8 dní, ne za 8 týdnů",
+      precise: "Přesné na centimetr",
+      shipping: "Doručení Zásilkovna / PPL",
+    },
+    stepsTitle: "Od mezery k hotovému nábytku ve třech krocích",
+    steps: {
+      design: { t: "Navrhněte", s: "Vaše rozměry a barva.", b: "Zadejte rozměry své niky a vyberte barvu. Cenu vidíte okamžitě." },
+      order: { t: "Objednejte", s: "Nařežeme, označíme, pošleme.", b: "Díl přesně nařežeme, označíme a pošleme až k vám. Žádná konzultace, žádné čekání 8 týdnů." },
+      assemble: { t: "Sestavte", s: "Hotovo za 30 minut.", b: "Očíslované díly a jednoduchý návod. Hotovo zhruba za 30 minut, skoro bez nářadí." },
+    },
+    teaserTitle: "Sedne přesně do vašeho prostoru, na milimetr",
+    teaserBody: "Začněte z hotové předlohy, zadejte své rozměry a sledujte, jak se kus mění v reálném čase. Konfigurátor vás nepustí k nemožnému návrhu a cenu přepočítává průběžně.",
+    teaserL1: "Návrh v reálném čase, takže uvidíte, co kupujete",
+    teaserL2: "Rozměry na centimetr přesně",
+    teaserL3: "Vejde se do balíku, takže doručíme kamkoli",
+    teaserCta: "Navrhnout svůj kus →",
+    productsTitle: "Co lidé navrhují",
+    productsBody: "Police, stolky, lavice pro kočku. Každý kus tady vznikl v konfigurátoru a může být za pár kliknutí váš.",
+    products: {
+      police: { title: "Police na míru", body: "Do niky, pod schody, do knihovny." },
+      skrinka: { title: "Skříňky a komody", body: "Úložný prostor, který využije každý centimetr." },
+      stolek: { title: "Stolky a stolíky", body: "Noční, odkládací, do koutu." },
+    },
+    compareTitle: "IKEA nesedí, truhlář je drahý a zdlouhavý",
+    compareBody: "Myble bere to nejlepší z obou: rozměry na míru jako od truhláře, rychlost a cenu blíž IKEA.",
+    compare: {
+      ikea: "IKEA",
+      myble: "Myble",
+      carpenter: "Truhlář",
+      r1k: "Na míru na centimetr",
+      r1: ["Jen pevné rozměry", "Ano", "Ano"],
+      r2k: "Cena",
+      r2: ["Nízká", "Zlomek truhláře", "2–4× víc"],
+      r3k: "Kdy to máte",
+      r3: ["Hned", "5–8 dní", "8–16 týdnů"],
+      r4k: "Cenu víte předem",
+      r4: ["Ano", "Hned online", "Až po zaměření"],
+      r5k: "Montáž",
+      r5: ["Vy", "Vy, ~30 min", "V ceně"],
+    },
+    materialsTitle: "Za co platíte",
+    materialsBody: "Deska je ta jednodušší část. Lamino i hrany používáme od předních evropských výrobců, kteří dodávají největším nábytkovým značkám na kontinentu. Je to stejný materiál, jaký by objednal dobrý truhlář, vybraný podle toho, jak vypadá po deseti letech, ne podle toho, jak je dnes levný. Zbytek ceny je všechno, co z té desky udělá nábytek, který sedne do vašeho pokoje a složíte ho za půl hodiny.",
+    materialsBodyShort: "Deska je ta jednodušší část. Lamino i hrany používáme od předních evropských výrobců, kteří dodávají největším nábytkovým značkám. Zbytek ceny je všechno, co z té desky udělá nábytek, který sedne do vašeho pokoje a složíte ho za půl hodiny.",
+    materialsSuppliers: "Naši dodavatelé desek a hran",
+    materials: {
+      m1t: "Svoboda v každém rozměru",
+      m1b: "Popíšete prostor a co v něm má být. Pelíšek pro psa, místo pro pět květin, police na míru gramofonu. S cenou, která se počítá průběžně.",
+      m2t: "Ušetřený čas na řezání",
+      m2b: "Každý díl dorazí hotový na milimetr a se spoji už předvrtanými. Bez dílny, bez půjčené pily, bez desky zkažené hned prvním řezem.",
+      m3t: "Zabaleno, aby to přežilo dopravu",
+      m3b: "Pětivrstvý karton, rohové chrániče a balení testované pádem, aby k vám dorazilo přesně to, co odešlo z dílny.",
+      m4t: "Návod nakreslený pro váš kus",
+      m4b: "Žádný obecný leták. Návod přesně pro design, který jste objednali, s očíslovanými díly. Většina lidí to má hotové za zhruba 30 minut.",
+    },
+    trustTitle: "Aby vás nic nezaskočilo",
+    trustBody: "Kupujete online a nemůžete si na nábytek sáhnout. Tady je, jak každou obavu řešíme.",
+    trust: {
+      c1t: "Bojíte se, že špatně změříte?",
+      c1b: "Náš návod na měření vás krok za krokem provede a rozměry potvrdíte ještě před výrobou.",
+      c2t: "Nevíte, jestli odstín sedne?",
+      c2b: "Pošleme vám vzorník dekorů za 99 Kč, částku vám odečteme z objednávky.",
+      c3t: "Co když to dorazí poškozené?",
+      c3b: "Balíme do pětivrstvého kartonu s rohovými chrániči a balení testujeme pádem. Vady řešíme obratem.",
+      c4t: "Zvládnu sestavení sám?",
+      c4b: "Očíslované díly, návod na míru a chytré spoje. Většina lidí to má hotové do 30 minut.",
+    },
+    sampleTitle: "Chcete si nejdřív osahat dekor?",
+    sampleBody: "Vzorník bílé a černé pošleme poštou za 99 Kč, částku odečteme z objednávky.",
+    sampleCta: "Objednat vzorník",
+    reviewsTag: "RECENZE",
+    reviewsTitle: "První recenze sbíráme právě teď",
+    reviewsBody: "Hodnocení od skutečných zákazníků a fotky z jejich domácností sem doplníme z Googlu a Trustpilotu. Žádné vymyšlené citáty.",
+    reviewsChips: ["Google hodnocení", "Trustpilot", "Fotky zákazníků"],
+    pricingTitle: "Cenu vidíte hned. Žádné dotazníky, žádná konzultace.",
+    pricingBody: "Většina truhlářů vám cenu řekne až po návštěvě a zaměření. U nás zadáte rozměry a cenu máte na obrazovce, přesnou a včetně dopravy.",
+    pricingCta: "Spočítat cenu mého kusu →",
+    faqTitle: "Časté dotazy",
+    faq: [
+      { q: "Jak změřím svůj prostor?", a: "Stačí svinovací metr a náš návod. Šířku změřte na třech místech (nahoře, uprostřed, dole) a zadejte nejmenší hodnotu. Rozměry pak potvrdíte ještě před výrobou." },
+      { q: "Jak dlouho to trvá?", a: "Výroba obvykle 5–8 pracovních dnů, poté doručení Zásilkovnou nebo PPL. Přesný termín vidíte u objednávky." },
+      { q: "Zvládnu sestavení sám?", a: "Ano. Díly jsou očíslované, spoje jednoduché a návod je na míru vašemu kusu. Většina lidí to má hotové do 30–45 minut." },
+      { q: "Můžu vrátit nábytek na míru?", a: "Protože vyrábíme na míru, objednávka je ze zákona nevratná. Vady ale řešíme férově a obratem." },
+      { q: "Co když to dorazí poškozené?", a: "Balíme bytelně a testujeme pádem. Pokud i tak něco přijde poškozené, pošlete fotku a společně to vyřešíme." },
+      { q: "Jaké barvy máte?", a: "Spustíme s bílou a černou: čisté, nadčasové odstíny v tloušťce 18 nebo 36 mm." },
+    ],
+    footerCtaTitle: "Vyřešte svou mezeru ještě dnes.",
+    footerCtaBody: "Zadejte rozměry, vyberte barvu a uvidíte cenu během pár minut.",
+    footerCta: "Navrhnout svůj kus",
+    footerTagline: "Nábytek na míru přesně na centimetr.",
+    footerProduct: "Produkt",
+    footerConfigurator: "Konfigurátor",
+    footerOffer: "Co nabízíme",
+    footerPrice: "Cena",
+    footerTrust: "Důvěra",
+    footerLibrary: "Knihovna návrhů",
+    footerMeasuring: "Měření & vzorník",
+    footerShipping: "Doprava",
+    footerContact: "Kontakt",
+    language: "Jazyk",
+  },
+  library: {
+    title: "Knihovna návrhů",
+    intro: "Skutečné kusy postavené v konfigurátoru, od nás a brzy i od vás. Kterýkoli z nich otevřete, přizpůsobíte rozměry svému prostoru a objednáte.",
+    by: "Myble Studio",
+    open: "Otevřít v konfigurátoru →",
+    fireLabel: "Označit jako žhavé",
+    shareTitle: "Navrhli jste něco povedeného?",
+    shareBody: "Nasdílejte svůj návrh přímo z konfigurátoru. Ty nejlepší vybíráme do knihovny.",
+    categories: {
+      all: "Vše",
+      shelves: "Police",
+      tables: "Stolky",
+      storage: "Úložné",
+      media: "Hudba & TV",
+      office: "Pracovna",
+      pets: "Mazlíčci",
+    },
+    items: {
+      staggered: { n: "Knihovna na přeskáčku", d: "Police s přesahy a jedno vyšší okénko na věci, které se do rovné řady nevejdou." },
+      catbench: { n: "Lavice pro kočku", d: "Lavice s otevřeným boxem na kočičí toaletu a policí na všechno ostatní. Nahoru stačí polštář." },
+      record: { n: "Komoda na vinyly", d: "Nízká komoda s přihrádkami na desky a místem pro gramofon nahoře." },
+      police: { n: "Klasika do niky", d: "Tři police, šířka 73 cm. Kus, kterým Myble začalo." },
+      coffee: { n: "Konferenční stolek", d: "Nízká deska s poličkou na časopisy. Káva nahoře, nepořádek dole." },
+      grid: { n: "Kubická knihovna", d: "Klidný rastr dvou sloupců, který pojme víc, než na sobě dá znát." },
+      nightstand: { n: "Noční stolek", d: "Otevřená přihrádka na knížku a telefon, větší prostor dole na zbytek." },
+      tvbench: { n: "TV lavice", d: "Dlouhá a nízká, s přihrádkami na set-top box, konzoli i kabely." },
+      skrinka: { n: "Úzká skříňka", d: "Čtyři police a středová příčka. Maximum úložného prostoru na 60 cm." },
+      shoebench: { n: "Botník", d: "Tři otevřené přihrádky u dveří. Sednout, zavázat, vyrazit." },
+      worknook: { n: "Pracovní kout", d: "Pracovní deska s policemi nahoře i dole. Domácí kancelář na jedné stopě." },
+      stolek: { n: "Odkládací stolek", d: "K posteli nebo k pohovce, s jednou policí uvnitř." },
+    },
+  },
+  design: {
+    loading: "Načítám 3D editor…",
+    title: "Postavte si nábytek díl po dílu",
+    subtitle: "Žádné pevně dané typy. Přidávejte police, příčky i stěny a upravujte je přímo v náhledu. Cenu vidíte okamžitě.",
+    addShelf: "Police",
+    addDivider: "Příčka",
+    addWall: "Stěna",
+    clear: "Vyčistit",
+    size: "Rozměry nábytku",
+    sizeHint: "Změna rozměru proporčně zvětší celý kus.",
+    width: "Šířka",
+    height: "Výška",
+    depth: "Hloubka",
+    material: "Materiál",
+    thickness: "Tloušťka desky",
+    thick36Warn: "36 mm se prodává v celých deskách, u malých dílů je proto výrazně dražší.",
+    quickStart: "Začněte rychle",
+    quickStartHint: "Šablona, nebo úplně od nuly, pak si vše upravte.",
+    inspirationTitle: "Potřebujete inspiraci?",
+    inspirationBody: "Skutečné návrhy z knihovny. Klepnutím na některý ho sem načtete a upravíte podle svého prostoru.",
+    inspirationBrowseAll: "Prohlédnout vše →",
+    inspirationShowMore: "Zobrazit další návrhy",
+    inspirationUse: "Použít tento návrh",
+    priceLabel: "Cena kitu",
+    plusDelivery: (p) => `+ doprava ${p.price}`,
+    dontBandBack: "Neohranovat zadní hranu",
+    order: "Pokračovat k objednávce →",
+    orderShort: "Pokračovat →",
+    priceVat: "Cena",
+    floating: "Některé díly visí ve vzduchu. Přitáhněte je k sobě, jinak nelze objednat.",
+    cuttingNote: "Řezání je odhad. Přesnou částku doladíme při objednávce u výrobce.",
+    bdKit: "Kit",
+    bdTotal: "Celkem",
+    share: "Sdílet",
+    shareCopied: "Odkaz zkopírován ✓",
+    shareErr: "Sdílení se nepovedlo",
+  },
+  breakdown: {
+    board: "Materiál (deska)",
+    edge: "Hranění",
+    cutting: "Řezání",
+    gluing: "Lepení hran",
+    drilling: "Vrtání spojů",
+    accessories: "Kování a návod",
+    packaging: "Balení",
+    inbound: "Doprava na sklad",
+    margin: "Marže a poplatky",
+    estimate: "odhad",
+  },
+  validate: {
+    min: (p) => `${p.field}: minimum je ${p.value} cm.`,
+    max: (p) => `${p.field}: maximum je ${p.value} cm.`,
+    nan: (p) => `${p.field}: zadejte číslo.`,
+    tooMany: (p) => `Příliš mnoho dílů (max ${p.max}).`,
+    maxEdge: (p) => `Vyšší a širší kusy než ${p.cm} cm chystáme. Zatím se vejdeme do balíku.`,
+    floating: "Některé díly se nedotýkají zbytku nábytku. Spojte je, než budete pokračovat.",
+  },
+  parts: { count: (p) => `${p.n} ${czechDil(Number(p.n))}`, label: "Nábytek na míru" },
+  order: {
+    title: "Dokončení objednávky",
+    subtitle: "Vyplňte kontaktní a dodací údaje. Kit vyrobíme přesně podle vašeho návrhu.",
+    back: "← Zpět do návrhu",
+    contact: "Kontaktní údaje",
+    firstName: "Jméno",
+    lastName: "Příjmení",
+    email: "E-mail",
+    phone: "Telefon",
+    address: "Doručovací adresa",
+    street: "Ulice a číslo",
+    city: "Město",
+    zip: "PSČ",
+    country: "Země",
+    cz: "Česká republika",
+    sk: "Slovensko",
+    shipping: "Doprava",
+    ship1: "Zásilkovna",
+    ship1sub: "5–8 pracovních dnů",
+    ship2: "PPL na adresu",
+    ship2sub: "5–8 pracovních dnů",
+    confirmTitle: "Potvrzení rozměrů",
+    confirmBody: "Vyrábíme přesně na míru, proto si rozměry prosím ještě jednou zkontrolujte.",
+    colour: "Barva",
+    thickness: "Tloušťka",
+    partsLbl: "Dílů",
+    backEdge: (p) => `Zadní hrana: ${p.v}.`,
+    backEdgeOn: "hraněná",
+    backEdgeOff: "bez hrany",
+    editIn: "Upravit v konfigurátoru →",
+    measuredOk1: "Změřeno dle",
+    measuredGuide: "návodu na měření",
+    measuredOk2: "a rozměry potvrzuji jako správné.",
+    cutTitle: "Řezací plán pro výrobu",
+    cutBody: "Rozpis všech dílů v milimetrech (hrany, vrtání) pro objednávku formátování.",
+    cutUnits: (p) => `${p.n} ks`,
+    colDil: "Díl",
+    colSize: "Rozměr (mm)",
+    colQty: "Ks",
+    colEdges: "Hrany",
+    colDrill: "Vrtání",
+    yes: "ano",
+    no: "ne",
+    downloadCsv: "Stáhnout CSV",
+    downloadJson: "Stáhnout JSON",
+    yourDesign: "Váš návrh",
+    summaryKit: (p) => `Kit na míru (${p.dims} cm)`,
+    summaryDelivery: "Doprava",
+    summaryTotal: "Celková cena",
+    place: "Objednávka zavazující k platbě",
+    confirmFirst: "Nejprve potvrďte rozměry výše.",
+    badge1: "Bezpečná platba · vyrobeno v ČR",
+    badge2: "Pětivrstvý karton, vady řešíme férově a obratem",
+    badge3: "Návod na míru, sestavení do ~30 minut",
+  },
+  confirmation: {
+    received: "Objednávka přijata",
+    no: (p) => `· č. ${p.n}`,
+    title: "Vaše mezera má řešení.",
+    body: "Děkujeme, že jste si vybrali Myble. Váš návrh máme a posíláme ho do výroby. Potvrzení s detaily dorazí e-mailem.",
+    whatsNext: "Co bude dál",
+    n1: "Potvrzení objednávky vám posíláme e-mailem.",
+    n2: "Výroba na míru obvykle 5–8 pracovních dnů.",
+    n3: "Po odeslání dostanete sledování zásilky.",
+    n4: "Návod na sestavení přiložíme do balíku i e-mailem.",
+    backHome: "Zpět na úvod",
+    designAnother: "Navrhnout další kus",
+    helpedTitle: "Pomohli jsme?",
+    helpedH: "Ohodnoťte nás",
+    helpedBody: "Až svůj kus sestavíte, budeme moc rádi za recenzi a fotku. Pomůže dalším lidem s podobnou mezerou.",
+    changeTitle: "Potřebujete změnu?",
+    changeH: "Ozvěte se nám",
+    changeBody: "Dokud výroba nezačala, většinu věcí ještě upravíme.",
+  },
+  login: {
+    title: "Přihlášení",
+    body: "Přihlaste se přes Google. Zůstanete přihlášeni na tomto zařízení, dokud se neodhlásíte.",
+    orderTitle: "Přihlásit a pokračovat",
+    orderBody: "Přihlášení uloží váš návrh a usnadní sledování objednávky. Není ale povinné.",
+    verifying: "Ověřuji…",
+    already: "Už jste přihlášeni",
+    withGoogle: "Přihlásit se přes Google",
+    continue: "Pokračovat",
+    continueOrder: "Pokračovat k objednávce",
+    privacy: "Google používáme jen k ověření totožnosti. Nikdy nic nezveřejňujeme vaším jménem.",
+    noRegister: "Nechcete se registrovat?",
+    designYours: "Navrhněte svůj kus →",
+    skipTitle: "Nechcete se přihlašovat?",
+    asGuest: "Pokračovat jako host",
+  },
+  viewer: { remove: "Odebrat" },
+  imprint: {
+    name: "Bartłomiej Karol Kwaśnica",
+    ico: "IČO: 24439673",
+    address: "Uralská 689/7, 160 00 Praha 6 – Bubeneč, Česká republika",
+    email: "myble.eu@gmail.com",
+  },
+  footer: {
+    legal: "Právní",
+    cookieSettings: "Nastavení cookies",
+    contactLink: "Napište nám",
+    aboutLink: "O nás",
+    newsTitle: "Tipy pro nešikovné prostory",
+    newsBody: "Občasné e-maily o měření, materiálech a novinkách. Žádný spam.",
+    newsPlaceholder: "vas@email.cz",
+    newsCta: "Odebírat",
+    newsOk: "Díky, jste na seznamu.",
+    newsErr: "Nepovedlo se. Zkontrolujte adresu a zkuste to znovu.",
+    newsConsent: "Přihlášením souhlasíte se zpracováním e-mailu dle Zásad ochrany osobních údajů.",
+  },
+  // /newsletter/unsubscribed — cílová stránka odhlašovacího odkazu z e-mailu.
+  newsletter: {
+    unsubTitle: "Jste odhlášeni.",
+    unsubBody: "Další newslettery vám už posílat nebudeme. Znovu se můžete přihlásit kdykoli.",
+    unsubErrTitle: "Neplatný odkaz",
+    unsubErrBody:
+      "Tento odkaz pro odhlášení je neplatný nebo už byl použit. Napište nám na myble.eu@gmail.com a odstraníme vás ručně.",
+    backHome: "Zpět na úvod",
+  },
+  legal: {
+    downloadWithdrawal: "Stáhnout formulář (DOCX)",
+    print: "Tisk",
+    fileComplaint: "Podat reklamaci e-mailem",
+    complaintSubject: "Reklamace: objednávka č. ",
+    complaintBody: "Číslo objednávky:\nPopis vady:\n\nJméno:\nKontakt:\n",
+    docs: {
+      "terms-and-conditions": { title: "Obchodní podmínky" },
+      "privacy-policy": { title: "Ochrana osobních údajů" },
+      "cookies-policy": { title: "Zásady cookies" },
+      "withdrawal-form": { title: "Odstoupení od smlouvy" },
+      "complaints-procedure": { title: "Reklamační řád" },
+      "product-safety": { title: "Bezpečnost výrobku" },
+    },
+  },
+  consent: {
+    title: "Záleží nám na vašem soukromí",
+    body: "Nezbytné cookies používáme pro chod webu. S vaším souhlasem používáme také analytické a marketingové cookies. Volbu můžete kdykoli změnit. Více v našich",
+    cookiesLink: "Zásadách cookies",
+    acceptAll: "Přijmout vše",
+    rejectAll: "Odmítnout vše",
+    customise: "Nastavit",
+    settingsTitle: "Nastavení cookies",
+    settingsBody: "Zvolte, které cookies smíme používat. Nezbytné cookies jsou vždy zapnuté, protože bez nich web nefunguje.",
+    essentialTitle: "Nezbytné",
+    essentialBody: "Nutné pro fungování webu (např. volba jazyka a souhlasu). Vždy aktivní.",
+    analyticsTitle: "Analytické",
+    analyticsBody: "Pomáhají nám pochopit, jak se web používá (PostHog). Vypnuté, dokud je nepovolíte.",
+    marketingTitle: "Marketingové",
+    marketingBody: "Slouží k měření a zlepšování reklamy (Google Ads). Vypnuté, dokud je nepovolíte.",
+    savePrefs: "Uložit volbu",
+    close: "Zavřít",
+  },
+  checkout: {
+    customTitle: "Vyrobeno na míru",
+    customNotice: "Tento kus je vyroben podle rozměrů, které jste zadali. Protože jde o zboží na míru, neuplatní se 14denní právo na odstoupení od smlouvy (§ 1837 občanského zákoníku).",
+    customAck: "Beru na vědomí, že je tento kus vyroben na míru a že se neuplatní 14denní právo na odstoupení od smlouvy.",
+    termsPre: "Přečetl/a jsem si a přijímám",
+    termsSep: ", ",
+    termsAnd: "a",
+    termsEnd: ".",
+    mustAccept: "Pro pokračování prosím přijměte Obchodní podmínky, Reklamační řád a Ochranu osobních údajů.",
+    mustAckCustom: "Potvrďte prosím, že berete na vědomí upozornění o výrobě na míru.",
+    czOnly: "Aktuálně doručujeme pouze v rámci České republiky.",
+  },
+  receipt: {
+    title: "Vaše dokumenty",
+    body: "Uschovejte si je. Jsou součástí potvrzení objednávky na trvalém nosiči dat.",
+    terms: "Obchodní podmínky",
+    withdrawal: "Vzorový formulář pro odstoupení (DOCX)",
+    privacy: "Ochrana osobních údajů",
+    emailNote: "Potvrzení s těmito dokumenty vám zasíláme také e-mailem.",
+  },
+  contact: {
+    title: "Kontakt",
+    intro: "Napište nám",
+    body: "Dotazy k návrhu, objednávce nebo čemukoli dalšímu. Rádi pomůžeme.",
+    emailLabel: "E-mail",
+    emailNote: "Odpovídáme převážně e-mailem.",
+    sellerTitle: "Prodávající",
+    docsTitle: "Související dokumenty",
+    formTitle: "Napište nám zprávu",
+    formName: "Jméno",
+    formEmail: "E-mail",
+    formMessage: "Zpráva",
+    formSend: "Odeslat zprávu",
+    formSending: "Odesílám…",
+    formOk: "Díky, ozveme se do jednoho pracovního dne.",
+    formErr: "Odeslání se nepovedlo. Zkuste to znovu nebo použijte e-mail výše.",
+  },
+  about: {
+    title: "O Myble",
+    body: "Myble vyrábí nábytek na míru, přesně na centimetr. Navrhnete si jej v našem konfigurátoru, my jej vyrobíme jako sadu k montáži (flat-pack) a doručíme až k Vám po celé České republice. Nábytek, který přesně padne do Vašeho prostoru, bez showroomové přirážky.",
+    cta: "Navrhnout svůj kus",
+  },
+};
+
+function czechDil(n: number): string {
+  if (n === 1) return "díl";
+  if (n >= 2 && n <= 4) return "díly";
+  return "dílů";
+}
+
+const DICT: Record<Locale, Tree> = { en, cs };
+
+function lookup(tree: Tree, path: string): Msg | undefined {
+  let cur: Msg | Tree | readonly unknown[] | undefined = tree;
+  for (const seg of path.split(".")) {
+    if (cur && typeof cur === "object" && !Array.isArray(cur)) cur = (cur as Tree)[seg];
+    else return undefined;
+  }
+  return cur as Msg | undefined;
+}
+
+export type TFn = (key: string, params?: Record<string, string | number>) => string;
+
+// Raw access for arrays/objects in the dictionary (compare table rows, faq, chips).
+export function tList(locale: Locale, path: string): unknown {
+  let cur: unknown = DICT[locale];
+  for (const seg of path.split(".")) {
+    if (cur && typeof cur === "object") cur = (cur as Record<string, unknown>)[seg];
+    else return undefined;
+  }
+  if (cur === undefined) {
+    // fall back to English
+    let en2: unknown = DICT.en;
+    for (const seg of path.split(".")) en2 = en2 && typeof en2 === "object" ? (en2 as Record<string, unknown>)[seg] : undefined;
+    return en2;
+  }
+  return cur;
+}
+
+interface Ctx {
+  locale: Locale;
+  setLocale: (l: Locale) => void;
+  t: TFn;
+  fmt: (n: number) => string;
+}
+
+const LocaleContext = createContext<Ctx | null>(null);
+
+function readInitial(): Locale {
+  if (typeof window === "undefined") return DEFAULT_LOCALE;
+  try {
+    const v = window.localStorage.getItem(STORAGE_KEY);
+    if (v === "en" || v === "cs") return v;
+  } catch {
+    /* ignore */
+  }
+  return DEFAULT_LOCALE;
+}
+
+export function LocaleProvider({ children }: { children: React.ReactNode }) {
+  const [locale, setLocaleState] = useState<Locale>(DEFAULT_LOCALE);
+
+  // Hydrate the saved choice after mount (avoids SSR mismatch; server renders EN).
+  useEffect(() => {
+    const initial = readInitial();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (initial !== DEFAULT_LOCALE) setLocaleState(initial);
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.lang = locale;
+  }, [locale]);
+
+  const setLocale = useCallback((l: Locale) => {
+    setLocaleState(l);
+    try {
+      window.localStorage.setItem(STORAGE_KEY, l);
+      document.cookie = `${STORAGE_KEY}=${l};path=/;max-age=31536000;samesite=lax`;
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const value = useMemo<Ctx>(() => {
+    const t: TFn = (key, params) => {
+      const val = lookup(DICT[locale], key) ?? lookup(DICT.en, key);
+      if (val === undefined) return key;
+      return typeof val === "function" ? val(params ?? {}) : val;
+    };
+    const nf = new Intl.NumberFormat(locale === "cs" ? "cs-CZ" : "en-US", { maximumFractionDigits: 0 });
+    const fmt = (n: number) => `${nf.format(n)} Kč`;
+    return { locale, setLocale, t, fmt };
+  }, [locale, setLocale]);
+
+  return <LocaleContext.Provider value={value}>{children}</LocaleContext.Provider>;
+}
+
+export function useI18n(): Ctx {
+  const ctx = useContext(LocaleContext);
+  if (!ctx) throw new Error("useI18n must be used within LocaleProvider");
+  return ctx;
+}
+
+export function useT(): TFn {
+  return useI18n().t;
+}

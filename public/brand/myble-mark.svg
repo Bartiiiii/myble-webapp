@@ -1,0 +1,9 @@
+<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Myble mark: "The Exact Fit" — a shelving frame with offset shelves;
+       the accent block is the made-to-measure piece fitted into its gap. -->
+  <rect x="7.5" y="7.5" width="33" height="33" rx="8.5" stroke="#18181B" stroke-width="3.75"/>
+  <path d="M27.75 7.5 V40.5" stroke="#18181B" stroke-width="3.75"/>
+  <path d="M7.5 28.5 H27.75" stroke="#18181B" stroke-width="3.75"/>
+  <path d="M27.75 19.5 H40.5" stroke="#18181B" stroke-width="3.75"/>
+  <rect x="30.4" y="10.15" width="7.45" height="6.6" rx="2" fill="#4F46E5"/>
+</svg>

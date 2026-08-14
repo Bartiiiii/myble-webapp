@@ -1,0 +1,2336 @@
+{
+  "catalogue_version": "1.1.0",
+  "generated": "2026-07-20",
+  "status": "DRAFT — pre-validation. No rule is production-approved. v1.1.0 applies Mybles sales-first severity policy: severity 4 is reserved for physical impossibilities (manufacture/ship/assemble) and stability safety; quality & durability limits are severity-3 acknowledgements with an expert recommendation. Unvalidated numbers never hard-block (schema §7 as amended by MYBLE-POLICY-2026-07-20).",
+  "units": "mm, kg, N, N/mm2 unless stated",
+  "source_tiers": {
+    "1": "Law / mandatory safety / EN-ČSN standards",
+    "2": "Official material & hardware technical documentation",
+    "3": "Engineering references",
+    "4": "Attached cabinetmaking books (Hylton 1998/2008 ed.; Rae 2001)",
+    "5": "Experienced professional practice",
+    "6": "Conservative Myble assumption",
+    "7": "General online commentary"
+  },
+  "severity_levels": {
+    "0": "Informational",
+    "1": "Design tip",
+    "2": "Recommendation",
+    "3": "Warning requiring acknowledgement",
+    "4": "Blocking error",
+    "5": "Manual expert review required"
+  },
+  "materials": [
+    {
+      "material_id": "ltd_18_p2",
+      "names": {
+        "en": "Melamine-faced particleboard (MFC/LTD) 18 mm",
+        "cs": "LTD / laminovaná dřevotříska 18 mm",
+        "pl": "Płyta wiórowa laminowana 18 mm"
+      },
+      "standard": "Core: EN 312 type P2 (furniture, dry conditions). Surface: EN 14322.",
+      "nominal_thickness_mm": 18,
+      "sheet_format_mm": [
+        2800,
+        2070
+      ],
+      "bending_strength_Nmm2": {
+        "value": 11,
+        "class": "13–20 mm",
+        "tier": 1,
+        "source": "EN 312 P2 requirement table"
+      },
+      "moe_bending_Nmm2": {
+        "value": 1600,
+        "class": "13–20 mm",
+        "tier": 1,
+        "source": "EN 312 P2 requirement table",
+        "note": "Standard minimum — conservative E for deflection calcs until supplier datasheet value confirmed"
+      },
+      "internal_bond_Nmm2": {
+        "value": 0.35,
+        "class": "13–20 mm",
+        "tier": 1
+      },
+      "density_kg_m3": {
+        "value": null,
+        "provisional_range": [
+          600,
+          680
+        ],
+        "tier": 6,
+        "status": "requires_validation",
+        "validation_owner": "board_supplier"
+      },
+      "area_mass_18mm_kg_m2": {
+        "value": null,
+        "provisional_range": [
+          10.8,
+          12.3
+        ],
+        "derived_from": "density range × 0.018 m"
+      },
+      "moisture": "Service class 1, dry interior only. Particleboard swells irreversibly when wetted (Rae 2001 p.34, tier 4).",
+      "screw_holding": "Poor for conventional wood screws; use confirmat/deep-thread or cam+dowel (Rae 2001 pp.33, 83, tier 4).",
+      "suppliers_candidates": [
+        "EGGER Eurodekor/Eurospan",
+        "Kronospan CZ (Jihlava)",
+        "Pfleiderer",
+        "Swiss Krono"
+      ],
+      "status": "requires_validation"
+    },
+    {
+      "material_id": "hdf_back_3",
+      "names": {
+        "en": "HDF back panel 3 mm (white/decor)",
+        "cs": "HDF záda 3 mm"
+      },
+      "standard": "EN 622-5 (fibreboard) — confirm exact grade with supplier",
+      "nominal_thickness_mm": 3,
+      "status": "requires_validation",
+      "note": "Alternative 5 mm for larger backs; thresholds unresolved.",
+      "density_kg_m3": {
+        "value": null,
+        "provisional_range": [
+          700,
+          900
+        ],
+        "tier": 6,
+        "status": "requires_validation",
+        "validation_owner": "board_supplier",
+        "note": "Conservative HDF range so shipping/handling mass is computable; replace with supplier datasheet. Upper bound used for shipping mass (heavier = conservative)."
+      },
+      "moe_bending_Nmm2": {
+        "value": null,
+        "note": "Not used structurally — HDF backs are non-load-bearing bracing panels."
+      }
+    },
+    {
+      "material_id": "ltd_36_p2",
+      "names": {
+        "en": "Melamine-faced particleboard (MFC/LTD) 36 mm",
+        "cs": "LTD / laminovaná dřevotříska 36 mm"
+      },
+      "standard": "Core: EN 312 type P2. Surface: EN 14322. NOTE: EN 312 publishes a separate requirement class above 20 mm — the exact class values are NOT yet transcribed here.",
+      "nominal_thickness_mm": 36,
+      "sheet_format_mm": [
+        2800,
+        2070
+      ],
+      "moe_bending_Nmm2": {
+        "value": 1600,
+        "class": "13–20 mm value used as a CONSERVATIVE PROXY",
+        "tier": 6,
+        "status": "requires_validation",
+        "note": "Deflection scales with t^3, so applying the thinner classes MOE to a 36 mm panel understates stiffness and overstates sag — conservative. Replace with the >20 mm class value from the supplier datasheet before relying on it."
+      },
+      "density_kg_m3": {
+        "value": null,
+        "provisional_range": [
+          600,
+          680
+        ],
+        "tier": 6,
+        "status": "requires_validation",
+        "validation_owner": "board_supplier"
+      },
+      "moisture": "Service class 1, dry interior only. Particleboard swells irreversibly when wetted (Rae 2001 p.34, tier 4).",
+      "status": "requires_validation"
+    }
+  ],
+  "hardware": [
+    {
+      "hardware_id": "minifix15_dowel8",
+      "name": "Cam connector Ø15 (Häfele Minifix 15 class) + wooden dowel Ø8",
+      "drilling": {
+        "housing_dia_mm": 15,
+        "housing_min_depth_mm": 12.7,
+        "bolt_hole_dia_mm": 8,
+        "distance_B_mm": [
+          24,
+          34
+        ],
+        "system_note": "24 mm B-distance typical for 18 mm panels; confirm SKU"
+      },
+      "min_panel_thickness_mm": 15,
+      "rated_load_N": null,
+      "reassembly": "good — designed for repeated knock-down cycles",
+      "tier": 2,
+      "source": "Häfele Minifix 15 product documentation (hafele.com P-00861332/33)",
+      "status": "requires_validation (final SKU + exact drilling pattern from Häfele datasheet)"
+    },
+    {
+      "hardware_id": "confirmat_7x50",
+      "name": "Confirmat-type one-piece connector screw 7×50",
+      "drilling": {
+        "pilot_dia_mm": 5,
+        "through_clearance_mm": 7,
+        "head_countersink_mm": 11,
+        "min_edge_distance_mm": 10
+      },
+      "withdrawal_force_N": {
+        "value": null,
+        "reported_reference": 1400,
+        "tier": 7,
+        "note": "~1400 N reported in trade sources for laminated PB, 25 mm engagement — NOT validated; do not use in engineering calcs"
+      },
+      "reassembly": "limited — repeated driving into same particleboard hole degrades grip; prefer cams for customer re-assembly (Rae p.83 tier 4 for suitability; degradation = tier 5 practice)",
+      "tier": 2,
+      "source": "Häfele 7×50 confirmat product data; trade drilling guides",
+      "status": "requires_validation"
+    },
+    {
+      "hardware_id": "dowel_8x35",
+      "name": "Wooden dowel Ø8×35, fluted",
+      "drilling": {
+        "dia_mm": 8,
+        "depth_each_side_mm": [
+          12,
+          24
+        ]
+      },
+      "role": "Alignment + shear; carries shear so cams only clamp (tier 5 practice)",
+      "status": "requires_validation"
+    },
+    {
+      "hardware_id": "shelf_pin_5",
+      "name": "Shelf support pin Ø5",
+      "drilling": {
+        "dia_mm": 5,
+        "depth_mm": 10,
+        "row_setback_mm": 37,
+        "pitch_mm": 32
+      },
+      "rated_load_per_pin_kg": {
+        "value": 15.6,
+        "tier": 2,
+        "source": "Häfele K-Line shelf support P-00861954 (15.6 kg/item)",
+        "note": "Generic steel pins commonly rated ~11 kg (25 lb) — use the rating of the actually purchased SKU"
+      },
+      "status": "requires_validation"
+    },
+    {
+      "hardware_id": "cup_hinge_35",
+      "name": "Concealed cup hinge Ø35 (Blum CLIP top class)",
+      "drilling": {
+        "cup_dia_mm": 35,
+        "cup_depth_mm": null,
+        "cup_distance_mm": [
+          3,
+          7
+        ],
+        "min_door_thickness_mm": 16
+      },
+      "count_rule": {
+        "2_hinges_max_door_kg": 6,
+        "3_hinges_max_door_kg": 12,
+        "valid_max_door_width_mm": 600,
+        "extra_hinge_width_mm": 650,
+        "tier": 2,
+        "source": "Blum EASY ASSEMBLY blog 'Number of hinges' (blum.com)"
+      },
+      "status": "requires_validation (cup depth + exact chart from Blum catalogue for chosen hinge)"
+    },
+    {
+      "hardware_id": "runner_30kg",
+      "name": "Drawer runner, dynamic load class 25–30 kg (Blum TANDEM / Hettich class)",
+      "rated_dynamic_load_kg": 30,
+      "tier": 2,
+      "source": "Blum TANDEM programme (30/50 kg dynamic load classes)",
+      "status": "requires_validation (choose SKU; min cabinet depth = nominal length + clearance)"
+    },
+    {
+      "hardware_id": "wall_anchor_kit",
+      "name": "Anti-tip wall attachment device + instructions",
+      "rated_load_N": null,
+      "tier": 1,
+      "source": "EN 14749:2016+A1:2022 — wall attachment provisions & strength test of attachment device",
+      "status": "requires_validation (select device; lab test per EN 14749; wall-side fixings explicitly excluded from standard)"
+    }
+  ],
+  "load_presets": {
+    "shelf_uniform_design_load_kg_dm2": {
+      "value": 0.65,
+      "tier": 1,
+      "source": "EN 16122:2012 shelf loading (0.65 kg/dm² of shelf area) — used as default design load ('books')"
+    },
+    "shelf_load_classes": {
+      "light": {
+        "kg_m2": 25,
+        "tier": 6,
+        "provisional": true
+      },
+      "books_default": {
+        "kg_m2": 65,
+        "tier": 1,
+        "note": "= 0.65 kg/dm² per EN 16122"
+      },
+      "heavy": {
+        "kg_m2": 100,
+        "tier": 6,
+        "provisional": true,
+        "note": "vinyl/records/dishes; requires_validation"
+      }
+    },
+    "deflection_limit": {
+      "value": "1.7 mm per 300 mm of span (≈0.02 in/ft), and never > span/200",
+      "tier": 5,
+      "source": "Woodbin Sagulator guidance; FineWoodworking",
+      "provisional": true,
+      "note": "Cosmetic/quality limit, not a safety limit. Validate against EN 16122 deflection reporting and physical tests."
+    }
+  },
+  "rules": [
+    {
+      "rule_id": "SCOPE-CAT-001",
+      "name": "Supported MVP product categories",
+      "product_categories": [
+        "all"
+      ],
+      "rule_category": "product_scope",
+      "description": "Only these categories are configurable in MVP: open shelving units, bookcases, small/medium cabinets with doors, bedside tables, storage units, simple desks/tables of panel construction.",
+      "rationale": "Panel-carcass furniture is the lowest-risk, best-understood scope for 18 mm LTD frameless construction. Casework principles are well documented (Hylton pp.84–93; Rae pp.45–57).",
+      "sources": [
+        {
+          "ref": "Hylton, Illustrated Cabinetmaking, pp.84–93",
+          "tier": 4
+        },
+        {
+          "ref": "Rae, Complete Illustrated Guide, pp.45–57",
+          "tier": 4
+        }
+      ],
+      "inputs": [
+        "unit.category"
+      ],
+      "condition": "unit.category NOT IN supported_categories → VIOLATED",
+      "threshold": null,
+      "provisional": false,
+      "severity": 4,
+      "backend": true,
+      "user_message": {
+        "en": "This furniture type isn’t available yet. We currently support shelves, bookcases, cabinets, bedside tables, storage units and simple desks."
+      },
+      "auto_correct": false,
+      "manual_review": false,
+      "confidence": "high",
+      "validation_status": "validated",
+      "test_method": "product decision",
+      "notes": "Excluded from MVP: seating (EN 12520/16139 test burden), beds & bunk beds (EN 1725 / EN 747), children's furniture & cots (EN 716; child-safety exposure), wall-hung cabinets (anchorage into unknown walls; EN 14749 wall-unit tests), wardrobes >2200 mm, glass elements."
+    },
+    {
+      "rule_id": "SCOPE-CAT-002",
+      "name": "Hard-block safety-critical categories",
+      "product_categories": [
+        "all"
+      ],
+      "rule_category": "product_scope",
+      "description": "Chairs, stools, beds, bunk/loft beds, cots and any product marketed for children under 3 cannot be created or approximated (e.g. a 'shelf' proportioned as a ladder/steps).",
+      "rationale": "These carry dedicated EN safety standards with mandatory physical testing regimes that Myble has not performed.",
+      "sources": [
+        {
+          "ref": "EN 12520, EN 1725, EN 747-1/2, EN 716-1/2 (existence of dedicated regimes)",
+          "tier": 1
+        }
+      ],
+      "inputs": [
+        "unit.category",
+        "unit.geometry"
+      ],
+      "condition": "category in blocked_list OR heuristic step/ladder geometry detected → VIOLATED",
+      "threshold": null,
+      "provisional": false,
+      "severity": 4,
+      "backend": true,
+      "user_message": {
+        "en": "This design can’t be produced — it falls into a furniture category that requires certified safety testing we don’t offer yet."
+      },
+      "auto_correct": false,
+      "manual_review": false,
+      "confidence": "high",
+      "validation_status": "validated",
+      "test_method": "product decision",
+      "notes": "Heuristic detection is assistive; primary control is the category system."
+    },
+    {
+      "rule_id": "SCOPE-SIZE-003",
+      "name": "MVP envelope limits",
+      "product_categories": [
+        "all"
+      ],
+      "rule_category": "product_scope",
+      "description": "Unit envelope limits: height ≤ 2000 mm, width ≤ 1200 mm per carcass module (wider = multiple ganged modules), depth 150–600 mm.",
+      "rationale": "Keeps panels within shipping limits (GLS max side 2000 mm), keeps tipping/stability risk manageable pre-testing, and stays inside one-sheet part sizes.",
+      "sources": [
+        {
+          "ref": "GLS CZ parcel limits (L ≤ 200 cm, girth ≤ 300 cm, ≤ 40 kg)",
+          "tier": 2
+        },
+        {
+          "ref": "EN 14749 stability trigger (freestanding ≥ 600 mm height)",
+          "tier": 1
+        }
+      ],
+      "inputs": [
+        "unit.width",
+        "unit.height",
+        "unit.depth"
+      ],
+      "threshold": {
+        "height_max": 2000,
+        "module_width_max": 1200,
+        "depth_min": 150,
+        "depth_max": 600
+      },
+      "threshold_units": "mm",
+      "provisional": true,
+      "severity": 4,
+      "backend": true,
+      "user_message": {
+        "en": "This size is outside what we can currently manufacture and deliver. Maximum height 200 cm, module width 120 cm, depth 15–60 cm."
+      },
+      "auto_correct": false,
+      "manual_review": true,
+      "confidence": "medium",
+      "validation_status": "requires_validation",
+      "validation_owner": "manufacturing_partner+logistics",
+      "test_method": "confirm with cutting partner and courier contracts"
+    },
+    {
+      "rule_id": "SCOPE-REV-004",
+      "name": "Out-of-template designs require review",
+      "product_categories": [
+        "all"
+      ],
+      "rule_category": "product_scope",
+      "description": "Any design not fully expressible in the parametric template set (custom angles, curves, non-rectangular parts) is excluded or routed to manual review.",
+      "rationale": "MVP rule coverage and partner machining are defined only for rectangular panel geometry.",
+      "sources": [
+        {
+          "ref": "Myble scope decision",
+          "tier": 6
+        }
+      ],
+      "inputs": [
+        "unit.template_id"
+      ],
+      "condition": "template_id == null → VIOLATED",
+      "threshold": null,
+      "provisional": false,
+      "severity": 5,
+      "backend": true,
+      "user_message": {
+        "en": "This design needs a human check before we can confirm it. We’ll review it and get back to you."
+      },
+      "auto_correct": false,
+      "manual_review": true,
+      "confidence": "high",
+      "validation_status": "validated",
+      "test_method": "product decision"
+    },
+    {
+      "rule_id": "MAT-THK-001",
+      "name": "Supported material set",
+      "product_categories": [
+        "all"
+      ],
+      "rule_category": "material",
+      "description": "Carcass, shelves, doors, fronts: 18 mm LTD (EN 312 P2 core). Backs: 3 mm HDF (5 mm for large backs, threshold TBD). No other materials in MVP.",
+      "rationale": "Single material system simplifies rules, purchasing, machining and edging. P2 is the standard furniture board for dry interiors.",
+      "sources": [
+        {
+          "ref": "EN 312 P2 scope (furniture, dry conditions)",
+          "tier": 1
+        },
+        {
+          "ref": "EGGER Eurodekor conforms EN 312 + EN 14322, 2800×2070",
+          "tier": 2
+        }
+      ],
+      "inputs": [
+        "part.material_id",
+        "part.role"
+      ],
+      "condition": "part.material_id not allowed for part.role → VIOLATED",
+      "threshold": null,
+      "provisional": false,
+      "severity": 4,
+      "backend": true,
+      "user_message": null,
+      "auto_correct": false,
+      "manual_review": false,
+      "confidence": "high",
+      "validation_status": "validated",
+      "test_method": "config control"
+    },
+    {
+      "rule_id": "MAT-SIZE-002",
+      "name": "Part must fit sheet with trim margin",
+      "product_categories": [
+        "all"
+      ],
+      "rule_category": "material",
+      "description": "No finished part may exceed sheet format minus trim allowance: max 2740 × 2010 mm (provisional 30 mm trim per edge pair).",
+      "rationale": "Sheets are 2800×2070; edges must be trimmed clean before/after cutting.",
+      "sources": [
+        {
+          "ref": "EGGER/Kronospan sheet format 2800×2070",
+          "tier": 2
+        },
+        {
+          "ref": "trim allowance",
+          "tier": 6
+        }
+      ],
+      "inputs": [
+        "part.length",
+        "part.width"
+      ],
+      "threshold": {
+        "max_length": 2740,
+        "max_width": 2010
+      },
+      "threshold_units": "mm",
+      "provisional": true,
+      "severity": 4,
+      "backend": true,
+      "user_message": {
+        "en": "One panel of this design is larger than the raw board we can buy. Reduce the dimension or split the part."
+      },
+      "auto_correct": false,
+      "manual_review": false,
+      "confidence": "high",
+      "validation_status": "requires_validation",
+      "validation_owner": "cutting_partner",
+      "severity_policy_note": "Stays blocking: sheet format is a hard physical fact (2800x2070 stock)."
+    },
+    {
+      "rule_id": "MAT-EDGE-003",
+      "name": "Edge banding coverage",
+      "product_categories": [
+        "all"
+      ],
+      "rule_category": "material",
+      "description": "Every exposed cut edge must be ABS-banded. Backend default: all edges of visible parts banded; hidden edges (against wall/floor, inside joints) may use 0.4 mm or remain raw only where fully concealed and moisture-safe.",
+      "rationale": "Raw particleboard edges are the board's weak point: they absorb moisture, chip, and release formaldehyde faster; edges must be covered (Rae p.34: 'raw edges must be covered or banded'; MDF/PB edges need filling or edgebanding).",
+      "sources": [
+        {
+          "ref": "Rae p.34, p.79 (commercial edgebanding practice)",
+          "tier": 4
+        },
+        {
+          "ref": "industry ABS edging guides",
+          "tier": 5
+        }
+      ],
+      "inputs": [
+        "part.edges[]",
+        "part.visibility"
+      ],
+      "condition": "exposed edge without banding → VIOLATED",
+      "threshold": null,
+      "provisional": false,
+      "severity": 4,
+      "backend": true,
+      "user_message": null,
+      "auto_correct": true,
+      "manual_review": false,
+      "confidence": "high",
+      "validation_status": "validated",
+      "test_method": "config control; edging map auto-generated"
+    },
+    {
+      "rule_id": "MAT-EDGE-004",
+      "name": "2 mm ABS on wear edges",
+      "product_categories": [
+        "all"
+      ],
+      "rule_category": "material",
+      "description": "Front (user-facing) edges of doors, drawer fronts, tops and front edges of shelves get 2 mm ABS; concealed/interior edges 0.4–1 mm.",
+      "rationale": "Thicker banding resists impact on high-contact edges; 0.4–0.8 mm is adequate for rarely touched/hidden edges (industry guidance).",
+      "sources": [
+        {
+          "ref": "ABS edging thickness guidance (industry: 0.4–0.8 hidden, 1–2 mm standard/commercial, 2–3 mm heavy use)",
+          "tier": 5
+        }
+      ],
+      "inputs": [
+        "part.role",
+        "part.edges[]"
+      ],
+      "threshold": {
+        "front_edge_mm": 2,
+        "hidden_edge_mm": 0.4
+      },
+      "provisional": true,
+      "severity": 2,
+      "backend": true,
+      "user_message": {
+        "en": "Front edges get a thicker 2 mm protective edge as standard."
+      },
+      "auto_correct": true,
+      "manual_review": false,
+      "confidence": "medium",
+      "validation_status": "requires_validation",
+      "validation_owner": "edging_partner",
+      "notes": "2 mm banding may require premilling capability — confirm with edging partner (see MFG-EDGE-005)."
+    },
+    {
+      "rule_id": "MAT-DECOR-005",
+      "name": "Décor/grain direction consistency",
+      "product_categories": [
+        "all"
+      ],
+      "rule_category": "material",
+      "description": "For woodgrain décors, grain runs vertically on sides/doors and along the length of tops/shelves by default; all visible parts of a unit must use a consistent scheme.",
+      "rationale": "Visual quality; melamine board itself is direction-stable so this is aesthetic, not structural (Rae p.50: in sheet goods grain orientation doesn't matter structurally).",
+      "sources": [
+        {
+          "ref": "Rae p.50",
+          "tier": 4
+        }
+      ],
+      "inputs": [
+        "part.grain_direction",
+        "part.role"
+      ],
+      "threshold": null,
+      "provisional": false,
+      "severity": 2,
+      "backend": true,
+      "user_message": {
+        "en": "We’ve aligned the wood décor direction across the unit for a consistent look."
+      },
+      "auto_correct": true,
+      "manual_review": false,
+      "confidence": "high",
+      "validation_status": "validated",
+      "notes": "Grain direction affects nesting efficiency → price. Uni-colour décors exempt."
+    },
+    {
+      "rule_id": "MAT-MOIST-006",
+      "name": "Dry interior use only",
+      "product_categories": [
+        "all"
+      ],
+      "rule_category": "material",
+      "description": "Products are for dry interior rooms. P2 board must not be sold for bathrooms/utility rooms with direct moisture exposure; care instructions must state wipe-dry cleaning.",
+      "rationale": "P2 is specified for furniture in dry conditions; particleboard swells irreversibly when wetted (Rae p.34).",
+      "sources": [
+        {
+          "ref": "EN 312 P2 scope",
+          "tier": 1
+        },
+        {
+          "ref": "Rae p.34",
+          "tier": 4
+        }
+      ],
+      "inputs": [
+        "order.room_intent (optional)"
+      ],
+      "threshold": null,
+      "provisional": false,
+      "severity": 3,
+      "backend": false,
+      "user_message": {
+        "en": "This furniture is designed for dry indoor rooms. It isn’t suitable for bathrooms or damp spaces."
+      },
+      "auto_correct": false,
+      "manual_review": false,
+      "confidence": "high",
+      "validation_status": "validated"
+    },
+    {
+      "rule_id": "STRUCT-SHELF-001",
+      "name": "Maximum unsupported shelf span (18 mm LTD)",
+      "product_categories": [
+        "shelving_unit",
+        "bookcase",
+        "cabinet",
+        "storage_unit"
+      ],
+      "rule_category": "structural",
+      "description": "Hard limit: no 18 mm LTD shelf may span more than 900 mm between supports regardless of load class. Between 600 and 900 mm the deflection calculation (STRUCT-SHELF-002) governs and typically requires reduced load or a divider.",
+      "rationale": "Rae's span table gives 24 in (≈610 mm) as the max span for ¾-in particleboard at a moderate 20 lb/ft load on a 10-in-deep shelf — the weakest of all listed materials. 900 mm is a hard geometric cap to keep even light-load cases out of visibly sagging territory; EN 312 P2 board is bottom-of-class in stiffness (MOE 1600 N/mm²).",
+      "sources": [
+        {
+          "ref": "Rae p.59, 'Maximum Shelf Spans' table: particleboard ¾ in → 24 in",
+          "tier": 4
+        },
+        {
+          "ref": "EN 312 P2 MOE 1600 N/mm²",
+          "tier": 1
+        }
+      ],
+      "inputs": [
+        "shelf.span",
+        "shelf.depth",
+        "shelf.load_class",
+        "part.thickness"
+      ],
+      "condition": "span > 900 → VIOLATED(4); span > 600 AND load_class != light → deflection calc governs",
+      "threshold": {
+        "hard_max_span": 900,
+        "calc_zone_from": 600
+      },
+      "threshold_units": "mm",
+      "provisional": true,
+      "severity": 3,
+      "backend": true,
+      "user_message": {
+        "en": "This shelf is too wide for 18 mm board without support. Add a vertical divider or reduce the width."
+      },
+      "suggested_fix": "Insert vertical divider at midpoint (auto-proposal), or reduce width.",
+      "auto_correct": false,
+      "manual_review": false,
+      "confidence": "medium",
+      "validation_status": "requires_test",
+      "validation_owner": "furniture_engineer",
+      "test_method": "Deflection calculation + physical load test per EN 16122 §deflection of shelves (0.65 kg/dm², 7 days) on production boards",
+      "severity_previous_v1_0_0": 4,
+      "severity_policy_note": "Span cap is a sag/quality limit, not a safety cliff; threshold is provisional + requires_test. Advisory with divider fix."
+    },
+    {
+      "rule_id": "STRUCT-SHELF-002",
+      "name": "Shelf deflection calculation",
+      "product_categories": [
+        "shelving_unit",
+        "bookcase",
+        "cabinet",
+        "storage_unit",
+        "desk_simple"
+      ],
+      "rule_category": "structural",
+      "description": "For every horizontal load-bearing panel compute mid-span deflection under the selected load class using simply-supported uniform-load beam theory; deflection must not exceed 1.7 mm per 300 mm of span (and never span/200).",
+      "rationale": "δ = 5wL⁴/(384EI) is the standard engineering model for a uniformly loaded simply supported shelf (adjustable shelves = near-simply-supported; fixed shelves are stiffer, so this is conservative). E = 1600 N/mm² (EN 312 P2 minimum). Design load default 0.65 kg/dm² (EN 16122). Sag visibility limit ~0.02 in/ft per industry practice.",
+      "sources": [
+        {
+          "ref": "Beam deflection formula (engineering handbooks; Woodbin Sagulator method)",
+          "tier": 3
+        },
+        {
+          "ref": "EN 16122 0.65 kg/dm² shelf load",
+          "tier": 1
+        },
+        {
+          "ref": "EN 312 P2 MOE",
+          "tier": 1
+        },
+        {
+          "ref": "Sag limit 0.02 in/ft",
+          "tier": 5
+        }
+      ],
+      "inputs": [
+        "shelf.span",
+        "shelf.depth",
+        "part.thickness",
+        "shelf.load_class",
+        "material.moe",
+        "shelf.fixity"
+      ],
+      "condition": "delta_mid = 5*w*L^4/(384*E*I); I = depth*t^3/12; VIOLATED if delta_mid > min(1.7*L/300, L/200)",
+      "threshold": {
+        "sag_limit_mm_per_300mm": 1.7,
+        "absolute_limit": "L/200"
+      },
+      "provisional": true,
+      "severity": 3,
+      "backend": true,
+      "user_message": {
+        "en": "Under a full load of books this shelf would visibly sag (est. {delta} mm). Add a divider, shorten the span, or confirm you’ll load it lightly."
+      },
+      "suggested_fix": "Insert divider; or reduce span; or set load class to 'light' with acknowledgement.",
+      "auto_correct": false,
+      "manual_review": false,
+      "confidence": "medium",
+      "validation_status": "requires_test",
+      "validation_owner": "furniture_engineer",
+      "test_method": "Screening calc suitable for configurator; validate coefficients with physical EN 16122-style deflection tests incl. creep (PB creeps under sustained load — long-term factor TBD)",
+      "notes": "Creep factor for particleboard under sustained load is NOT included yet — a long-term multiplier (often 1.5–2× elastic deflection, tier 5) must be validated before relying on the calc near limits."
+    },
+    {
+      "rule_id": "STRUCT-BACK-003",
+      "name": "Back panel required for racking resistance",
+      "product_categories": [
+        "shelving_unit",
+        "bookcase",
+        "cabinet",
+        "bedside_table",
+        "storage_unit"
+      ],
+      "rule_category": "structural",
+      "description": "Every closed-carcass unit gets a full back panel fixed to sides, top and bottom. A case without a back must trigger STRUCT-BACK-004 alternative bracing or be blocked.",
+      "rationale": "The back closes the case and braces it against racking (Hylton p.92: 'A back closes in the case and provides bracing to keep it from racking'). Rae p.178: without a back, bottom/top droop and the case racks; the back stiffens the case and prevents sag.",
+      "sources": [
+        {
+          "ref": "Hylton p.92",
+          "tier": 4
+        },
+        {
+          "ref": "Rae p.178",
+          "tier": 4
+        }
+      ],
+      "inputs": [
+        "unit.has_back",
+        "unit.category"
+      ],
+      "condition": "closed carcass AND !has_back AND !alt_bracing → VIOLATED",
+      "threshold": null,
+      "provisional": false,
+      "severity": 3,
+      "backend": true,
+      "user_message": {
+        "en": "This unit needs a back panel (or open-shelf bracing) to stay rigid and safe."
+      },
+      "suggested_fix": "Add back panel (default).",
+      "auto_correct": true,
+      "manual_review": false,
+      "confidence": "high",
+      "validation_status": "validated",
+      "test_method": "doc review; racking test recommended on prototype",
+      "severity_previous_v1_0_0": 4,
+      "severity_policy_note": "Mybles MVP product is open-backed board furniture by design. Racking resistance is a rigidity/durability concern -> recommendation, not a block."
+    },
+    {
+      "rule_id": "STRUCT-BACK-004",
+      "name": "Open-back units need triangulating bracing",
+      "product_categories": [
+        "shelving_unit",
+        "bookcase"
+      ],
+      "rule_category": "structural",
+      "description": "Deliberately open-backed shelving must include: a top rear rail/back board + a plinth/kick rail (and for tall units a second rear rail), each spanning the full width and fixed to both sides.",
+      "rationale": "Hylton's contemporary bookshelf 'lacks a full back, but the kickboards and back board... provide triangulation to prevent racking' (p.294).",
+      "sources": [
+        {
+          "ref": "Hylton p.294",
+          "tier": 4
+        }
+      ],
+      "inputs": [
+        "unit.has_back",
+        "unit.braces[]",
+        "unit.height"
+      ],
+      "condition": "!has_back AND missing required rails → VIOLATED",
+      "threshold": {
+        "min_rail_width_mm": null
+      },
+      "provisional": true,
+      "severity": 3,
+      "backend": true,
+      "user_message": {
+        "en": "Open-backed shelves need bracing rails to prevent wobble. We’ve added them to your design."
+      },
+      "auto_correct": true,
+      "manual_review": false,
+      "confidence": "medium",
+      "validation_status": "requires_test",
+      "validation_owner": "furniture_engineer",
+      "test_method": "Rail dimensions (width, count vs unit height) to be set by racking test/engineer — placeholder 100 mm min width, tier 6",
+      "severity_previous_v1_0_0": 4,
+      "severity_policy_note": "Rail requirement is durability; rail WIDTH threshold is null/requires_test so it can never hard-block (policy point 5)."
+    },
+    {
+      "rule_id": "STRUCT-DIV-005",
+      "name": "Vertical divider stiffens shelf and carcass",
+      "product_categories": [
+        "shelving_unit",
+        "bookcase",
+        "cabinet",
+        "storage_unit"
+      ],
+      "rule_category": "structural",
+      "description": "When any shelf (incl. top/bottom panels) exceeds its allowed span, the standard fix is a full-height (or between-fixed-shelves) vertical divider connected to the panels above/below; divider positions must stack vertically so loads pass to the floor.",
+      "rationale": "Rae p.51: a vertical partition under a shelf/divider stiffens it and prevents sagging; joined to the case it increases overall case strength. Stacked load paths avoid loading a shelf mid-span with a divider from above.",
+      "sources": [
+        {
+          "ref": "Rae p.51",
+          "tier": 4
+        }
+      ],
+      "inputs": [
+        "unit.dividers[]",
+        "shelf.span"
+      ],
+      "condition": "divider above without support below within offset tolerance → VIOLATED(3)",
+      "threshold": {
+        "divider_stack_offset_max_mm": 50
+      },
+      "provisional": true,
+      "severity": 3,
+      "backend": true,
+      "user_message": {
+        "en": "A divider sits on an unsupported shelf. Align it with the divider below so the weight is carried to the floor."
+      },
+      "auto_correct": true,
+      "manual_review": false,
+      "confidence": "medium",
+      "validation_status": "requires_validation",
+      "validation_owner": "furniture_engineer"
+    },
+    {
+      "rule_id": "STRUCT-FIX-006",
+      "name": "Minimum structural (fixed) horizontals",
+      "product_categories": [
+        "shelving_unit",
+        "bookcase",
+        "cabinet",
+        "storage_unit"
+      ],
+      "rule_category": "structural",
+      "description": "Each carcass must have top and bottom structurally connected to sides with cam+dowel (or confirmat) joints, plus at least one fixed shelf or web-equivalent per 1000 mm of height (provisional). Adjustable shelves do not count as structure.",
+      "rationale": "Fixed shelves significantly increase carcass strength and stiffen the shelf itself (Rae p.59: fixed shelf 'much stronger than an adjustable one'); drawer dividers/fixed horizontals keep sides straight and parallel (Hylton p.89).",
+      "sources": [
+        {
+          "ref": "Rae p.59",
+          "tier": 4
+        },
+        {
+          "ref": "Hylton p.89",
+          "tier": 4
+        }
+      ],
+      "inputs": [
+        "unit.height",
+        "unit.fixed_shelves[]"
+      ],
+      "threshold": {
+        "max_unbraced_side_height_mm": 1000
+      },
+      "provisional": true,
+      "severity": 3,
+      "backend": true,
+      "user_message": {
+        "en": "Tall units need at least one fixed shelf for rigidity. We’ve converted the middle shelf to a fixed one."
+      },
+      "auto_correct": true,
+      "manual_review": false,
+      "confidence": "medium",
+      "validation_status": "requires_test",
+      "validation_owner": "furniture_engineer",
+      "test_method": "Racking/side-bow test of 2 m carcass with/without mid fixed shelf",
+      "severity_previous_v1_0_0": 4,
+      "severity_policy_note": "Minimum fixed horizontals is a rigidity/durability limit, provisional + requires_test."
+    },
+    {
+      "rule_id": "STRUCT-TOP-007",
+      "name": "Top/desktop overhang limit",
+      "product_categories": [
+        "cabinet",
+        "storage_unit",
+        "desk_simple",
+        "bedside_table"
+      ],
+      "rule_category": "structural",
+      "description": "Applied tops may overhang the carcass ≤ 50 mm per side without extra support (provisional). Larger overhangs and all desk spans between pedestals follow the deflection calc with EN 12521-style limit (deflection ≤ span/250 for wood-based panels).",
+      "rationale": "Cantilevered melamine board has low bending strength; EN 12521 flags tabletop deflection > 1/250 of span for wood-based panels as requiring further testing.",
+      "sources": [
+        {
+          "ref": "EN 12521:2015/2023 deflection guidance (1/250 span, wood-based panels)",
+          "tier": 1
+        },
+        {
+          "ref": "conservative overhang cap",
+          "tier": 6
+        }
+      ],
+      "inputs": [
+        "top.overhang",
+        "top.span",
+        "top.thickness"
+      ],
+      "threshold": {
+        "overhang_max_mm": 50,
+        "desktop_deflection_limit": "span/250"
+      },
+      "provisional": true,
+      "severity": 3,
+      "backend": true,
+      "user_message": {
+        "en": "The top overhangs too far to stay flat under load. Reduce the overhang or add a support."
+      },
+      "auto_correct": false,
+      "manual_review": false,
+      "confidence": "medium",
+      "validation_status": "requires_test",
+      "validation_owner": "furniture_engineer"
+    },
+    {
+      "rule_id": "STRUCT-DESK-008",
+      "name": "Desk/table support spacing",
+      "product_categories": [
+        "desk_simple"
+      ],
+      "rule_category": "structural",
+      "description": "Desktops in 18 mm LTD must be supported (pedestal, side panel or rail) so that free span ≤ 1000 mm (provisional); spans 1000–1400 mm require a rear stiffening rail; > 1400 mm blocked pending thicker-top option (25 mm) or engineer sign-off.",
+      "rationale": "18 mm PB 'bends under heavy loads' (Rae p.34). Rae p.179: cases/spans of 24 in or more supporting weight benefit from a 2-in or wider rail under the front. A desk carries point loads (monitor, leaning ~ human weight) well above shelf book loads.",
+      "sources": [
+        {
+          "ref": "Rae p.34, p.179",
+          "tier": 4
+        },
+        {
+          "ref": "EN 12521 strength tests exist for domestic tables (vertical static load)",
+          "tier": 1
+        }
+      ],
+      "inputs": [
+        "top.span",
+        "top.supports[]",
+        "top.thickness"
+      ],
+      "threshold": {
+        "free_span_max": 1000,
+        "rail_required_above": 1000,
+        "hard_block_above": 1400
+      },
+      "threshold_units": "mm",
+      "provisional": true,
+      "severity": 3,
+      "backend": true,
+      "user_message": {
+        "en": "A desk this wide needs an extra support or a rear rail so the top stays flat and solid."
+      },
+      "auto_correct": true,
+      "manual_review": false,
+      "confidence": "low",
+      "validation_status": "requires_test",
+      "validation_owner": "furniture_engineer",
+      "test_method": "EN 12521 vertical static load + deflection test on prototype desk",
+      "severity_previous_v1_0_0": 4,
+      "severity_policy_note": "Desktop span is a stiffness/quality limit; confidence low, requires_test. Advisory with rear-rail fix."
+    },
+    {
+      "rule_id": "STRUCT-GEOM-009",
+      "name": "Geometric integrity checks",
+      "product_categories": [
+        "all"
+      ],
+      "rule_category": "structural",
+      "description": "Backend must reject: intersecting/overlapping solids; parts connected to nothing; shelves supported at one end only; doors wider than their opening; drawers colliding with shelves/dividers; back panels not reaching their fixing members.",
+      "rationale": "Basic physical realizability — cannot be manufactured or assembled otherwise.",
+      "sources": [
+        {
+          "ref": "deterministic CAD validity",
+          "tier": 6
+        }
+      ],
+      "inputs": [
+        "unit.geometry_graph"
+      ],
+      "threshold": null,
+      "provisional": false,
+      "severity": 4,
+      "backend": true,
+      "user_message": {
+        "en": "Something in this layout physically overlaps. We’ve highlighted the conflicting parts."
+      },
+      "auto_correct": false,
+      "manual_review": false,
+      "confidence": "high",
+      "validation_status": "validated",
+      "test_method": "unit tests on geometry engine"
+    },
+    {
+      "rule_id": "STAB-TRIG-001",
+      "name": "Stability regime trigger",
+      "product_categories": [
+        "all"
+      ],
+      "rule_category": "stability",
+      "description": "All freestanding units with height ≥ 600 mm enter the stability check pipeline (tipping calc + anchor rules), mirroring EN 14749's applicability (freestanding units ≥ 600 mm high / potential energy > 60 Nm).",
+      "rationale": "Aligns engine triggers with the harmonised domestic storage safety standard.",
+      "sources": [
+        {
+          "ref": "EN 14749:2016+A1:2022 stability clause applicability",
+          "tier": 1
+        }
+      ],
+      "inputs": [
+        "unit.height",
+        "unit.freestanding"
+      ],
+      "threshold": {
+        "height_trigger_mm": 600
+      },
+      "provisional": false,
+      "severity": 0,
+      "backend": true,
+      "user_message": null,
+      "auto_correct": false,
+      "manual_review": false,
+      "confidence": "high",
+      "validation_status": "validated"
+    },
+    {
+      "rule_id": "STAB-ANCHOR-002",
+      "name": "Wall-anchor mandatory for tall/narrow units",
+      "product_categories": [
+        "shelving_unit",
+        "bookcase",
+        "cabinet",
+        "storage_unit"
+      ],
+      "rule_category": "stability",
+      "description": "Units with height > 1000 mm AND height/depth > 3.0 (provisional) — and ALL units > 1500 mm high — must include a wall-attachment kit, assembly-instruction anchoring step, and a required customer acknowledgement at checkout.",
+      "rationale": "EN 14749: storage units must either resist overturning in defined tests (incl. doors open, loaded) or be fastened to the wall; the wall attachment and its instructions are part of compliance. Exact pass/fail can only come from testing — until then Myble anchors aggressively.",
+      "sources": [
+        {
+          "ref": "EN 14749 stability & wall-attachment provisions",
+          "tier": 1
+        },
+        {
+          "ref": "ratio thresholds",
+          "tier": 6
+        }
+      ],
+      "inputs": [
+        "unit.height",
+        "unit.depth",
+        "unit.freestanding"
+      ],
+      "threshold": {
+        "always_anchor_above_height_mm": 1500,
+        "anchor_if_height_mm": 1000,
+        "and_ratio_h_over_d": 3
+      },
+      "provisional": true,
+      "severity": 3,
+      "backend": true,
+      "user_message": {
+        "en": "This unit may become unstable when loaded. Wall anchoring is required — the kit and instructions are included. Please confirm you will anchor it."
+      },
+      "auto_correct": true,
+      "manual_review": false,
+      "confidence": "medium",
+      "validation_status": "requires_test",
+      "validation_owner": "test_lab",
+      "test_method": "EN 14749/EN 16122 stability tests (unloaded/loaded, doors open, drawers out) on representative worst-case configurations",
+      "notes": "Severity is 3 (acknowledged warning) for ordering, but the anchor kit itself is a non-removable backend addition (severity-4 behaviour if user tries to remove).",
+      "severity_policy_note": "Never blocks. Wall-anchor kit is auto-added to the BOM as a non-removable line and the customer acknowledges anchoring at checkout (EN 14749 permits the wall-attachment branch)."
+    },
+    {
+      "rule_id": "STAB-CALC-003",
+      "name": "Tipping-moment screening calculation",
+      "product_categories": [
+        "shelving_unit",
+        "bookcase",
+        "cabinet",
+        "storage_unit",
+        "bedside_table"
+      ],
+      "rule_category": "stability",
+      "description": "Compute worst-case overturning: all doors open 90°, all drawers fully extended with distributed load, front toe line as pivot; compare stabilising moment (empty unit mass at COG behind pivot) vs overturning moments. Result feeds STAB-ANCHOR-002 and blocks extreme geometries (e.g. stabilising margin < 1.0 even unloaded → block).",
+      "rationale": "Mirrors EN 14749/EN 16122 test logic (stability with extension elements open/loaded; forces at top edge). A deterministic screening calc catches obviously dangerous geometry pre-test.",
+      "sources": [
+        {
+          "ref": "EN 14749 test configurations; EN 16122 stability methods; Annex D force calculation",
+          "tier": 1
+        },
+        {
+          "ref": "statics",
+          "tier": 3
+        }
+      ],
+      "inputs": [
+        "unit.mass_est",
+        "unit.cog",
+        "doors[].mass,geometry",
+        "drawers[].travel,load",
+        "unit.depth"
+      ],
+      "condition": "margin = M_stab / M_tip; margin < 1.0 unloaded → VIOLATED(4); margin < margin_min loaded → anchor required",
+      "threshold": {
+        "margin_min_loaded": null
+      },
+      "provisional": true,
+      "severity": 4,
+      "backend": true,
+      "user_message": {
+        "en": "This shape would be top-heavy and unsafe even before loading. Increase the depth or reduce the height."
+      },
+      "auto_correct": false,
+      "manual_review": false,
+      "confidence": "medium",
+      "validation_status": "requires_test",
+      "validation_owner": "furniture_engineer+test_lab",
+      "test_method": "Calibrate margin_min against physical EN-style tip tests; document load assumptions",
+      "severity_policy_note": "Unloaded margin < 1.0 (a unit that tips standing empty) REMAINS severity 4 — that is a physical safety failure, not a quality preference. The LOADED margin depends on margin_min_loaded which is null, so it degrades to an anchor-required severity-3 acknowledgement rather than review."
+    },
+    {
+      "rule_id": "STAB-DRAWER-004",
+      "name": "Multiple-drawer tall units restricted",
+      "product_categories": [
+        "storage_unit",
+        "cabinet"
+      ],
+      "rule_category": "stability",
+      "description": "MVP: units taller than 800 mm may contain at most one drawer bank row unless routed to manual review; chest-of-drawers archetypes (≥3 stacked drawers, height > 800 mm) are excluded from MVP.",
+      "rationale": "Stacked open loaded drawers are the canonical furniture-tipover scenario targeted by storage-stability standards and recalls; Myble should not sell them before physical stability testing.",
+      "sources": [
+        {
+          "ref": "EN 14749 loaded-extension stability tests (rationale)",
+          "tier": 1
+        },
+        {
+          "ref": "Myble conservative scope",
+          "tier": 6
+        }
+      ],
+      "inputs": [
+        "unit.height",
+        "drawers[]"
+      ],
+      "threshold": {
+        "max_drawer_rows_above_800mm": 1
+      },
+      "provisional": true,
+      "severity": 5,
+      "backend": true,
+      "user_message": {
+        "en": "Designs with several stacked drawers need a manual safety review before we can accept the order."
+      },
+      "auto_correct": false,
+      "manual_review": true,
+      "confidence": "medium",
+      "validation_status": "requires_test",
+      "validation_owner": "test_lab"
+    },
+    {
+      "rule_id": "STAB-SHELF-005",
+      "name": "Shelves must not dislodge",
+      "product_categories": [
+        "shelving_unit",
+        "bookcase",
+        "cabinet",
+        "storage_unit"
+      ],
+      "rule_category": "stability",
+      "description": "Adjustable shelves must sit on 4 pins with anti-slide engagement (pin with collar/locking type preferred); unloaded shelves must withstand a 100 N vertical force without falling (design provision, later verified by test).",
+      "rationale": "EN 14749: unloaded shelves shall not fall when tested with 100 N downward force. Pin choice determines compliance.",
+      "sources": [
+        {
+          "ref": "EN 14749 (100 N shelf retention)",
+          "tier": 1
+        }
+      ],
+      "inputs": [
+        "shelf.support_type"
+      ],
+      "threshold": {
+        "retention_force_N": 100
+      },
+      "provisional": false,
+      "severity": 4,
+      "backend": true,
+      "user_message": null,
+      "auto_correct": false,
+      "manual_review": false,
+      "confidence": "high",
+      "validation_status": "requires_test",
+      "validation_owner": "test_lab",
+      "test_method": "EN 14749 shelf retention test with chosen pin SKU"
+    },
+    {
+      "rule_id": "CONN-SYS-001",
+      "name": "Standard MVP connection system",
+      "product_categories": [
+        "all"
+      ],
+      "rule_category": "connection",
+      "description": "Carcass corner + fixed-shelf joints: 2× cam (Minifix-15 class) + 2× dowel Ø8 per joint end (600 mm depth panels may use 3+2). Non-visible utility joints may use confirmat 7×50. Backs: screws/staples into rabbet or overlay screwed at ≤150 mm pitch (provisional). Adjustable shelves: Ø5 pins. Doors: Ø35 cup hinges. Drawers: boxed sides on 25–30 kg runners.",
+      "rationale": "KD (knock-down) hardware is the industry answer for furniture assembled outside the shop (Rae p.86: bolt/cam connectors 'easy to re-use'; Hylton: KD used heavily by furniture industry). One standardized system minimizes drilling patterns and errors.",
+      "sources": [
+        {
+          "ref": "Rae pp.86–87",
+          "tier": 4
+        },
+        {
+          "ref": "Häfele Minifix/confirmat docs",
+          "tier": 2
+        }
+      ],
+      "inputs": [
+        "joint.type"
+      ],
+      "threshold": null,
+      "provisional": true,
+      "severity": 4,
+      "backend": true,
+      "user_message": null,
+      "auto_correct": true,
+      "manual_review": false,
+      "confidence": "medium",
+      "validation_status": "requires_validation",
+      "validation_owner": "cabinetmaker+hardware_supplier",
+      "notes": "Connector counts per joint (2/3 per end) are provisional tier-5/6 values — validate with pull/racking tests."
+    },
+    {
+      "rule_id": "CONN-EDGE-002",
+      "name": "Minimum hole-to-edge distances",
+      "product_categories": [
+        "all"
+      ],
+      "rule_category": "connection",
+      "description": "No connector bore may be closer than 10 mm (centre of Ø5/Ø8 bores; edge of Ø15/Ø35 bores) to any panel edge; confirmat pilots ≥ 10 mm from edge; cam housings ≥ 50 mm from panel corner (provisional); Ø35 cup edge distance per hinge spec (3–7 mm cup-to-door-edge is the spec'd exception).",
+      "rationale": "Particleboard blows out when fasteners are close to edges (confirmat guidance: ≥10 mm to avoid blowout). Corner distances prevent overlapping stress zones of two joints.",
+      "sources": [
+        {
+          "ref": "Confirmat installation guidance (≥10 mm edge distance)",
+          "tier": 5
+        },
+        {
+          "ref": "Häfele/Blum drilling patterns",
+          "tier": 2
+        }
+      ],
+      "inputs": [
+        "part.holes[]"
+      ],
+      "threshold": {
+        "min_edge_mm": 10,
+        "min_corner_mm": 50
+      },
+      "provisional": true,
+      "severity": 4,
+      "backend": true,
+      "user_message": {
+        "en": "A connector would sit too close to the panel edge here. We’ve moved it to a safe position."
+      },
+      "auto_correct": true,
+      "manual_review": false,
+      "confidence": "medium",
+      "validation_status": "requires_validation",
+      "validation_owner": "cnc_partner+hardware_supplier"
+    },
+    {
+      "rule_id": "CONN-SPACING-003",
+      "name": "Connector spacing along joints",
+      "product_categories": [
+        "all"
+      ],
+      "rule_category": "connection",
+      "description": "Along any structural joint line, connector groups (cam+dowel) at both ends; joints longer than 450 mm (deep carcasses) get a third group mid-line (provisional). Max unfastened run 300 mm for back fixing.",
+      "rationale": "Prevents gap opening/racking of long joints; distributes load away from single fasteners (local stress in PB around fasteners is the failure mode).",
+      "sources": [
+        {
+          "ref": "industry KD practice",
+          "tier": 5
+        }
+      ],
+      "inputs": [
+        "joint.length",
+        "joint.connectors[]"
+      ],
+      "threshold": {
+        "third_connector_above_mm": 450,
+        "back_fix_pitch_mm": 300
+      },
+      "provisional": true,
+      "severity": 4,
+      "backend": true,
+      "user_message": null,
+      "auto_correct": true,
+      "manual_review": false,
+      "confidence": "low",
+      "validation_status": "requires_test",
+      "validation_owner": "furniture_engineer"
+    },
+    {
+      "rule_id": "CONN-HINGE-004",
+      "name": "Hinge count and door size limits",
+      "product_categories": [
+        "cabinet",
+        "storage_unit",
+        "bedside_table"
+      ],
+      "rule_category": "connection",
+      "description": "Door mass computed from area × board area-mass + handle allowance. ≤6 kg → 2 hinges; 6–12 kg → 3 hinges; >12 kg or width > 650 mm → blocked in MVP. Width ≤ 600 mm standard; 600–650 mm adds one hinge. Door height must exceed width (tall-narrow principle) unless horizontal flap explicitly chosen (flaps excluded MVP).",
+      "rationale": "Blum's published guidance: 2 hinges for 4–6 kg, 3 for 6–12 kg, valid for widths ≤600 mm; up to 650 mm add a hinge; doors should be taller than wide.",
+      "sources": [
+        {
+          "ref": "Blum EASY ASSEMBLY blog — Number of hinges (official Blum)",
+          "tier": 2
+        },
+        {
+          "ref": "Rae p.154 (35 mm cup, styles, adjustability)",
+          "tier": 4
+        }
+      ],
+      "inputs": [
+        "door.width",
+        "door.height",
+        "door.mass_est"
+      ],
+      "threshold": {
+        "hinges2_max_kg": 6,
+        "hinges3_max_kg": 12,
+        "width_std_max": 600,
+        "width_abs_max": 650
+      },
+      "provisional": false,
+      "severity": 4,
+      "backend": true,
+      "user_message": {
+        "en": "This door is too large for standard hinges. Split it into two doors or reduce its width."
+      },
+      "suggested_fix": "Split into double doors at centre.",
+      "auto_correct": false,
+      "manual_review": false,
+      "confidence": "high",
+      "validation_status": "requires_validation",
+      "validation_owner": "hardware_supplier",
+      "notes": "Verify against the exact hinge SKU chart in the current Blum/Hettich catalogue; opening-angle clearance vs neighbouring units still needs a geometric check (SYS32-REVEAL-006).",
+      "severity_policy_note": "Severity-4 CEILING reserved for the physical impossibility (a door/drawer beyond any hinge/runner SKU or that cannot fit the carcass). SOFT limits — hinge-count shortfall, runner load margin — are softened to a severity-3 advisory per finding (policy point 1). Overrides can only soften, so the ceiling stays 4."
+    },
+    {
+      "rule_id": "CONN-PIN-005",
+      "name": "Adjustable-shelf pin capacity",
+      "product_categories": [
+        "shelving_unit",
+        "bookcase",
+        "cabinet",
+        "storage_unit"
+      ],
+      "rule_category": "connection",
+      "description": "Shelf design load (incl. self-weight) must not exceed 4 × rated pin load × safety factor. With Häfele K-Line 15.6 kg/pin and provisional SF 0.5: max 31 kg per shelf until validated. Load class 'heavy' on adjustable shelves > 600 mm wide → recommend fixed shelf.",
+      "rationale": "Pin rating is the weakest documented link after board sag; Häfele publishes 15.6 kg/item for the K-Line Ø5 support. Safety factor provisional pending pull-through tests in P2 board (pin hole bearing in PB, not pin steel, may govern).",
+      "sources": [
+        {
+          "ref": "Häfele K-Line shelf support datasheet (15.6 kg per item)",
+          "tier": 2
+        },
+        {
+          "ref": "SF",
+          "tier": 6
+        }
+      ],
+      "inputs": [
+        "shelf.load_class",
+        "shelf.area",
+        "shelf.support_type"
+      ],
+      "threshold": {
+        "max_shelf_load_kg": 31
+      },
+      "provisional": true,
+      "severity": 3,
+      "backend": true,
+      "user_message": {
+        "en": "For heavy loads, a fixed shelf is sturdier than pins. Consider converting this shelf."
+      },
+      "auto_correct": false,
+      "manual_review": false,
+      "confidence": "medium",
+      "validation_status": "requires_test",
+      "validation_owner": "test_lab",
+      "test_method": "Pin bearing test in production board per EN 16122 shelf-support strength method (0.65 kg/dm² + impact plate)"
+    },
+    {
+      "rule_id": "CONN-RUNNER-006",
+      "name": "Drawer size vs runner rating",
+      "product_categories": [
+        "bedside_table",
+        "storage_unit",
+        "cabinet",
+        "desk_simple"
+      ],
+      "rule_category": "connection",
+      "description": "Drawer internal volume × density preset (utensils/clothes/paper) + drawer self-weight must stay under runner dynamic rating (25–30 kg class). Drawer width max 900 mm; nominal runner length ≤ cabinet depth − 10 mm (provisional clearance).",
+      "rationale": "Runner families publish dynamic load classes (Blum TANDEM 30/50 kg). Width and depth constraints come from the runner's published application limits.",
+      "sources": [
+        {
+          "ref": "Blum TANDEM load classes (30 kg)",
+          "tier": 2
+        }
+      ],
+      "inputs": [
+        "drawer.width",
+        "drawer.depth",
+        "drawer.load_preset",
+        "unit.depth"
+      ],
+      "threshold": {
+        "dynamic_load_kg": 30,
+        "drawer_width_max_mm": 900,
+        "runner_clearance_mm": 10
+      },
+      "provisional": true,
+      "severity": 4,
+      "backend": true,
+      "user_message": {
+        "en": "This drawer exceeds the load rating of our runners. Make it smaller or split it into two."
+      },
+      "auto_correct": false,
+      "manual_review": false,
+      "confidence": "medium",
+      "validation_status": "requires_validation",
+      "validation_owner": "hardware_supplier",
+      "severity_policy_note": "Severity-4 CEILING reserved for the physical impossibility (a door/drawer beyond any hinge/runner SKU or that cannot fit the carcass). SOFT limits — hinge-count shortfall, runner load margin — are softened to a severity-3 advisory per finding (policy point 1). Overrides can only soften, so the ceiling stays 4."
+    },
+    {
+      "rule_id": "CONN-REUSE-007",
+      "name": "Re-assembly durability policy",
+      "product_categories": [
+        "all"
+      ],
+      "rule_category": "connection",
+      "description": "Joints intended for possible customer re-assembly (moving flats) use cam+dowel. Confirmats are single-assembly: instructions must warn against repeated full unscrew/re-drive cycles in the same hole (max 2–3 cycles, provisional).",
+      "rationale": "Cam connectors are 'very easy to re-use... through many cycles' (Rae p.86); screws driven directly into particleboard degrade the hole (PB screw-holding rated Poor, Rae p.33).",
+      "sources": [
+        {
+          "ref": "Rae p.86, p.33",
+          "tier": 4
+        }
+      ],
+      "inputs": [
+        "joint.connectors[]"
+      ],
+      "threshold": {
+        "confirmat_max_cycles": 3
+      },
+      "provisional": true,
+      "severity": 1,
+      "backend": false,
+      "user_message": {
+        "en": "Planning to move often? This unit’s main joints can be taken apart and rebuilt repeatedly."
+      },
+      "auto_correct": false,
+      "manual_review": false,
+      "confidence": "medium",
+      "validation_status": "requires_validation",
+      "validation_owner": "cabinetmaker"
+    },
+    {
+      "rule_id": "SYS32-GRID-001",
+      "name": "32 mm system holes",
+      "product_categories": [
+        "all"
+      ],
+      "rule_category": "frameless_system",
+      "description": "All adjustable-shelf pin holes and hinge-plate/runner fixing positions derive from vertical rows of Ø5 mm holes at 32 mm pitch; front row axis 37 mm from the front edge, back row 37 mm from the back edge (or fixed offset for shallow carcasses).",
+      "rationale": "The European 32 mm system standardizes drilling so hinges, runners and pins all land on the same grid (Rae p.154: cup hinges 'part of the gear used in the 32mm cabinetry system in Europe'); 37 mm front setback and 32 mm pitch are the system convention.",
+      "sources": [
+        {
+          "ref": "32 mm system references (True32/Festool guide, Wikipedia system description)",
+          "tier": 5
+        },
+        {
+          "ref": "Rae p.154",
+          "tier": 4
+        }
+      ],
+      "inputs": [
+        "part.holes[]",
+        "unit.depth"
+      ],
+      "threshold": {
+        "hole_dia_mm": 5,
+        "pitch_mm": 32,
+        "front_setback_mm": 37
+      },
+      "provisional": true,
+      "severity": 0,
+      "backend": true,
+      "user_message": null,
+      "auto_correct": true,
+      "manual_review": false,
+      "confidence": "medium",
+      "validation_status": "requires_validation",
+      "validation_owner": "cnc_partner",
+      "notes": "Exact setback may follow partner's boring machine template (35/37 mm variants exist) — freeze with partner."
+    },
+    {
+      "rule_id": "SYS32-SNAP-002",
+      "name": "Shelf positions snap to grid",
+      "product_categories": [
+        "shelving_unit",
+        "bookcase",
+        "cabinet",
+        "storage_unit"
+      ],
+      "rule_category": "frameless_system",
+      "description": "User-dragged shelf/divider positions snap to the nearest 32 mm hole position; free positioning is not offered for adjustable shelves.",
+      "rationale": "Adjustable shelves physically exist only at hole positions; snapping prevents impossible states instead of erroring afterwards.",
+      "sources": [
+        {
+          "ref": "32 mm system logic",
+          "tier": 5
+        }
+      ],
+      "inputs": [
+        "shelf.position_y"
+      ],
+      "threshold": {
+        "snap_pitch_mm": 32
+      },
+      "provisional": false,
+      "severity": 0,
+      "backend": true,
+      "user_message": {
+        "en": "Shelf positions follow the 32 mm hole grid — we’ve snapped it to the nearest position."
+      },
+      "auto_correct": true,
+      "manual_review": false,
+      "confidence": "high",
+      "validation_status": "validated"
+    },
+    {
+      "rule_id": "SYS32-GAP-003",
+      "name": "Door/front gaps and reveals",
+      "product_categories": [
+        "cabinet",
+        "storage_unit",
+        "bedside_table"
+      ],
+      "rule_category": "frameless_system",
+      "description": "Frameless overlay fronts: 2 mm gap between neighbouring fronts and at unit perimeter (provisional 2–3 mm); door must clear adjacent walls/units when opening (hinge crank geometry check); inset fronts excluded from MVP.",
+      "rationale": "Frameless (Euro) cabinets rely on consistent reveals; insufficient gaps cause binding given board tolerance + hinge adjustment range (cup hinges adjust in 3 axes — Rae p.154).",
+      "sources": [
+        {
+          "ref": "frameless practice",
+          "tier": 5
+        },
+        {
+          "ref": "Rae p.154",
+          "tier": 4
+        }
+      ],
+      "inputs": [
+        "door.gaps",
+        "unit.neighbours"
+      ],
+      "threshold": {
+        "reveal_mm": 2
+      },
+      "provisional": true,
+      "severity": 4,
+      "backend": true,
+      "user_message": null,
+      "auto_correct": true,
+      "manual_review": false,
+      "confidence": "medium",
+      "validation_status": "requires_validation",
+      "validation_owner": "cabinetmaker"
+    },
+    {
+      "rule_id": "SYS32-BACK-004",
+      "name": "Back panel integration method",
+      "product_categories": [
+        "all"
+      ],
+      "rule_category": "frameless_system",
+      "description": "MVP default: 3 mm HDF back overlaid into a rebate OR surface-screwed to carcass rear edges (partner capability decides; one method frozen per partner profile). Grooved-in backs only if partner mills grooves.",
+      "rationale": "Backs set into rabbets are traditional (Hylton p.333: '1/4-in plywood back' set into rabbets; Rae p.50 'rabbet side for back'); surface-screwed overlay back is the simplest RTA method and adds the same racking function if screwed at close pitch.",
+      "sources": [
+        {
+          "ref": "Hylton pp.332–335; Rae p.50",
+          "tier": 4
+        }
+      ],
+      "inputs": [
+        "unit.back_method",
+        "partner.capabilities"
+      ],
+      "threshold": null,
+      "provisional": true,
+      "severity": 4,
+      "backend": true,
+      "user_message": null,
+      "auto_correct": true,
+      "manual_review": false,
+      "confidence": "medium",
+      "validation_status": "requires_validation",
+      "validation_owner": "manufacturing_partner"
+    },
+    {
+      "rule_id": "SYS32-PLINTH-005",
+      "name": "Plinth/toe-kick geometry",
+      "product_categories": [
+        "cabinet",
+        "storage_unit",
+        "desk_simple"
+      ],
+      "rule_category": "frameless_system",
+      "description": "Optional toe-kick: depth 64 mm, height 114 mm, each adjustable ±25 mm (converted from Rae's comfortable kick space 2½ in × 4½ in ± 1 in). Alternatively adjustable feet + clip-on plinth.",
+      "rationale": "Rae p.184: comfortable kick space x=2½ in, y=4½ in, adjustable ±1 in.",
+      "sources": [
+        {
+          "ref": "Rae p.184 'Sizing the Toekick'",
+          "tier": 4
+        }
+      ],
+      "inputs": [
+        "unit.plinth"
+      ],
+      "threshold": {
+        "depth_mm": 64,
+        "height_mm": 114,
+        "tolerance_mm": 25
+      },
+      "provisional": false,
+      "severity": 2,
+      "backend": false,
+      "user_message": {
+        "en": "The recessed base (toe-kick) uses ergonomic standard dimensions."
+      },
+      "auto_correct": true,
+      "manual_review": false,
+      "confidence": "high",
+      "validation_status": "validated"
+    },
+    {
+      "rule_id": "MFG-MIN-001",
+      "name": "Minimum machinable part size",
+      "product_categories": [
+        "all"
+      ],
+      "rule_category": "manufacturing",
+      "description": "No edgebanded part smaller than 160 × 85 mm (conservative union of common edgebander minima); absolute minimum any part 100 × 50 mm pending partner confirmation.",
+      "rationale": "Industrial edgebanders list minimum workpiece ~140–160 mm length and 70–85 mm width (Biesse Akron 440: 140×85; Brandt Ambition 1440: 160×70).",
+      "sources": [
+        {
+          "ref": "Biesse/Brandt edgebander specifications",
+          "tier": 2
+        }
+      ],
+      "inputs": [
+        "part.length",
+        "part.width"
+      ],
+      "threshold": {
+        "min_length_mm": 160,
+        "min_width_mm": 85
+      },
+      "provisional": true,
+      "severity": 4,
+      "backend": true,
+      "user_message": {
+        "en": "A part of this design is too small to manufacture safely by machine. Increase its size."
+      },
+      "auto_correct": false,
+      "manual_review": true,
+      "confidence": "medium",
+      "validation_status": "requires_validation",
+      "validation_owner": "edging_partner",
+      "severity_policy_note": "Blocking at the ABSOLUTE physical floor (100x50 mm — unhandleable/unbandable by any machine). The larger 160x85 generic-edgebander minimum is UNVALIDATED (not Mybles partner) so a part between the floor and that minimum emits a severity-3 advisory via a per-finding override, per policy point 5."
+    },
+    {
+      "rule_id": "MFG-TOL-002",
+      "name": "Cutting & drilling tolerances",
+      "product_categories": [
+        "all"
+      ],
+      "rule_category": "manufacturing",
+      "description": "Engine assumes: cut length/width ±0.5 mm (target ±0.3), drilling position ±0.3 mm, squareness ≤ 0.5 mm/m (all provisional until partner data). Design clearances must absorb worst-case stack-up: e.g. drawer box side clearance ≥ 2 × cut tolerance + runner spec clearance.",
+      "rationale": "Every fit rule (drawer clearances, reveals, back rebates) must reference a single tolerance table; values are typical industry but partner-specific.",
+      "sources": [
+        {
+          "ref": "industry practice",
+          "tier": 5
+        }
+      ],
+      "inputs": [
+        "partner.tolerances"
+      ],
+      "threshold": {
+        "cut_mm": 0.5,
+        "drill_mm": 0.3
+      },
+      "provisional": true,
+      "severity": 0,
+      "backend": true,
+      "user_message": null,
+      "auto_correct": false,
+      "manual_review": false,
+      "confidence": "low",
+      "validation_status": "requires_validation",
+      "validation_owner": "cutting_partner+cnc_partner"
+    },
+    {
+      "rule_id": "MFG-HOLE-003",
+      "name": "Hole pattern feasibility",
+      "product_categories": [
+        "all"
+      ],
+      "rule_category": "manufacturing",
+      "description": "No overlapping bores; min web 8 mm between adjacent hole walls (provisional); Ø35 cup bores only in ≥16 mm panels; no through-bores where a visible face must stay clean; all drilling from at most 2 setups per part (cost cap, provisional).",
+      "rationale": "Preserves board integrity around bores (local stress, PB crumbles between close holes) and machine efficiency.",
+      "sources": [
+        {
+          "ref": "practice",
+          "tier": 5
+        }
+      ],
+      "inputs": [
+        "part.holes[]"
+      ],
+      "threshold": {
+        "min_web_mm": 8,
+        "cup_min_thickness_mm": 16
+      },
+      "provisional": true,
+      "severity": 4,
+      "backend": true,
+      "user_message": null,
+      "auto_correct": true,
+      "manual_review": false,
+      "confidence": "low",
+      "validation_status": "requires_validation",
+      "validation_owner": "cnc_partner"
+    },
+    {
+      "rule_id": "MFG-EDGE-005",
+      "name": "Edging process constraints",
+      "product_categories": [
+        "all"
+      ],
+      "rule_category": "manufacturing",
+      "description": "Edging sequence auto-generated (band before drilling reference edges per partner flow); 2 mm ABS allowed only if partner supports it (premill recommended); banding overhang trimmed flush; banded dimension = cut dimension + 2×band thickness accounted in cutting list.",
+      "rationale": "Edge-band thickness changes finished part dimensions — cutting lists must compensate or reveals/fits will be off by up to 4 mm on double-banded parts.",
+      "sources": [
+        {
+          "ref": "practice; Rae p.79 (banding sized wider than panel, trimmed flush)",
+          "tier": 4
+        }
+      ],
+      "inputs": [
+        "part.edges[]",
+        "partner.capabilities"
+      ],
+      "threshold": null,
+      "provisional": false,
+      "severity": 4,
+      "backend": true,
+      "user_message": null,
+      "auto_correct": true,
+      "manual_review": false,
+      "confidence": "high",
+      "validation_status": "requires_validation",
+      "validation_owner": "edging_partner"
+    },
+    {
+      "rule_id": "MFG-LABEL-006",
+      "name": "Part labelling & orientation marks",
+      "product_categories": [
+        "all"
+      ],
+      "rule_category": "manufacturing",
+      "description": "Every part gets a printed label: order ID, part ID, orientation arrow ('top/front'), and step reference matching the instructions. Symmetric-looking parts with asymmetric drilling must carry an explicit 'THIS SIDE UP/FRONT' mark.",
+      "rationale": "Error-proofing for non-professional assemblers; hole patterns on near-symmetric parts are the top RTA assembly failure.",
+      "sources": [
+        {
+          "ref": "RTA practice",
+          "tier": 5
+        }
+      ],
+      "inputs": [
+        "part.symmetry",
+        "part.holes[]"
+      ],
+      "threshold": null,
+      "provisional": false,
+      "severity": 4,
+      "backend": true,
+      "user_message": null,
+      "auto_correct": true,
+      "manual_review": false,
+      "confidence": "high",
+      "validation_status": "requires_validation",
+      "validation_owner": "manufacturing_partner"
+    },
+    {
+      "rule_id": "MFG-COMPLEX-007",
+      "name": "Complexity cap per order",
+      "product_categories": [
+        "all"
+      ],
+      "rule_category": "manufacturing",
+      "description": "Caps (provisional): ≤ 60 parts per unit, ≤ 25 unique part geometries, ≤ 12 drilling patterns; beyond caps → manual review for quotability.",
+      "rationale": "Protects partners and margins from pathological configurator output.",
+      "sources": [
+        {
+          "ref": "Myble ops assumption",
+          "tier": 6
+        }
+      ],
+      "inputs": [
+        "unit.part_stats"
+      ],
+      "threshold": {
+        "max_parts": 60,
+        "max_unique": 25,
+        "max_patterns": 12
+      },
+      "provisional": true,
+      "severity": 5,
+      "backend": true,
+      "user_message": {
+        "en": "This design is unusually complex — we’ll review it and confirm the price and lead time."
+      },
+      "auto_correct": false,
+      "manual_review": true,
+      "confidence": "low",
+      "validation_status": "requires_validation",
+      "validation_owner": "manufacturing_partner"
+    },
+    {
+      "rule_id": "ASM-SEQ-001",
+      "name": "Feasible assembly sequence must exist",
+      "product_categories": [
+        "all"
+      ],
+      "rule_category": "assembly",
+      "description": "Engine must derive a valid ordered sequence (carcass → fixed shelves/dividers → back → feet → doors/drawers → shelves) with no trapped parts: a part whose connectors cannot be reached/engaged after prior steps invalidates the design.",
+      "rationale": "Classic trapped-assembly errors (e.g. fixed shelf between two already-cammed panels with no insertion path) make kits unbuildable at home.",
+      "sources": [
+        {
+          "ref": "DFA practice",
+          "tier": 5
+        }
+      ],
+      "inputs": [
+        "unit.geometry_graph",
+        "joint.connectors[]"
+      ],
+      "threshold": null,
+      "provisional": false,
+      "severity": 4,
+      "backend": true,
+      "user_message": {
+        "en": "This combination of fixed parts couldn’t be assembled in any order. We’ve highlighted the conflict."
+      },
+      "auto_correct": false,
+      "manual_review": false,
+      "confidence": "high",
+      "validation_status": "validated",
+      "test_method": "unit tests + prototype builds"
+    },
+    {
+      "rule_id": "ASM-TOOL-002",
+      "name": "Tool access clearance",
+      "product_categories": [
+        "all"
+      ],
+      "rule_category": "assembly",
+      "description": "Every cam must be rotatable (screwdriver axis clearance ≥ 120 mm above the cam face, provisional); every confirmat drivable (straight-line access); compartments smaller than 120×120 mm may not contain in-compartment fasteners.",
+      "rationale": "No-tool-access is a common CAD-to-reality failure; cams face inside the carcass.",
+      "sources": [
+        {
+          "ref": "DFA practice",
+          "tier": 5
+        }
+      ],
+      "inputs": [
+        "joint.positions",
+        "unit.compartments"
+      ],
+      "threshold": {
+        "min_access_mm": 120
+      },
+      "provisional": true,
+      "severity": 4,
+      "backend": true,
+      "user_message": null,
+      "auto_correct": true,
+      "manual_review": false,
+      "confidence": "low",
+      "validation_status": "requires_test",
+      "validation_owner": "cabinetmaker",
+      "test_method": "Prototype assembly trials"
+    },
+    {
+      "rule_id": "ASM-TOOLKIT-003",
+      "name": "Customer toolkit is fixed",
+      "product_categories": [
+        "all"
+      ],
+      "rule_category": "assembly",
+      "description": "Designs may only require: PZ2 screwdriver, supplied hex key, hammer (soft tap for dowels/HDF nails), spirit level (recommended). No glue, no drill for furniture assembly. Wall anchoring is the single exception (drill required; communicated separately).",
+      "rationale": "Home-assembly promise; KD hardware exists precisely to avoid glue-ups outside the shop (Rae p.86; Hylton KD discussion).",
+      "sources": [
+        {
+          "ref": "Rae p.86",
+          "tier": 4
+        }
+      ],
+      "inputs": [
+        "unit.required_tools"
+      ],
+      "threshold": null,
+      "provisional": false,
+      "severity": 4,
+      "backend": true,
+      "user_message": {
+        "en": "Everything assembles with the included key and a screwdriver. Wall anchoring needs a drill."
+      },
+      "auto_correct": false,
+      "manual_review": false,
+      "confidence": "high",
+      "validation_status": "validated"
+    },
+    {
+      "rule_id": "ASM-PEOPLE-004",
+      "name": "Two-person flag",
+      "product_categories": [
+        "all"
+      ],
+      "rule_category": "assembly",
+      "description": "Flag '2 people recommended' when: any single panel > 15 kg or > 1800 mm, or assembled unit > 35 kg, or unit must be tilted upright from horizontal (see ASM-TILT-005). (All provisional.)",
+      "rationale": "Manual handling ergonomics; melamine panels are dense (~11–12 kg/m² at 18 mm).",
+      "sources": [
+        {
+          "ref": "derived from board density",
+          "tier": 6
+        }
+      ],
+      "inputs": [
+        "part.mass",
+        "unit.mass_est",
+        "unit.height"
+      ],
+      "threshold": {
+        "panel_kg": 15,
+        "panel_mm": 1800,
+        "unit_kg": 35
+      },
+      "provisional": true,
+      "severity": 0,
+      "backend": false,
+      "user_message": {
+        "en": "This product is easier and safer to assemble with two people."
+      },
+      "auto_correct": false,
+      "manual_review": false,
+      "confidence": "medium",
+      "validation_status": "requires_validation",
+      "validation_owner": "cabinetmaker"
+    },
+    {
+      "rule_id": "ASM-TILT-005",
+      "name": "Tilt-up ceiling clearance",
+      "product_categories": [
+        "shelving_unit",
+        "bookcase",
+        "storage_unit",
+        "cabinet"
+      ],
+      "rule_category": "assembly",
+      "description": "Tall carcasses are assembled lying down and tilted upright. Tip diagonal = √(height² + depth²). If customer provides room height and diagonal exceeds it minus 20 mm, warn and offer reduced height or upright-assembly instructions.",
+      "rationale": "Same clearance logic cabinetmakers use for built-ins (Hylton p.343: sides made 2–3 in shorter than ceiling height so cases can be set up easily).",
+      "sources": [
+        {
+          "ref": "Hylton p.343",
+          "tier": 4
+        },
+        {
+          "ref": "geometry",
+          "tier": 3
+        }
+      ],
+      "inputs": [
+        "unit.height",
+        "unit.depth",
+        "room.height (optional)"
+      ],
+      "condition": "sqrt(H²+D²) > room.height − 20 → warn",
+      "threshold": {
+        "margin_mm": 20
+      },
+      "provisional": false,
+      "severity": 2,
+      "backend": false,
+      "user_message": {
+        "en": "Heads up: at {h} cm tall and {d} cm deep, this unit needs {diag} cm of ceiling height to tilt upright after assembly."
+      },
+      "auto_correct": false,
+      "manual_review": false,
+      "confidence": "high",
+      "validation_status": "validated"
+    },
+    {
+      "rule_id": "ASM-INSTR-006",
+      "name": "Per-order generated instructions",
+      "product_categories": [
+        "all"
+      ],
+      "rule_category": "assembly",
+      "description": "Every order ships with instructions generated from the exact design: exploded views per step, part labels matching physical labels, fastener counts, anchor step for STAB-ANCHOR designs, and a spare-parts QR (part IDs orderable individually).",
+      "rationale": "Custom furniture cannot use generic manuals; replacement-part logic requires stable part IDs.",
+      "sources": [
+        {
+          "ref": "Myble product requirement",
+          "tier": 6
+        }
+      ],
+      "inputs": [
+        "order.bom"
+      ],
+      "threshold": null,
+      "provisional": false,
+      "severity": 4,
+      "backend": true,
+      "user_message": null,
+      "auto_correct": false,
+      "manual_review": false,
+      "confidence": "high",
+      "validation_status": "validated"
+    },
+    {
+      "rule_id": "SHIP-PANEL-001",
+      "name": "Panel length vs carrier limits",
+      "product_categories": [
+        "all"
+      ],
+      "rule_category": "shipping",
+      "description": "Carrier profiles (validate before launch): GLS CZ ≤ 2000 mm longest side, girth (2H+2W+L) ≤ 3000 mm, ≤ 40 kg; PPL private ≤ 1000×500×500; DPD ≤ 31.5 kg, pickup ≤ 1000 mm; Packeta ≤ 120/150 cm dim-sum, ≤ 10 kg. Engine selects cheapest feasible carrier per package; if no parcel carrier fits → pallet freight path (MVP: manual review).",
+      "rationale": "Panel length is the binding constraint for flat-pack; GLS's 2 m limit is what allows wardrobe-height sides (1950 mm max practical).",
+      "sources": [
+        {
+          "ref": "GLS CZ size & weight page",
+          "tier": 2
+        },
+        {
+          "ref": "PPL CZ parcel docs",
+          "tier": 2
+        },
+        {
+          "ref": "DPD CZ weights & dims",
+          "tier": 2
+        },
+        {
+          "ref": "Packeta price list",
+          "tier": 2
+        }
+      ],
+      "inputs": [
+        "package.dims",
+        "package.mass"
+      ],
+      "threshold": {
+        "gls_max_side_mm": 2000,
+        "gls_girth_mm": 3000,
+        "gls_kg": 40
+      },
+      "provisional": true,
+      "severity": 4,
+      "backend": true,
+      "user_message": {
+        "en": "Reducing the height by {x} cm would let this ship as a standard parcel and save on delivery."
+      },
+      "auto_correct": false,
+      "manual_review": true,
+      "confidence": "high",
+      "validation_status": "requires_validation",
+      "validation_owner": "logistics_partner",
+      "notes": "Carrier terms change; limits must live in a dated carrier profile, re-verified quarterly."
+    },
+    {
+      "rule_id": "SHIP-MASS-002",
+      "name": "Package mass cap & split logic",
+      "product_categories": [
+        "all"
+      ],
+      "rule_category": "shipping",
+      "description": "Target ≤ 25 kg per package (hard cap 30 kg, provisional under carrier 31.5/40 limits for handling safety); orders auto-split into panel packs + hardware kit; each pack's contents recorded; kit-to-pack compatibility check ensures no pack depends on a part in a missing pack.",
+      "rationale": "31.5 kg is a common carrier cap (PPL/DPD) but two-person lifting guidance argues for ~25 kg packs; splitting logic prevents partial-delivery deadlock.",
+      "sources": [
+        {
+          "ref": "carrier limits",
+          "tier": 2
+        },
+        {
+          "ref": "handling practice",
+          "tier": 5
+        }
+      ],
+      "inputs": [
+        "package.mass",
+        "order.packages[]"
+      ],
+      "threshold": {
+        "target_kg": 25,
+        "hard_kg": 30
+      },
+      "provisional": true,
+      "severity": 4,
+      "backend": true,
+      "user_message": null,
+      "auto_correct": true,
+      "manual_review": false,
+      "confidence": "medium",
+      "validation_status": "requires_validation",
+      "validation_owner": "packaging_partner+logistics"
+    },
+    {
+      "rule_id": "SHIP-PROT-003",
+      "name": "Edge & surface protection",
+      "product_categories": [
+        "all"
+      ],
+      "rule_category": "shipping",
+      "description": "Melamine faces packed face-to-face with interleaf; all four corners of each pack get corner protectors; banded front edges padded; 3 mm HDF backs packed inside stiff panel sandwich; packaging allowance per side (provisional 20 mm) added to package dims.",
+      "rationale": "Laminated PB edges/corners chip on impact and are unrepairable; thin HDF bends (Rae p.34 fragility of faced panels; general packaging practice).",
+      "sources": [
+        {
+          "ref": "Rae p.34",
+          "tier": 4
+        },
+        {
+          "ref": "packaging practice",
+          "tier": 5
+        }
+      ],
+      "inputs": [
+        "package.contents"
+      ],
+      "threshold": {
+        "allowance_mm": 20
+      },
+      "provisional": true,
+      "severity": 4,
+      "backend": true,
+      "user_message": null,
+      "auto_correct": true,
+      "manual_review": false,
+      "confidence": "medium",
+      "validation_status": "requires_test",
+      "validation_owner": "packaging_partner",
+      "test_method": "ISTA-style drop/transport test on representative pack"
+    },
+    {
+      "rule_id": "SHIP-ECON-004",
+      "name": "Shippability economics surfaced",
+      "product_categories": [
+        "all"
+      ],
+      "rule_category": "shipping",
+      "description": "If a small dimension change (≤ 30 mm) would move the order into a cheaper shipping class, surface the saving as a tip; if shipping cost > X% of product price (provisional 25%), show notice.",
+      "rationale": "Converts logistics constraints into design guidance instead of checkout surprise.",
+      "sources": [
+        {
+          "ref": "Myble UX decision",
+          "tier": 6
+        }
+      ],
+      "inputs": [
+        "package.dims",
+        "pricing"
+      ],
+      "threshold": {
+        "nudge_window_mm": 30,
+        "cost_ratio_notice": 0.25
+      },
+      "provisional": true,
+      "severity": 1,
+      "backend": false,
+      "user_message": {
+        "en": "Reducing the width by {x} mm would make this design suitable for standard parcel delivery."
+      },
+      "auto_correct": false,
+      "manual_review": false,
+      "confidence": "high",
+      "validation_status": "validated"
+    },
+    {
+      "rule_id": "UX-SEV-001",
+      "name": "Severity → UI behaviour mapping",
+      "product_categories": [
+        "all"
+      ],
+      "rule_category": "ux",
+      "description": "0: passive info; 1: dismissible tip; 2: highlighted recommendation with one-click fix; 3: modal acknowledgement stored with order; 4: red state, cart blocked, fix path shown; 5: review request flow with SLA message. Silent prevention (snapping, min limits in sliders) is preferred over post-hoc errors wherever the constraint is continuous.",
+      "rationale": "Users should mostly never see raw rule violations — sliders and snapping keep them in valid space; messages reserve attention for real decisions.",
+      "sources": [
+        {
+          "ref": "Myble UX framework",
+          "tier": 6
+        }
+      ],
+      "inputs": [
+        "findings[]"
+      ],
+      "threshold": null,
+      "provisional": false,
+      "severity": 0,
+      "backend": true,
+      "user_message": null,
+      "auto_correct": false,
+      "manual_review": false,
+      "confidence": "high",
+      "validation_status": "validated"
+    },
+    {
+      "rule_id": "UX-CONF-002",
+      "name": "Acknowledgements are recorded",
+      "product_categories": [
+        "all"
+      ],
+      "rule_category": "ux",
+      "description": "Every severity-3 acknowledgement stores: rule_id, rules version, message text shown, timestamp, user/session; re-triggered if design changes invalidate a prior acknowledgement.",
+      "rationale": "Traceability for safety communications (wall anchoring, load limits).",
+      "sources": [
+        {
+          "ref": "compliance practice",
+          "tier": 5
+        }
+      ],
+      "inputs": [
+        "order.acknowledgements[]"
+      ],
+      "threshold": null,
+      "provisional": false,
+      "severity": 0,
+      "backend": true,
+      "user_message": null,
+      "auto_correct": false,
+      "manual_review": false,
+      "confidence": "high",
+      "validation_status": "validated"
+    },
+    {
+      "rule_id": "UX-AI-003",
+      "name": "AI may explain, never decide",
+      "product_categories": [
+        "all"
+      ],
+      "rule_category": "ux",
+      "description": "LLM features may rephrase findings, answer questions and propose design ideas, but every AI proposal is re-validated by the deterministic engine before it can be applied; AI output can never mark a design safe, override severity, or edit thresholds.",
+      "rationale": "Safety/manufacturability must be auditable and reproducible; LLMs are not.",
+      "sources": [
+        {
+          "ref": "Myble architecture principle",
+          "tier": 6
+        }
+      ],
+      "inputs": [
+        "n/a"
+      ],
+      "threshold": null,
+      "provisional": false,
+      "severity": 0,
+      "backend": true,
+      "user_message": null,
+      "auto_correct": false,
+      "manual_review": false,
+      "confidence": "high",
+      "validation_status": "validated"
+    }
+  ],
+  "severity_policy": {
+    "adopted": "2026-07-20",
+    "rationale": "Blocking a sale is reserved for designs Myble physically cannot make, ship or assemble, and for stability safety. Quality/durability limits are surfaced as an expert recommendation with a one-click fix and an explicit Order anyway acknowledgement recorded with the order.",
+    "severity_4_reserved_for": [
+      "manufacturability_impossible",
+      "shipping_impossible",
+      "assembly_impossible",
+      "stability_safety"
+    ],
+    "unvalidated_thresholds": "advisory (severity <= 3) — never a hard block; see notes on each reclassified rule"
+  }
+}
