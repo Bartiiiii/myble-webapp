@@ -31,8 +31,6 @@ import { quoteDesign, breakdownCZK } from "../../lib/quote";
 import { PRICING_DEBUG } from "../../lib/pricingConfig";
 import { LIBRARY, type LibraryItem } from "../../lib/library";
 import { useI18n, useT, type TFn } from "../../lib/i18n";
-import { useRulesValidation } from "../../lib/rules-engine/useRulesValidation";
-import { RulesFindings } from "../../components/RulesFindings";
 import posthog from "posthog-js";
 
 const INSPIRATION_PAGE_SIZE = 6;
@@ -164,12 +162,10 @@ export default function DesignPage() {
   const v = useMemo(() => validate(design), [design]);
   const breakdown = useMemo(() => breakdownCZK(quote), [quote]);
 
-  // Live rules-engine validation (sales-first): advisory recommendations, never
-  // blocks an order inside the existing size envelope. Runs in a Web Worker.
-  const rulesOptions = useMemo(() => ({ locale }), [locale]);
-  const { report: rulesReport, validating: rulesValidating } = useRulesValidation(design, rulesOptions);
-  // Part ids the engine flagged for the hovered finding — highlighted amber.
-  const [flaggedIds, setFlaggedIds] = useState<string[]>([]);
+  // The rules engine's advisory recommendations no longer live here. A panel of
+  // expert caveats beside a piece you are still shaping reads as "something is
+  // wrong" while you are only exploring; the same advice meets the customer at
+  // checkout, where it is a decision rather than an interruption.
 
   // Delete/Backspace removes the selected part (any part — no protected ones).
   useEffect(() => {
@@ -287,7 +283,7 @@ export default function DesignPage() {
                 editable
                 autoRotate={false}
                 selectedId={selectedId}
-                floatingIds={[...v.floatingIds, ...flaggedIds]}
+                floatingIds={v.floatingIds}
                 onSelect={setSelectedId}
                 onChange={setDesign}
               />
@@ -335,14 +331,6 @@ export default function DesignPage() {
                   {v.warnings.map((wn, i) => <li key={i}>• {issueText(t, wn)}</li>)}
                 </ul>
               )}
-            </div>
-
-            {/* Engineering recommendations from the rules engine (advisory).
-                Desktop only: on a phone the panel pushed the price and the
-                material choice far down the page. The same advice reaches the
-                customer at checkout instead. */}
-            <div className="hidden lg:block">
-              <RulesFindings report={rulesReport} validating={rulesValidating} onHighlight={setFlaggedIds} />
             </div>
 
             {/* Material: colour + thickness */}
@@ -499,7 +487,7 @@ function Inspiration({
 
       <div className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-3">
         {LIBRARY.slice(0, count).map((item) => (
-          <InspirationCard key={item.id} item={item} onUse={() => onUse(item)} solidLabel={mobile} />
+          <InspirationCard key={item.id} item={item} onUse={() => onUse(item)} />
         ))}
       </div>
 
@@ -507,9 +495,7 @@ function Inspiration({
         <button
           type="button"
           onClick={onShowMore}
-          className={`press mt-5 inline-flex items-center justify-center rounded-xl bg-zinc-100 px-4 py-2.5 text-sm font-semibold text-zinc-700 hover:bg-zinc-200 ${
-            mobile ? "w-full" : ""
-          }`}
+          className="press mt-5 inline-flex w-full items-center justify-center rounded-xl bg-zinc-100 px-4 py-2.5 text-sm font-semibold text-zinc-700 hover:bg-zinc-200"
         >
           {t("design.inspirationShowMore")}
         </button>
@@ -520,17 +506,7 @@ function Inspiration({
 
 /** Mounts the WebGL viewer only while the card is near the viewport, so a row
  *  of inspiration thumbnails never holds more live GL contexts than visible. */
-function InspirationCard({
-  item,
-  onUse,
-  solidLabel = false,
-}: {
-  item: LibraryItem;
-  onUse: () => void;
-  /** White label strip under the thumbnail, so the name reads as a caption
-   *  rather than floating on the warm stage tone. */
-  solidLabel?: boolean;
-}) {
+function InspirationCard({ item, onUse }: { item: LibraryItem; onUse: () => void }) {
   const { t } = useI18n();
   const reduced = usePrefersReducedMotion();
   const ref = useRef<HTMLDivElement>(null);
@@ -559,7 +535,9 @@ function InspirationCard({
           <ShelfViewer design={item.design} background={WALL} height={200} interactive={false} autoRotate={!reduced} lite />
         )}
       </div>
-      <div className={`p-3 ${solidLabel ? "border-t border-zinc-200/70 bg-white" : ""}`}>
+      {/* White strip under the thumbnail, so the name reads as a caption rather
+          than floating on the warm stage tone. */}
+      <div className="border-t border-zinc-200/70 bg-white p-3">
         <p className="truncate text-sm font-semibold text-zinc-900">{t(`library.items.${item.id}.n`)}</p>
         <p className="mt-0.5 text-xs font-medium text-indigo-600 transition-colors group-hover:text-indigo-500">
           {t("design.inspirationUse")}
