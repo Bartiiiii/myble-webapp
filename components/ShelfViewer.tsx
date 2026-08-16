@@ -12,6 +12,8 @@ import {
   partSize,
   thicknessCm,
   snap as snapPart,
+  slide,
+  isClear,
   detectJoints,
 } from "../lib/design";
 import { useT, type TFn } from "../lib/i18n";
@@ -169,12 +171,17 @@ function Unit({
 
   function move(part: Part, dx: number, dy: number) {
     const [sx, sy] = partSize(part, t);
-    const nx = clampN(part.pos.x + dx, -half.x + sx / 2, half.x - sx / 2);
-    const ny = clampN(part.pos.y + dy, -half.y + sy / 2, half.y - sy / 2);
+    const target = {
+      ...part.pos,
+      x: clampN(part.pos.x + dx, -half.x + sx / 2, half.x - sx / 2),
+      y: clampN(part.pos.y + dy, -half.y + sy / 2, half.y - sy / 2),
+    };
+    // Boards are solid: stop flush against whatever stands in the way.
+    const { pos } = slide(part, target, design.parts.filter((p) => p.id !== part.id), t);
     onChange?.({
       ...design,
       parts: design.parts.map((p) =>
-        p.id === part.id ? { ...p, pos: { ...p.pos, x: round1(nx), y: round1(ny) } } : p,
+        p.id === part.id ? { ...p, pos: { ...p.pos, x: round1(pos.x), y: round1(pos.y) } } : p,
       ),
     });
   }
@@ -322,16 +329,29 @@ function Scene({
     const part = cur.parts.find((p) => p.id === dr.id);
     if (!part) return;
     const half = { x: cur.outerCm.w / 2, y: cur.outerCm.h / 2 };
-    const [sx, sy] = partSize(part, thicknessCm(cur));
+    const tCm = thicknessCm(cur);
+    const [sx, sy] = partSize(part, tCm);
+    const others = cur.parts.filter((p) => p.id !== dr.id);
     const pcm = worldToCm(e.point);
-    let nx = clampN(pcm.x + dr.offset.x, -half.x + sx / 2, half.x - sx / 2);
-    let ny = clampN(pcm.y + dr.offset.y, -half.y + sy / 2, half.y - sy / 2);
+    const target = {
+      ...part.pos,
+      x: clampN(pcm.x + dr.offset.x, -half.x + sx / 2, half.x - sx / 2),
+      y: clampN(pcm.y + dr.offset.y, -half.y + sy / 2, half.y - sy / 2),
+    };
 
-    // Magnetic snap to nearby flush faces.
+    // Boards are solid, never ghosts: sweep from where the part is now and stop
+    // flush against the first board in the way (sliding along it is still free).
+    const solid = slide(part, target, others, tCm).pos;
+    let nx = solid.x;
+    let ny = solid.y;
+
+    // Magnetic snap to nearby flush faces — but only when the snapped position
+    // is itself free, so the magnet can never pull a board inside another.
     const moved: Part = { ...part, pos: { ...part.pos, x: nx, y: ny } };
-    const res = snapPart(moved, cur.parts.filter((p) => p.id !== dr.id), thicknessCm(cur));
+    const res = snapPart(moved, others, tCm);
+    const snapCandidate: Part = { ...part, pos: { ...part.pos, x: res.pos.x, y: res.pos.y } };
     let snapped = false;
-    if (res.snapped) {
+    if (res.snapped && isClear(snapCandidate, others, tCm)) {
       nx = res.pos.x;
       ny = res.pos.y;
       snapped = true;

@@ -20,6 +20,7 @@ import {
   thicknessCm,
   makeId,
   emptyDesign,
+  nudgeClear,
   scaleParts,
   validate,
   saveDesign,
@@ -211,7 +212,12 @@ export default function DesignPage() {
 
   function addPart(role: Role) {
     if (design.parts.length >= MAX_PARTS) return;
-    const part = makePart(design, role);
+    // A new board lands in the middle of the piece, which is often already
+    // occupied. Boards are solid, so shift it to the nearest free slot along its
+    // own thickness axis rather than dropping it inside another board.
+    const fresh = makePart(design, role);
+    const span = design.outerCm[({ x: "w", y: "h", z: "d" } as const)[fresh.axis]];
+    const part = nudgeClear(fresh, design.parts, thicknessCm(design), span);
     setDesign((d) => ({ ...d, parts: [...d.parts, part] }));
     setSelectedId(part.id);
     posthog.capture("part_added", { role, total_parts: design.parts.length + 1 });
@@ -280,37 +286,16 @@ export default function DesignPage() {
             </section>
 
             {/* Inspiration — the design library, inline. Click a card to load
-                it straight into the editor above. */}
-            <section className="rounded-3xl bg-white p-6 ring-1 ring-zinc-200">
-              <div className="flex flex-wrap items-baseline justify-between gap-3">
-                <div>
-                  <h2 className="text-lg font-semibold text-zinc-900">{t("design.inspirationTitle")}</h2>
-                  <p className="mt-1 max-w-md text-sm text-zinc-600">{t("design.inspirationBody")}</p>
-                </div>
-                <Link
-                  href="/library"
-                  className="press shrink-0 text-sm font-semibold text-indigo-600 hover:text-indigo-500"
-                >
-                  {t("design.inspirationBrowseAll")}
-                </Link>
-              </div>
-
-              <div className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-3">
-                {LIBRARY.slice(0, inspirationCount).map((item) => (
-                  <InspirationCard key={item.id} item={item} onUse={() => applyLibraryItem(item)} />
-                ))}
-              </div>
-
-              {inspirationCount < LIBRARY.length && (
-                <button
-                  type="button"
-                  onClick={() => setInspirationCount((n) => Math.min(LIBRARY.length, n + INSPIRATION_PAGE_SIZE))}
-                  className="press mt-5 inline-flex items-center justify-center rounded-xl bg-zinc-100 px-4 py-2.5 text-sm font-semibold text-zinc-700 hover:bg-zinc-200"
-                >
-                  {t("design.inspirationShowMore")}
-                </button>
-              )}
-            </section>
+                it straight into the editor above. Desktop keeps it under the
+                viewer; on mobile it moves to the very bottom of the page (the
+                second instance below), so the size + material controls come
+                first on a phone. */}
+            <Inspiration
+              className="hidden lg:block"
+              count={inspirationCount}
+              onShowMore={() => setInspirationCount((n) => Math.min(LIBRARY.length, n + INSPIRATION_PAGE_SIZE))}
+              onUse={applyLibraryItem}
+            />
           </div>
 
           {/* Controls */}
@@ -339,8 +324,13 @@ export default function DesignPage() {
               )}
             </div>
 
-            {/* Engineering recommendations from the rules engine (advisory). */}
-            <RulesFindings report={rulesReport} validating={rulesValidating} onHighlight={setFlaggedIds} />
+            {/* Engineering recommendations from the rules engine (advisory).
+                Desktop only: on a phone the panel pushed the price and the
+                material choice far down the page. The same advice reaches the
+                customer at checkout instead. */}
+            <div className="hidden lg:block">
+              <RulesFindings report={rulesReport} validating={rulesValidating} onHighlight={setFlaggedIds} />
+            </div>
 
             {/* Material: colour + thickness */}
             <div className="rounded-3xl bg-white p-5 ring-1 ring-zinc-200">
@@ -406,6 +396,17 @@ export default function DesignPage() {
               />
             </div>
           </aside>
+
+          {/* Inspiration, mobile placement: last thing on the page. Hidden on
+              desktop (where the copy above the viewer carries it), so no second
+              set of WebGL thumbnails is ever mounted. */}
+          <Inspiration
+            className="lg:hidden"
+            mobile
+            count={inspirationCount}
+            onShowMore={() => setInspirationCount((n) => Math.min(LIBRARY.length, n + INSPIRATION_PAGE_SIZE))}
+            onUse={applyLibraryItem}
+          />
         </div>
       </div>
 
@@ -449,9 +450,74 @@ export default function DesignPage() {
 
 /* ---------------------------------------------------------------- pieces */
 
+/** The inline design library. Rendered twice — once for desktop, once for
+ *  mobile — because the two layouts want it in different places on the page.
+ *  Only one is ever displayed, and a `display:none` copy never intersects the
+ *  viewport, so its cards stay unmounted and cost no GL context. */
+function Inspiration({
+  className,
+  mobile = false,
+  count,
+  onShowMore,
+  onUse,
+}: {
+  className: string;
+  mobile?: boolean;
+  count: number;
+  onShowMore: () => void;
+  onUse: (item: LibraryItem) => void;
+}) {
+  const t = useT();
+  return (
+    <section className={`rounded-3xl bg-white p-6 ring-1 ring-zinc-200 ${className}`}>
+      <div className="flex flex-wrap items-baseline justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-semibold text-zinc-900">
+            {t(mobile ? "design.inspirationTitleMobile" : "design.inspirationTitle")}
+          </h2>
+          {/* The subtitle is desktop-only: on a phone the cards explain
+              themselves and the line just ate a row of screen. */}
+          {!mobile && <p className="mt-1 max-w-md text-sm text-zinc-600">{t("design.inspirationBody")}</p>}
+        </div>
+        <Link href="/library" className="press shrink-0 text-sm font-semibold text-indigo-600 hover:text-indigo-500">
+          {t("design.inspirationBrowseAll")}
+        </Link>
+      </div>
+
+      <div className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-3">
+        {LIBRARY.slice(0, count).map((item) => (
+          <InspirationCard key={item.id} item={item} onUse={() => onUse(item)} solidLabel={mobile} />
+        ))}
+      </div>
+
+      {count < LIBRARY.length && (
+        <button
+          type="button"
+          onClick={onShowMore}
+          className={`press mt-5 inline-flex items-center justify-center rounded-xl bg-zinc-100 px-4 py-2.5 text-sm font-semibold text-zinc-700 hover:bg-zinc-200 ${
+            mobile ? "w-full" : ""
+          }`}
+        >
+          {t("design.inspirationShowMore")}
+        </button>
+      )}
+    </section>
+  );
+}
+
 /** Mounts the WebGL viewer only while the card is near the viewport, so a row
  *  of inspiration thumbnails never holds more live GL contexts than visible. */
-function InspirationCard({ item, onUse }: { item: LibraryItem; onUse: () => void }) {
+function InspirationCard({
+  item,
+  onUse,
+  solidLabel = false,
+}: {
+  item: LibraryItem;
+  onUse: () => void;
+  /** White label strip under the thumbnail, so the name reads as a caption
+   *  rather than floating on the warm stage tone. */
+  solidLabel?: boolean;
+}) {
   const { t } = useI18n();
   const reduced = usePrefersReducedMotion();
   const ref = useRef<HTMLDivElement>(null);
@@ -480,7 +546,7 @@ function InspirationCard({ item, onUse }: { item: LibraryItem; onUse: () => void
           <ShelfViewer design={item.design} background={WALL} height={200} interactive={false} autoRotate={!reduced} lite />
         )}
       </div>
-      <div className="p-3">
+      <div className={`p-3 ${solidLabel ? "border-t border-zinc-200/70 bg-white" : ""}`}>
         <p className="truncate text-sm font-semibold text-zinc-900">{t(`library.items.${item.id}.n`)}</p>
         <p className="mt-0.5 text-xs font-medium text-indigo-600 transition-colors group-hover:text-indigo-500">
           {t("design.inspirationUse")}

@@ -9,6 +9,11 @@ import {
   exposedEdges,
   detectJoints,
   snap,
+  slide,
+  intersects,
+  intersecting,
+  isClear,
+  nudgeClear,
 } from "./geometry";
 import { boxWalls, legacyToDesign, presetDesign } from "./build";
 import { partBox, thicknessCm } from "./model";
@@ -132,6 +137,80 @@ describe("snap", () => {
     const sb = partBox(snappedShelf, t);
     const wb = partBox(wall, t);
     expect(Math.abs(sb.max.x - wb.min.x)).toBeLessThan(0.2);
+  });
+});
+
+describe("collision (boards are solid)", () => {
+  const t = thicknessCm(base([]));
+  // A vertical divider standing at x = 0, 40 cm tall, 30 deep.
+  const divider: Part = { id: "div", role: "divider", axis: "x", aCm: 40, bCm: 30, pos: { x: 0, y: 0, z: 0 } };
+  // A shelf to its left, 20 cm wide (right end at x = -0.9 + 10 = ... see pos).
+  const shelf = (x: number, y = 0): Part => ({
+    id: "shelf",
+    role: "shelf",
+    axis: "y",
+    aCm: 20,
+    bCm: 30,
+    pos: { x, y, z: 0 },
+  });
+
+  it("flush faces are a joint, not an intersection", () => {
+    // Shelf right end exactly at the divider's left face (x = -0.9).
+    const flush = shelf(-10.9);
+    expect(intersects(flush, divider, t)).toBe(false);
+    expect(isClear(flush, [divider], t)).toBe(true);
+  });
+
+  it("reports a real overlap", () => {
+    expect(intersects(shelf(0), divider, t)).toBe(true);
+    expect(intersecting(shelf(0), [divider], t)).toEqual(["div"]);
+  });
+
+  it("a move through a board stops flush against it instead of passing through", () => {
+    const from = shelf(-20);
+    const res = slide(from, { x: 20, y: 0, z: 0 }, [divider], t);
+    expect(res.blocked).toBe(true);
+    // Right end of the shelf lands on the divider's left face.
+    const sb = partBox({ ...from, pos: res.pos }, t);
+    const db = partBox(divider, t);
+    expect(Math.abs(sb.max.x - db.min.x)).toBeLessThan(0.01);
+    expect(isClear({ ...from, pos: res.pos }, [divider], t)).toBe(true);
+  });
+
+  it("does not tunnel on a long flick past a thin board", () => {
+    const from = shelf(-40);
+    const res = slide(from, { x: 200, y: 0, z: 0 }, [divider], t);
+    expect(res.pos.x).toBeLessThan(divider.pos.x);
+    expect(isClear({ ...from, pos: res.pos }, [divider], t)).toBe(true);
+  });
+
+  it("slides freely along a board it is resting against", () => {
+    const resting = shelf(-10.9);
+    const res = slide(resting, { x: -10.9, y: 15, z: 0 }, [divider], t);
+    expect(res.blocked).toBe(false);
+    expect(res.pos.y).toBeCloseTo(15);
+  });
+
+  it("an unobstructed move reaches its target", () => {
+    const from = shelf(-40);
+    const res = slide(from, { x: -30, y: 5, z: 0 }, [divider], t);
+    expect(res.blocked).toBe(false);
+    expect(res.pos.x).toBeCloseTo(-30);
+    expect(res.pos.y).toBeCloseTo(5);
+  });
+
+  it("a part that starts overlapped can still move back out", () => {
+    const stuck = shelf(0);
+    const res = slide(stuck, { x: -30, y: 0, z: 0 }, [divider], t);
+    expect(res.pos.x).toBeCloseTo(-30);
+  });
+
+  it("nudgeClear finds a free slot for a board dropped into occupied space", () => {
+    const a: Part = { id: "a", role: "shelf", axis: "y", aCm: 40, bCm: 30, pos: { x: 0, y: 0, z: 0 } };
+    const dropped: Part = { ...a, id: "b" };
+    const placed = nudgeClear(dropped, [a], t, 40);
+    expect(placed.pos.y).not.toBe(0);
+    expect(isClear(placed, [a], t)).toBe(true);
   });
 });
 
