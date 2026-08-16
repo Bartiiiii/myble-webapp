@@ -212,14 +212,20 @@ export default function DesignPage() {
 
   function addPart(role: Role) {
     if (design.parts.length >= MAX_PARTS) return;
-    // A new board lands in the middle of the piece, which is often already
-    // occupied. Boards are solid, so shift it to the nearest free slot along its
-    // own thickness axis rather than dropping it inside another board.
-    const fresh = makePart(design, role);
-    const span = design.outerCm[({ x: "w", y: "h", z: "d" } as const)[fresh.axis]];
-    const part = nudgeClear(fresh, design.parts, thicknessCm(design), span);
-    setDesign((d) => ({ ...d, parts: [...d.parts, part] }));
-    setSelectedId(part.id);
+    // The id is fixed out here so we can select the new board, but the board
+    // itself is built inside the updater: two taps in one React batch would
+    // otherwise both measure the same stale parts list and stack on each other.
+    const id = makeId();
+    setDesign((d) => {
+      if (d.parts.length >= MAX_PARTS) return d;
+      // A new board lands in the middle of the piece, which is often already
+      // occupied. Boards are solid, so shift it to the nearest free slot along
+      // its own thickness axis rather than dropping it inside another board.
+      const fresh = { ...makePart(d, role), id };
+      const span = d.outerCm[({ x: "w", y: "h", z: "d" } as const)[fresh.axis]];
+      return { ...d, parts: [...d.parts, nudgeClear(fresh, d.parts, thicknessCm(d), span)] };
+    });
+    setSelectedId(id);
     posthog.capture("part_added", { role, total_parts: design.parts.length + 1 });
   }
 
