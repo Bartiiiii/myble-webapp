@@ -315,7 +315,7 @@ function CheckIcon() {
 function FaqList() {
   const { locale } = useI18n();
   const faq = (tList(locale, "home.faq") as { q: string; a: string }[]) ?? [];
-  const [open, setOpen] = useState<number | null>(0);
+  const [open, setOpen] = useState<number | null>(null);
   return (
     <div className="mx-auto w-full max-w-3xl divide-y divide-zinc-200 border-y border-zinc-200">
       {faq.map((it, i) => {
@@ -635,7 +635,7 @@ export default function HomePage() {
                   height={143}
                   loading="lazy"
                   decoding="async"
-                  className="h-9 w-auto opacity-80 brightness-0 invert sm:h-11"
+                  className="h-7 w-auto opacity-80 brightness-0 invert sm:h-8"
                 />
               </div>
             </Reveal>
@@ -658,16 +658,21 @@ export default function HomePage() {
           </div>
 
           <Reveal delay={60}>
-            <div className="mt-14 grid divide-y divide-white/10 sm:grid-cols-2 sm:gap-x-8 sm:divide-y-0 lg:grid-cols-4">
+            <div className="mt-14 grid grid-cols-2 gap-x-6 sm:grid-cols-2 sm:gap-x-8 lg:grid-cols-4">
               {MATERIAL_ICONS.map((path, idx) => (
-                <div key={idx} className="py-6 sm:py-0">
+                <div
+                  key={idx}
+                  className={`py-6 sm:py-0 ${idx % 2 === 1 ? "border-l border-white/10 pl-6 sm:border-l-0 sm:pl-0" : ""} ${
+                    idx >= 2 ? "border-t border-white/10 sm:border-t-0" : ""
+                  }`}
+                >
                   <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/10 text-white">
                     <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8">
                       <path d={path} strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                   </div>
                   <h3 className="mt-4 text-base font-semibold text-white">{t(`home.materials.m${idx + 1}t`)}</h3>
-                  <p className="mt-1.5 text-sm leading-6 text-zinc-400">{t(`home.materials.m${idx + 1}b`)}</p>
+                  <p className="mt-1.5 hidden text-sm leading-6 text-zinc-400 sm:block">{t(`home.materials.m${idx + 1}b`)}</p>
                 </div>
               ))}
             </div>
