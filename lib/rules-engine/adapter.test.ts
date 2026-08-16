@@ -7,7 +7,8 @@ import { DEFAULT_DESIGN, emptyDesign, presetDesign } from "../build";
 import { scaleParts } from "../geometry/scale";
 import { sanitizeDesign } from "./design";
 import { designToEngineModel } from "./adapter";
-import { validateConfiguratorDesign } from "./configurator";
+import { safeValidateConfiguratorDesign, validateConfiguratorDesign } from "./configurator";
+import type { Design } from "../model";
 import { canonicalJson } from "./canonical";
 
 describe("designToEngineModel", () => {
@@ -43,6 +44,60 @@ describe("designToEngineModel", () => {
     const a = designToEngineModel(DEFAULT_DESIGN);
     const b = designToEngineModel(DEFAULT_DESIGN);
     expect(canonicalJson(a)).toBe(canonicalJson(b));
+  });
+});
+
+describe("divider coordinates are unit-relative", () => {
+  // Regression: carcass space is centre-origin, so a divider on the left half
+  // has a negative x. The adapter used to emit that raw, and the engine rejects
+  // negative coordinates — which crashed the checkout page mid-render.
+  const withDivider = (x: number): Design => ({
+    colour: "white",
+    thickness: 18,
+    bandBack: true,
+    outerCm: { w: 80, h: 100, d: 30 },
+    parts: [
+      { id: "left", role: "wall", axis: "x", aCm: 100, bCm: 30, pos: { x: -39.1, y: 0, z: 0 } },
+      { id: "right", role: "wall", axis: "x", aCm: 100, bCm: 30, pos: { x: 39.1, y: 0, z: 0 } },
+      { id: "bottom", role: "wall", axis: "y", aCm: 77.4, bCm: 30, pos: { x: 0, y: -49.1, z: 0 } },
+      { id: "top", role: "wall", axis: "y", aCm: 77.4, bCm: 30, pos: { x: 0, y: 49.1, z: 0 } },
+      { id: "div", role: "divider", axis: "x", aCm: 96.4, bCm: 30, pos: { x, y: 0, z: 0 } },
+    ],
+  });
+
+  it("maps a divider left of centre to a non-negative x and validates", () => {
+    const model = designToEngineModel(withDivider(-20));
+    const div = model.dividers?.[0];
+    expect(div).toBeDefined();
+    expect(div!.x_center_mm).toBeGreaterThanOrEqual(0);
+    expect(() => sanitizeDesign(model)).not.toThrow();
+    expect(() => validateConfiguratorDesign(withDivider(-20))).not.toThrow();
+  });
+
+  it("preserves the spacing between dividers on either side of centre", () => {
+    const left = designToEngineModel(withDivider(-20)).dividers![0].x_center_mm;
+    const right = designToEngineModel(withDivider(20)).dividers![0].x_center_mm;
+    expect(right - left).toBeCloseTo(400, 0); // 40 cm apart, in mm
+  });
+});
+
+describe("safeValidateConfiguratorDesign", () => {
+  it("routes a design the engine cannot map to review instead of throwing", () => {
+    // A degenerate part the engine refuses outright.
+    const broken: Design = {
+      colour: "white",
+      thickness: 18,
+      bandBack: true,
+      outerCm: { w: 40, h: 40, d: 30 },
+      parts: [{ id: "z", role: "shelf", axis: "y", aCm: 0, bCm: 0, pos: { x: 0, y: 0, z: 0 } }],
+    };
+    expect(() => validateConfiguratorDesign(broken)).toThrow();
+
+    const report = safeValidateConfiguratorDesign(broken);
+    expect(report.orderable).toBe(true);
+    expect(report.needsReview).toBe(true);
+    expect(report.acknowledgements).toHaveLength(0);
+    expect(report.report.health).toBe("REQUIRES_REVIEW");
   });
 });
 

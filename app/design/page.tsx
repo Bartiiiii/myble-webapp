@@ -21,6 +21,7 @@ import {
   makeId,
   emptyDesign,
   nudgeClear,
+  partSize,
   scaleParts,
   validate,
   saveDesign,
@@ -222,8 +223,14 @@ export default function DesignPage() {
       // occupied. Boards are solid, so shift it to the nearest free slot along
       // its own thickness axis rather than dropping it inside another board.
       const fresh = { ...makePart(d, role), id };
-      const span = d.outerCm[({ x: "w", y: "h", z: "d" } as const)[fresh.axis]];
-      return { ...d, parts: [...d.parts, nudgeClear(fresh, d.parts, thicknessCm(d), span)] };
+      const t = thicknessCm(d);
+      // Keep the search inside the carcass: the board's centre may travel until
+      // its face reaches the outer edge, no further.
+      const axisIdx = ({ x: 0, y: 1, z: 2 } as const)[fresh.axis];
+      const half = d.outerCm[({ x: "w", y: "h", z: "d" } as const)[fresh.axis]] / 2;
+      const halfSize = partSize(fresh, t)[axisIdx] / 2;
+      const range = { min: -half + halfSize, max: half - halfSize };
+      return { ...d, parts: [...d.parts, nudgeClear(fresh, d.parts, t, range)] };
     });
     setSelectedId(id);
     posthog.capture("part_added", { role, total_parts: design.parts.length + 1 });

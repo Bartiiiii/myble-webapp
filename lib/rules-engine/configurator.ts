@@ -6,6 +6,7 @@
 import type { Design } from "../model";
 import { CURRENT_CATALOGUE, catalogueForVersion } from "./catalogue";
 import { createEngine, type RulesEngine } from "./engine";
+import { ENGINE_VERSION } from "./constants";
 import { designToEngineModel, type AdapterOptions } from "./adapter";
 import { renderMessage, type Locale } from "./messages";
 import { MYBLE_PARTNER_PROFILE } from "./myble-profile";
@@ -101,6 +102,42 @@ export function validateConfiguratorDesign(design: Design, options: ValidateConf
     orderable: true,
     needsReview: REVIEW_HEALTH.has(report.health),
   };
+}
+
+/**
+ * The UI's entry point. The engine validates its inputs strictly and throws on
+ * a model it cannot describe — correct for the server, fatal in a render pass,
+ * where it would white-screen the checkout over advisory copy. Sales-first: an
+ * unmappable design still orders, and comes to us marked for review.
+ */
+export function safeValidateConfiguratorDesign(
+  design: Design,
+  options: ValidateConfiguratorOptions = {},
+): UiReport {
+  try {
+    return validateConfiguratorDesign(design, options);
+  } catch (err) {
+    if (typeof console !== "undefined") {
+      console.error("[rules] validation failed, routing design to manual review", err);
+    }
+    return {
+      report: {
+        engine_version: ENGINE_VERSION,
+        catalogue_version: CURRENT_CATALOGUE.catalogue_version,
+        design_hash: "unvalidated",
+        mode: "full",
+        evaluated_rule_ids: [],
+        findings: [],
+        health: "REQUIRES_REVIEW",
+        unacknowledged: [],
+      },
+      findings: [],
+      acknowledgements: [],
+      patches: [],
+      orderable: true,
+      needsReview: true,
+    };
+  }
 }
 
 /** Server-side re-validation against the exact stored catalogue version

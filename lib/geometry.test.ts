@@ -208,9 +208,26 @@ describe("collision (boards are solid)", () => {
   it("nudgeClear finds a free slot for a board dropped into occupied space", () => {
     const a: Part = { id: "a", role: "shelf", axis: "y", aCm: 40, bCm: 30, pos: { x: 0, y: 0, z: 0 } };
     const dropped: Part = { ...a, id: "b" };
-    const placed = nudgeClear(dropped, [a], t, 40);
+    const placed = nudgeClear(dropped, [a], t, { min: -20, max: 20 });
     expect(placed.pos.y).not.toBe(0);
     expect(isClear(placed, [a], t)).toBe(true);
+  });
+
+  it("nudgeClear never pushes a board outside the piece", () => {
+    // Every slot above and below is taken, so the only free space is outside
+    // the range — the board must stay put rather than float off the carcass.
+    const occupied: Part[] = [-1.8, 0, 1.8].map((y, i) => ({
+      id: `o${i}`,
+      role: "shelf",
+      axis: "y",
+      aCm: 40,
+      bCm: 30,
+      pos: { x: 0, y, z: 0 },
+    }));
+    const dropped: Part = { id: "b", role: "shelf", axis: "y", aCm: 40, bCm: 30, pos: { x: 0, y: 0, z: 0 } };
+    const placed = nudgeClear(dropped, occupied, t, { min: -2, max: 2 });
+    expect(placed.pos.y).toBeGreaterThanOrEqual(-2);
+    expect(placed.pos.y).toBeLessThanOrEqual(2);
   });
 });
 

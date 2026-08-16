@@ -121,22 +121,33 @@ export function slide(
 /**
  * Find the nearest free spot for a part that was dropped into occupied space
  * (a freshly added shelf, say), searching along its own thickness axis — the
- * direction that keeps a shelf a shelf. Returns the original position when
- * nothing within `spanCm` is clear.
+ * direction that keeps a shelf a shelf.
+ *
+ * `range` bounds the part's centre so the search stays inside the piece: a
+ * board pushed out past the carcass would read as a detached floater and is not
+ * a placement any customer asked for. Returns the part untouched when nothing
+ * inside the range is free.
  */
-export function nudgeClear(part: Part, others: Part[], tCm: number, spanCm: number): Part {
+export function nudgeClear(
+  part: Part,
+  others: Part[],
+  tCm: number,
+  range: { min: number; max: number },
+): Part {
   if (isClear(part, others, tCm)) return part;
 
   const axis = part.axis;
   const step = Math.max(tCm, 0.5);
-  const steps = Math.ceil(spanCm / step);
+  const base = part.pos[axis];
+  const reach = Math.max(range.max - base, base - range.min);
+  if (reach <= 0) return part;
+  const steps = Math.ceil(reach / step);
 
   for (let i = 1; i <= steps; i++) {
     for (const dir of [1, -1]) {
-      const candidate: Part = {
-        ...part,
-        pos: { ...part.pos, [axis]: part.pos[axis] + dir * i * step },
-      };
+      const at = base + dir * i * step;
+      if (at < range.min - EPS || at > range.max + EPS) continue;
+      const candidate: Part = { ...part, pos: { ...part.pos, [axis]: at } };
       if (isClear(candidate, others, tCm)) return candidate;
     }
   }

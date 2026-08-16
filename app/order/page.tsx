@@ -11,7 +11,7 @@ import { quoteDesign } from "../../lib/quote";
 import { cutListData, downloadCutList } from "../../lib/cutlist";
 import { useI18n, useT } from "../../lib/i18n";
 import { acceptedDocVersions } from "../../lib/legal";
-import { validateConfiguratorDesign } from "../../lib/rules-engine/configurator";
+import { safeValidateConfiguratorDesign } from "../../lib/rules-engine/configurator";
 import posthog from "posthog-js";
 
 // Persist the accepted-terms consent record (B4) locally so the confirmation
@@ -59,7 +59,7 @@ export default function OrderPage() {
   // generated instructions, packaging spec) are produced by us AFTER the order
   // is placed, so asserting them against a customer's cart wrongly flags every
   // correct design. Same stage the server re-validates with (app/api/order).
-  const rules = useMemo(() => validateConfiguratorDesign(design, { locale, stage: "design" }), [design, locale]);
+  const rules = useMemo(() => safeValidateConfiguratorDesign(design, { locale, stage: "design" }), [design, locale]);
   const [ackKeys, setAckKeys] = useState<Set<string>>(new Set());
   // Recommendations start collapsed — a wall of open expert-advice cards at
   // checkout reads as "something's wrong" even when it's routine guidance.

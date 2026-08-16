@@ -154,6 +154,11 @@ export function designToEngineModel(design: Design, options: AdapterOptions = {}
   const hasBack = classified.some((c) => c.role === "back");
   const allBoxes = classified.map((c) => c.box);
   const minY = Math.min(...allBoxes.map((b) => b.min.y));
+  // Carcass space is centre-origin, so half the piece sits at negative x. The
+  // engine measures everything from the unit's own corner (and rejects negative
+  // coordinates outright), so the left edge is the origin here, exactly as minY
+  // is for heights.
+  const minX = Math.min(...allBoxes.map((b) => b.min.x));
 
   // Unit dimensions are derived from the ACTUAL part bounding box, not the cm
   // model's `outerCm` — the two can disagree when the configurator clamps a
@@ -223,7 +228,7 @@ export function designToEngineModel(design: Design, options: AdapterOptions = {}
     .filter((c) => c.role === "divider")
     .map((c) => ({
       part_id: c.cmPart.id,
-      x_center_mm: cm((c.box.min.x + c.box.max.x) / 2),
+      x_center_mm: cm((c.box.min.x + c.box.max.x) / 2 - minX),
       bottom_y_mm: cm(c.box.min.y - minY),
       top_y_mm: cm(c.box.max.y - minY),
     }));
