@@ -6,6 +6,7 @@ import { Design, DEFAULT_DESIGN, loadDesign } from "../../../lib/design";
 import { SiteHeader } from "../../../components/SiteHeader";
 import { SiteFooter } from "../../../components/SiteFooter";
 import { useI18n } from "../../../lib/i18n";
+import { PAYMENTS_ENABLED } from "../../../lib/comgate/config";
 
 export default function OrderConfirmationPage() {
   const { t, locale } = useI18n();
@@ -44,9 +45,19 @@ export default function OrderConfirmationPage() {
           <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">
             {t("confirmation.title")}
           </h1>
-          <p className="mx-auto mt-4 max-w-lg text-base leading-7 text-zinc-600">
-            {t("confirmation.body")}
-          </p>
+          {/* While online payment is off the order is real but unpaid — say what
+              actually happens next instead of a "we're off to production" state
+              that hasn't been earned yet. */}
+          {PAYMENTS_ENABLED ? (
+            <p className="mx-auto mt-4 max-w-lg text-base leading-7 text-zinc-600">
+              {t("confirmation.body")}
+            </p>
+          ) : (
+            <div className="mx-auto mt-6 max-w-lg rounded-2xl bg-indigo-50/60 p-5 text-left ring-1 ring-indigo-200">
+              <p className="text-sm font-semibold text-indigo-900">{t("checkout.paymentsOff.confirmationTitle")}</p>
+              <p className="mt-1 text-sm leading-6 text-indigo-800">{t("checkout.paymentsOff.confirmationBody")}</p>
+            </div>
+          )}
 
           <div className="mx-auto mt-6 flex flex-wrap items-center justify-center gap-2 text-sm">
             <span className="rounded-full bg-zinc-50 px-3 py-1 text-zinc-700 ring-1 ring-zinc-200">{t("parts.label")}</span>

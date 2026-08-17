@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import React from "react";
 import { HomeNavAuth } from "./HomeNavAuth";
 import { useT } from "../lib/i18n";
@@ -26,8 +27,19 @@ export function MybleMark({ className = "h-7 w-7", accent = "#4F46E5" }: { class
 }
 
 export function Logo({ dark = false }: { dark?: boolean }) {
+  const pathname = usePathname();
+
   return (
-    <Link href="/" className="flex items-center gap-2">
+    <Link
+      href="/"
+      className="flex items-center gap-2"
+      onClick={(e) => {
+        if (pathname === "/") {
+          e.preventDefault();
+          window.location.reload();
+        }
+      }}
+    >
       <span className={dark ? "text-zinc-50" : "text-zinc-900"}>
         <MybleMark accent={dark ? "#818CF8" : "#4F46E5"} />
       </span>

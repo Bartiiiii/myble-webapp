@@ -34,7 +34,7 @@ const en: Tree = {
     backHome: "Back to home",
     menu: "Menu",
   },
-  auth: { login: "Log in", logout: "Sign out", account: "Account", signedIn: "Signed in" },
+  auth: { login: "Log in", logout: "Sign out", account: "Account", myAccount: "My Account", signedIn: "Signed in" },
   common: {
     delivery: "Delivery",
     from: "from",
@@ -131,7 +131,7 @@ const en: Tree = {
       m2t: "Time saved on cutting",
       m2b: "Every part arrives finished to the millimetre, joints already drilled.",
       m3t: "Packed to survive the courier",
-      m3b: "Five-ply cartons and a drop-tested layout reach your door intact.",
+      m3b: "Sturdy cartons and careful packing built for the journey to your door.",
       m4t: "Instructions drawn for your piece",
       m4b: "A guide for your exact design, numbered parts, done in 30 minutes.",
     },
@@ -163,7 +163,7 @@ const en: Tree = {
       { q: "How long does it take?", a: "Production usually takes 5 to 8 business days once your dimensions are confirmed, followed by delivery via Zásilkovna or PPL. You'll see the exact delivery date with your order." },
       { q: "Can I assemble it myself?", a: "Yes. Every part is numbered, the joints are simple, and the assembly instructions are made for your specific piece. Most customers finish in 30 to 45 minutes." },
       { q: "Can I return made-to-measure furniture?", a: "Because each piece is built to your exact measurements, it can't be returned once production starts, that's standard for made-to-order goods. If anything is faulty, we handle it quickly and fairly." },
-      { q: "What if it arrives damaged?", a: "Every order is packed for transport and drop-tested before it ships. If something still arrives damaged, send us a photo and we'll sort it out right away." },
+      { q: "What if it arrives damaged?", a: "Every order is carefully packed for transport before it ships. If something still arrives damaged, send us a photo and we'll sort it out right away." },
     ],
     footerCtaTitle: "Solve your gap today.",
     footerCtaBody: "Enter dimensions, pick a colour, and see the price in a few minutes.",
@@ -254,6 +254,9 @@ const en: Tree = {
     share: "Share",
     shareCopied: "Link copied ✓",
     shareErr: "Sharing failed",
+    save: "Save",
+    saveDone: "Saved ✓",
+    saveErr: "Saving failed",
   },
   breakdown: {
     board: "Material (board)",
@@ -272,7 +275,6 @@ const en: Tree = {
     max: (p) => `${p.field}: maximum is ${p.value} cm.`,
     nan: (p) => `${p.field}: enter a number.`,
     tooMany: (p) => `Too many parts (max ${p.max}).`,
-    maxEdge: (p) => `Pieces taller and wider than ${p.cm} cm are coming. For now we fit in a parcel.`,
     floating: "Some parts don't touch the rest of the furniture. Connect them before continuing.",
   },
   parts: { count: (p) => `${p.n} ${Number(p.n) === 1 ? "part" : "parts"}`, label: "Custom furniture" },
@@ -326,9 +328,12 @@ const en: Tree = {
     summaryDelivery: "Delivery",
     summaryTotal: "Total price",
     place: "Order with obligation to pay",
-    confirmFirst: "Please confirm the dimensions above first.",
+    /** Button label while online payment is off — nothing is charged here. */
+    placeNoPay: "Submit order",
+    deliveryFree: "Free",
+    confirmFirst: "Please confirm the dimensions first.",
     badge1: "Secure payment · made in Czechia",
-    badge2: "Five-ply cardboard, defects handled fairly and fast",
+    badge2: "Sturdy packaging, defects handled fairly and fast",
     badge3: "Custom guide, assembly in ~30 minutes",
   },
   confirmation: {
@@ -366,6 +371,63 @@ const en: Tree = {
     skipTitle: "Don't want to sign in?",
     asGuest: "Continue as guest",
   },
+  account: {
+    nav: { overview: "Overview", designs: "My Designs", orders: "Orders", settings: "Settings" },
+    overview: {
+      title: "My Account",
+      greeting: (p) => `Hi, ${p.name}`,
+      designsCount: (p) => `${p.n} saved ${Number(p.n) === 1 ? "design" : "designs"}`,
+      ordersCount: (p) => `${p.n} ${Number(p.n) === 1 ? "order" : "orders"}`,
+      designsCta: "View your designs →",
+      ordersCta: "View your orders →",
+    },
+    designs: {
+      title: "My Designs",
+      empty: "No saved designs yet.",
+      emptyHint: "Save a design from the configurator and it'll show up here.",
+      emptyCta: "Start designing →",
+      untitled: "Untitled design",
+      savedOn: (p) => `Saved ${p.date}`,
+      open: "Open in configurator",
+      rename: "Rename",
+      renameSave: "Save",
+      renameCancel: "Cancel",
+      delete: "Remove",
+      deleteConfirm: "Remove this design? This will also break its share link, if you've sent one.",
+    },
+    orders: {
+      title: "Orders",
+      empty: "No orders yet.",
+      emptyHint: "Once you place an order, it'll show up here.",
+      disclaimer: "Orders placed with this e-mail address.",
+      orderNo: "Order",
+      placedOn: "Placed",
+      total: "Total",
+      status: {
+        received: "Received",
+        confirmed: "Confirmed",
+        in_production: "In production",
+        shipped: "Shipped",
+        delivered: "Delivered",
+        cancelled: "Cancelled",
+      },
+    },
+    settings: {
+      title: "Settings",
+      profileTitle: "Profile",
+      managedByGoogle: "Managed by your Google account.",
+      nameLabel: "Name",
+      emailLabel: "E-mail",
+      languageTitle: "Language",
+      newsletterTitle: "Newsletter",
+      newsletterBody: "Occasional e-mails on measuring, materials and new pieces.",
+      newsletterOn: "Subscribed",
+      newsletterOff: "Not subscribed",
+      dataTitle: "Your data",
+      dataBody: "You can request a copy or deletion of your personal data at any time.",
+      dataRequestLink: "Request my data →",
+    },
+  },
   viewer: { remove: "Remove" },
   // Seller identification / imprint (B9).
   imprint: {
@@ -373,6 +435,8 @@ const en: Tree = {
     ico: "Business ID (IČO): 24439673",
     address: "Uralská 689/7, 160 00 Praha 6 – Bubeneč, Czech Republic",
     email: "myble.eu@gmail.com",
+    tradeRegister: "Sole trader entered in the Czech Trade Register.",
+    notVatPayer: "Not registered for VAT.",
   },
   footer: {
     legal: "Legal",
@@ -440,6 +504,24 @@ const en: Tree = {
     mustAccept: "Please accept the Terms & Conditions, Complaints Procedure and Privacy Policy to continue.",
     mustAckCustom: "Please confirm you understand the custom-made notice.",
     czOnly: "We currently deliver within the Czech Republic only.",
+    // Shown only while NEXT_PUBLIC_PAYMENTS_ENABLED is off — the order is real
+    // and binding, but it is settled by invoice rather than at the checkout.
+    paymentsOff: {
+      noticeTitle: "Online card payment is being activated",
+      noticeBody:
+        "You can place your order now. Nothing is charged on this page: we confirm your order by e-mail and arrange payment by bank transfer against an invoice.",
+      modalTitle: "Online payment is not active yet",
+      modalBody1:
+        "Your order will be recorded and we will e-mail you to arrange payment by bank transfer against an invoice.",
+      modalBody2:
+        "Production starts once the payment is received, and the 2–4 week lead time runs from that moment.",
+      modalConfirm: "I understand, submit the order",
+      modalCancel: "Back",
+      submitting: "Submitting…",
+      confirmationTitle: "Payment by bank transfer",
+      confirmationBody:
+        "Nothing has been charged. We will e-mail you an invoice with our bank details. Once the payment is received we start production, and the 2–4 week lead time runs from that moment.",
+    },
   },
   receipt: {
     title: "Your documents",
@@ -465,6 +547,7 @@ const en: Tree = {
     formSending: "Sending…",
     formOk: "Thanks, we'll get back to you within one business day.",
     formErr: "Sending failed. Please try again or use the e-mail above.",
+    dataRequestPrefill: "I'd like to request a copy of / deletion of my personal data.",
   },
   about: {
     title: "About Myble",
@@ -483,7 +566,7 @@ const cs: Tree = {
     backHome: "Zpět na úvod",
     menu: "Menu",
   },
-  auth: { login: "Přihlásit", logout: "Odhlásit se", account: "Účet", signedIn: "Přihlášeno" },
+  auth: { login: "Přihlásit", logout: "Odhlásit se", account: "Účet", myAccount: "Můj účet", signedIn: "Přihlášeno" },
   common: { delivery: "Doprava", from: "už od", cm: "cm", mm: "mm", loadingShort: "Náhled…" },
   colors: { white: "Bílá", black: "Černá" },
   roles: { wall: "Stěna", shelf: "Police", divider: "Příčka" },
@@ -572,7 +655,7 @@ const cs: Tree = {
       m2t: "Ušetřený čas na řezání",
       m2b: "Každý díl dorazí hotový na milimetr, spoje už předvrtané.",
       m3t: "Zabaleno, aby to přežilo dopravu",
-      m3b: "Pětivrstvý karton a balení testované pádem dorazí bez úhony.",
+      m3b: "Pevný karton a pečlivé balení dorazí bez úhony.",
       m4t: "Návod nakreslený pro váš kus",
       m4b: "Návod pro váš design, očíslované díly, hotovo za 30 minut.",
     },
@@ -604,7 +687,7 @@ const cs: Tree = {
       { q: "Jak dlouho to trvá?", a: "Výroba trvá obvykle 5 až 8 pracovních dnů od potvrzení rozměrů, poté doručení Zásilkovnou nebo PPL. Přesný termín doručení uvidíte u své objednávky." },
       { q: "Zvládnu sestavení sám?", a: "Ano. Každý díl je očíslovaný, spoje jsou jednoduché a montážní návod je připravený přesně pro váš kus. Většina zákazníků to zvládne za 30 až 45 minut." },
       { q: "Můžu vrátit nábytek na míru?", a: "Protože každý kus vyrábíme přesně na vaše rozměry, po zahájení výroby ho nelze vrátit, to je u zboží na zakázku standardní. Případnou vadu ale řešíme rychle a férově." },
-      { q: "Co když to dorazí poškozené?", a: "Každou objednávku balíme na přepravu a testujeme pádem ještě před odesláním. Pokud přesto něco dorazí poškozené, pošlete nám fotku a obratem to vyřešíme." },
+      { q: "Co když to dorazí poškozené?", a: "Každou objednávku pečlivě balíme na přepravu. Pokud přesto něco dorazí poškozené, pošlete nám fotku a obratem to vyřešíme." },
     ],
     footerCtaTitle: "Vyřešte svou mezeru ještě dnes.",
     footerCtaBody: "Zadejte rozměry, vyberte barvu a uvidíte cenu během pár minut.",
@@ -695,6 +778,9 @@ const cs: Tree = {
     share: "Sdílet",
     shareCopied: "Odkaz zkopírován ✓",
     shareErr: "Sdílení se nepovedlo",
+    save: "Uložit",
+    saveDone: "Uloženo ✓",
+    saveErr: "Uložení se nepovedlo",
   },
   breakdown: {
     board: "Materiál (deska)",
@@ -713,7 +799,6 @@ const cs: Tree = {
     max: (p) => `${p.field}: maximum je ${p.value} cm.`,
     nan: (p) => `${p.field}: zadejte číslo.`,
     tooMany: (p) => `Příliš mnoho dílů (max ${p.max}).`,
-    maxEdge: (p) => `Vyšší a širší kusy než ${p.cm} cm chystáme. Zatím se vejdeme do balíku.`,
     floating: "Některé díly se nedotýkají zbytku nábytku. Spojte je, než budete pokračovat.",
   },
   parts: { count: (p) => `${p.n} ${czechDil(Number(p.n))}`, label: "Nábytek na míru" },
@@ -767,9 +852,12 @@ const cs: Tree = {
     summaryDelivery: "Doprava",
     summaryTotal: "Celková cena",
     place: "Objednávka zavazující k platbě",
-    confirmFirst: "Nejprve potvrďte rozměry výše.",
+    /** Popisek tlačítka, dokud není online platba spuštěná — nic se nestrhává. */
+    placeNoPay: "Odeslat objednávku",
+    deliveryFree: "Zdarma",
+    confirmFirst: "Nejprve potvrďte rozměry.",
     badge1: "Bezpečná platba · vyrobeno v ČR",
-    badge2: "Pětivrstvý karton, vady řešíme férově a obratem",
+    badge2: "Pevný obal, vady řešíme férově a obratem",
     badge3: "Návod na míru, sestavení do ~30 minut",
   },
   confirmation: {
@@ -807,12 +895,71 @@ const cs: Tree = {
     skipTitle: "Nechcete se přihlašovat?",
     asGuest: "Pokračovat jako host",
   },
+  account: {
+    nav: { overview: "Přehled", designs: "Moje návrhy", orders: "Objednávky", settings: "Nastavení" },
+    overview: {
+      title: "Můj účet",
+      greeting: (p) => `Ahoj, ${p.name}`,
+      designsCount: (p) => `${p.n} ${czechNavrh(Number(p.n))} uloženo`,
+      ordersCount: (p) => `${p.n} ${czechObjednavka(Number(p.n))}`,
+      designsCta: "Zobrazit vaše návrhy →",
+      ordersCta: "Zobrazit vaše objednávky →",
+    },
+    designs: {
+      title: "Moje návrhy",
+      empty: "Zatím žádné uložené návrhy.",
+      emptyHint: "Uložte návrh z konfigurátoru a objeví se tady.",
+      emptyCta: "Začít navrhovat →",
+      untitled: "Nepojmenovaný návrh",
+      savedOn: (p) => `Uloženo ${p.date}`,
+      open: "Otevřít v konfigurátoru",
+      rename: "Přejmenovat",
+      renameSave: "Uložit",
+      renameCancel: "Zrušit",
+      delete: "Odebrat",
+      deleteConfirm: "Odebrat tento návrh? Přestane fungovat i jeho odkaz ke sdílení, pokud jste ho někomu poslali.",
+    },
+    orders: {
+      title: "Objednávky",
+      empty: "Zatím žádné objednávky.",
+      emptyHint: "Jakmile objednáte, objeví se tady.",
+      disclaimer: "Objednávky zadané s touto e-mailovou adresou.",
+      orderNo: "Objednávka",
+      placedOn: "Zadáno",
+      total: "Celkem",
+      status: {
+        received: "Přijato",
+        confirmed: "Potvrzeno",
+        in_production: "Ve výrobě",
+        shipped: "Odesláno",
+        delivered: "Doručeno",
+        cancelled: "Zrušeno",
+      },
+    },
+    settings: {
+      title: "Nastavení",
+      profileTitle: "Profil",
+      managedByGoogle: "Spravováno vaším účtem Google.",
+      nameLabel: "Jméno",
+      emailLabel: "E-mail",
+      languageTitle: "Jazyk",
+      newsletterTitle: "Novinky e-mailem",
+      newsletterBody: "Občasné e-maily o měření, materiálech a nových kusech.",
+      newsletterOn: "Přihlášeno k odběru",
+      newsletterOff: "Nepřihlášeno k odběru",
+      dataTitle: "Vaše data",
+      dataBody: "Kdykoli si můžete vyžádat kopii nebo smazání svých osobních údajů.",
+      dataRequestLink: "Vyžádat moje data →",
+    },
+  },
   viewer: { remove: "Odebrat" },
   imprint: {
     name: "Bartłomiej Karol Kwaśnica",
     ico: "IČO: 24439673",
     address: "Uralská 689/7, 160 00 Praha 6 – Bubeneč, Česká republika",
     email: "myble.eu@gmail.com",
+    tradeRegister: "Fyzická osoba podnikající zapsaná v živnostenském rejstříku.",
+    notVatPayer: "Nejsme plátci DPH.",
   },
   footer: {
     legal: "Právní",
@@ -880,6 +1027,24 @@ const cs: Tree = {
     mustAccept: "Pro pokračování prosím přijměte Obchodní podmínky, Reklamační řád a Ochranu osobních údajů.",
     mustAckCustom: "Potvrďte prosím, že berete na vědomí upozornění o výrobě na míru.",
     czOnly: "Aktuálně doručujeme pouze v rámci České republiky.",
+    // Zobrazuje se jen, dokud je NEXT_PUBLIC_PAYMENTS_ENABLED vypnuté —
+    // objednávka je závazná, platba ale proběhne převodem na fakturu.
+    paymentsOff: {
+      noticeTitle: "Online platba kartou se právě spouští",
+      noticeBody:
+        "Objednávku můžete odeslat už teď. Na této stránce se nic nestrhává: objednávku vám potvrdíme e-mailem a platbu domluvíme bankovním převodem na základě faktury.",
+      modalTitle: "Online platba zatím není spuštěná",
+      modalBody1:
+        "Vaši objednávku zaevidujeme a ozveme se vám e-mailem, abychom domluvili platbu bankovním převodem na základě vystavené faktury.",
+      modalBody2:
+        "Výrobu zahájíme až po přijetí platby a od té chvíle běží dodací lhůta 2–4 týdny.",
+      modalConfirm: "Rozumím, odeslat objednávku",
+      modalCancel: "Zpět",
+      submitting: "Odesílám…",
+      confirmationTitle: "Platba bankovním převodem",
+      confirmationBody:
+        "Nic vám nebylo strženo. Pošleme vám e-mailem fakturu s našimi platebními údaji. Po přijetí platby zahájíme výrobu a od té chvíle běží dodací lhůta 2–4 týdny.",
+    },
   },
   receipt: {
     title: "Vaše dokumenty",
@@ -905,6 +1070,7 @@ const cs: Tree = {
     formSending: "Odesílám…",
     formOk: "Díky, ozveme se do jednoho pracovního dne.",
     formErr: "Odeslání se nepovedlo. Zkuste to znovu nebo použijte e-mail výše.",
+    dataRequestPrefill: "Chtěl/a bych požádat o kopii, nebo smazání svých osobních údajů.",
   },
   about: {
     title: "O Myble",
@@ -917,6 +1083,18 @@ function czechDil(n: number): string {
   if (n === 1) return "díl";
   if (n >= 2 && n <= 4) return "díly";
   return "dílů";
+}
+
+function czechNavrh(n: number): string {
+  if (n === 1) return "návrh";
+  if (n >= 2 && n <= 4) return "návrhy";
+  return "návrhů";
+}
+
+function czechObjednavka(n: number): string {
+  if (n === 1) return "objednávka";
+  if (n >= 2 && n <= 4) return "objednávky";
+  return "objednávek";
 }
 
 const DICT: Record<Locale, Tree> = { en, cs };

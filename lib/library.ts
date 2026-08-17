@@ -5,6 +5,17 @@
 //   • boards are axis-aligned only (h shelves / v dividers) — no diagonal cuts
 //   • colours: white / black; thickness 18 mm for all curated pieces
 //   • legacy plank coordinates are interior cm from bottom-left; BOARD = 1.8 cm
+//   • width and height stay within LIMITS (≤ 120 cm) so the piece ships in one parcel
+//   • every plank butts against a wall or another plank — nothing floats
+//   • planks never cross each other; a divider spanning several bays is cut into
+//     one board per bay, exactly as the workshop would make it
+//
+// `lib/library.test.ts` runs the real validator over every entry below, so a
+// design that breaks any of the above fails CI instead of greeting a customer
+// with red boxes the moment they open it.
+//
+// Interior span for a piece is (w - 3.6) × (h - 3.6): a plank at x = 0 meets the
+// left wall, one ending at w - 3.6 meets the right wall.
 //
 // Names/descriptions live in lib/i18n.tsx under `library.items.<id>`.
 // User-submitted designs will join this list later via the backstage
@@ -42,14 +53,15 @@ export interface LibraryItem {
 /** Legacy-format sources for the curated pieces (BOARD = 1.8 cm). */
 const L: Record<string, LegacyDesign> = {
   // ── The five hero-showcase pieces, unchanged ─────────────────────────────
+  /** Half-width shelves alternating left/right, each anchored to its own wall. */
   staggered: {
-    widthCm: 72, heightCm: 132, depthCm: 34, decor: "bila",
+    widthCm: 72, heightCm: 118, depthCm: 34, decor: "bila",
     planks: [
-      { id: "cat-1", o: "h", x: 0, y: 28, len: 36 },
-      { id: "cat-2", o: "h", x: 34, y: 52, len: 34 },
-      { id: "cat-3", o: "h", x: 0, y: 78, len: 36 },
-      { id: "cat-4", o: "h", x: 34, y: 102, len: 34 },
-      { id: "cat-den", o: "v", x: 40, y: 0, len: 28 },
+      { id: "cat-den", o: "v", x: 33.4, y: 0, len: 28 },
+      { id: "cat-1", o: "h", x: 0, y: 28, len: 33.4 },
+      { id: "cat-2", o: "h", x: 35.2, y: 28, len: 33.2 },
+      { id: "cat-3", o: "h", x: 0, y: 57, len: 40 },
+      { id: "cat-4", o: "h", x: 28.4, y: 85, len: 40 },
     ],
   },
   record: {
@@ -61,34 +73,41 @@ const L: Record<string, LegacyDesign> = {
       { id: "vin-3", o: "v", x: 70, y: 0, len: 25 },
     ],
   },
+  /** 2 × 5 cube grid: full-width shelves, with the centre divider cut per bay. */
   grid: {
-    widthCm: 82, heightCm: 122, depthCm: 33, decor: "bila",
+    widthCm: 82, heightCm: 118, depthCm: 33, decor: "bila",
     planks: [
-      { id: "cube-v", o: "v", x: 38, y: 0, len: 118 },
-      { id: "cube-1", o: "h", x: 0, y: 23, len: 78 },
-      { id: "cube-2", o: "h", x: 0, y: 47, len: 78 },
-      { id: "cube-3", o: "h", x: 0, y: 71, len: 78 },
-      { id: "cube-4", o: "h", x: 0, y: 95, len: 78 },
+      { id: "cube-1", o: "h", x: 0, y: 21.4, len: 78.4 },
+      { id: "cube-2", o: "h", x: 0, y: 44.6, len: 78.4 },
+      { id: "cube-3", o: "h", x: 0, y: 67.8, len: 78.4 },
+      { id: "cube-4", o: "h", x: 0, y: 91, len: 78.4 },
+      { id: "cube-v0", o: "v", x: 38.3, y: 0, len: 21.4 },
+      { id: "cube-v1", o: "v", x: 38.3, y: 23.2, len: 21.4 },
+      { id: "cube-v2", o: "v", x: 38.3, y: 46.4, len: 21.4 },
+      { id: "cube-v3", o: "v", x: 38.3, y: 69.6, len: 21.4 },
+      { id: "cube-v4", o: "v", x: 38.3, y: 92.8, len: 21.6 },
     ],
   },
+  /** Three bays: a tall open middle for the box, split shelves either side. */
   tvbench: {
-    widthCm: 130, heightCm: 44, depthCm: 40, decor: "bila",
+    widthCm: 118, heightCm: 44, depthCm: 40, decor: "bila",
     planks: [
-      { id: "tv-v1", o: "v", x: 42, y: 0, len: 40 },
-      { id: "tv-v2", o: "v", x: 84, y: 0, len: 40 },
-      { id: "tv-hl", o: "h", x: 0, y: 20, len: 42 },
-      { id: "tv-hr", o: "h", x: 86, y: 20, len: 40 },
+      { id: "tv-v1", o: "v", x: 37, y: 0, len: 40.4 },
+      { id: "tv-v2", o: "v", x: 75.6, y: 0, len: 40.4 },
+      { id: "tv-hl", o: "h", x: 0, y: 19, len: 37 },
+      { id: "tv-hr", o: "h", x: 77.4, y: 19, len: 37 },
     ],
   },
+  /** Desk surface at 73.6 cm off the floor, storage below it and shelves above. */
   worknook: {
-    widthCm: 112, heightCm: 134, depthCm: 45, decor: "grafit",
+    widthCm: 112, heightCm: 118, depthCm: 45, decor: "grafit",
     planks: [
-      { id: "desk-top", o: "h", x: 0, y: 70, len: 108 },
-      { id: "desk-vr", o: "v", x: 72, y: 70, len: 60 },
-      { id: "desk-u1", o: "h", x: 74, y: 96, len: 34 },
-      { id: "desk-u2", o: "h", x: 74, y: 116, len: 34 },
-      { id: "desk-vl", o: "v", x: 36, y: 0, len: 70 },
-      { id: "desk-l1", o: "h", x: 0, y: 34, len: 36 },
+      { id: "desk-vl", o: "v", x: 36.3, y: 0, len: 70 },
+      { id: "desk-l1", o: "h", x: 0, y: 34, len: 36.3 },
+      { id: "desk-top", o: "h", x: 0, y: 70, len: 108.4 },
+      { id: "desk-vr", o: "v", x: 71.8, y: 71.8, len: 42.6 },
+      { id: "desk-u1", o: "h", x: 73.6, y: 85, len: 34.8 },
+      { id: "desk-u2", o: "h", x: 73.6, y: 100, len: 34.8 },
     ],
   },
 

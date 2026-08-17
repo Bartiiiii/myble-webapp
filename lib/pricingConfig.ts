@@ -42,7 +42,7 @@ export const PACKAGING_CZK = 110;
  */
 export const INBOUND_ALLOC_CZK = 130;
 
-/** Payment-processor fee as a fraction of price (Stripe/GoPay/Comgate EU cards). §2. */
+/** Payment-processor fee as a fraction of price (Comgate EU cards). §2. */
 export const PAYMENT_FEE_PCT = 0.018;
 
 /** Minimum sellable kit price, CZK — keeps tiny designs above break-even. §4. */

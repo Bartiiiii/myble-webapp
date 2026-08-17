@@ -136,7 +136,11 @@ function HeroShowcase() {
 
   return (
     <div>
-      <div className="relative isolate h-96 overflow-hidden rounded-3xl bg-[#0b0d12] ring-1 ring-white/10 shadow-[inset_0_2px_44px_rgba(0,0,0,0.55)]">
+      <div
+        className="relative isolate h-96 overflow-hidden rounded-3xl bg-[#0b0d12] ring-1 ring-white/10 shadow-[inset_0_2px_44px_rgba(0,0,0,0.55)]"
+        style={{ clipPath: "inset(0 round 1.5rem)" }}
+      >
+
         {/* Soft radial highlight behind the model — grounds the piece on the dark stage. */}
         <div
           className="pointer-events-none absolute inset-0 z-0"
@@ -201,7 +205,7 @@ function HeroCopy() {
         <Link
           href="/library"
           onClick={() => posthog.capture("home_library_clicked", { location: "hero" })}
-          className="press inline-flex items-center justify-center rounded-xl bg-white px-5 py-3.5 text-sm font-semibold text-zinc-900 ring-1 ring-zinc-300 hover:bg-zinc-50"
+          className="inline-flex items-center justify-center px-1 py-3.5 text-sm font-semibold text-zinc-600 transition hover:text-zinc-900 sm:justify-start"
         >
           {t("home.heroLibrary")}
         </Link>

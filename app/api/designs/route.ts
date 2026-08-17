@@ -1,6 +1,6 @@
-import { randomBytes } from "node:crypto";
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/utils/supabase/admin";
+import { isDesignShaped, makeSlug, MAX_DESIGN_BYTES, SLUG_RE } from "@/lib/designSlug";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Shareable design snapshots.
@@ -12,27 +12,11 @@ import { createAdminClient } from "@/utils/supabase/admin";
 // service-role client here. Slugs are 8 chars of base62 from crypto randomness
 // (~47 bits), unguessable enough for share links that carry no personal data —
 // a design is just geometry + colour.
+//
+// /api/account/designs (My Account → My Designs) persists into this same
+// table under the same slug format — see lib/designSlug.ts for the shared
+// validation both routes rely on.
 // ─────────────────────────────────────────────────────────────────────────────
-
-const SLUG_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-const SLUG_RE = /^[A-Za-z0-9]{8}$/;
-const MAX_DESIGN_BYTES = 100_000;
-
-function makeSlug(): string {
-  const bytes = randomBytes(8);
-  let slug = "";
-  for (const b of bytes) slug += SLUG_ALPHABET[b % SLUG_ALPHABET.length];
-  return slug;
-}
-
-function isDesignShaped(v: unknown): v is Record<string, unknown> {
-  return (
-    !!v &&
-    typeof v === "object" &&
-    Array.isArray((v as { parts?: unknown }).parts) &&
-    typeof (v as { outerCm?: unknown }).outerCm === "object"
-  );
-}
 
 export async function POST(req: Request) {
   let body: { design?: unknown; locale?: string };

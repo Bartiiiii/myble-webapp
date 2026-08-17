@@ -57,6 +57,17 @@ export function HomeNavAuth() {
           <p className="truncate px-3 py-2 text-xs text-zinc-500" title={user?.email ?? undefined}>
             {user?.email ?? user?.name ?? t("auth.signedIn")}
           </p>
+          <a
+            href="/account"
+            role="menuitem"
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium text-zinc-800 hover:bg-zinc-50"
+          >
+            <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
+              <circle cx="8" cy="5.5" r="2.5" />
+              <path d="M2.5 14c.8-2.8 3-4.3 5.5-4.3s4.7 1.5 5.5 4.3" strokeLinecap="round" />
+            </svg>
+            {t("auth.myAccount")}
+          </a>
           {(session as (typeof session & { isAdmin?: boolean }) | null)?.isAdmin ? (
             <a
               href="/admin"

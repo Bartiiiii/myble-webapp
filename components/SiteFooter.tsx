@@ -69,7 +69,21 @@ export function SiteFooter({ newsletter = true }: { newsletter?: boolean }) {
 
         {newsletter && <NewsletterForm source="footer" className="mt-10" />}
 
+        {/* Seller identification on every page. Comgate's merchant review looks
+            for company registration details site-wide, not only on /contact. */}
         <div className="mt-10 border-t border-zinc-200 pt-6">
+          <p className="text-xs leading-5 text-zinc-500">
+            <span className="font-medium text-zinc-700">{t("imprint.name")}</span>
+            {" · "}{t("imprint.ico")}
+            {" · "}{t("imprint.address")}
+          </p>
+          <p className="mt-1 text-xs leading-5 text-zinc-500">
+            {t("imprint.tradeRegister")} {t("imprint.notVatPayer")}{" "}
+            <a href="mailto:myble.eu@gmail.com" className="hover:text-zinc-900">{t("imprint.email")}</a>
+          </p>
+        </div>
+
+        <div className="mt-6 border-t border-zinc-200 pt-6">
           <LanguageSwitcher />
         </div>
       </div>

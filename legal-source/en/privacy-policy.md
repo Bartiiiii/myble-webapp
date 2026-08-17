@@ -1,6 +1,6 @@
 # PRIVACY POLICY (GDPR) — Myble (my-ble.eu)
 
-**Version 1.1 (MVP) — Effective date: 27 June 2026**
+**Version 1.2 (MVP) — Effective date: 17 August 2026**
 
 ## 1\. Data controller
 
@@ -18,7 +18,7 @@ the e-mail above.
     (dimensions/specifications), price, delivery details, communication
     history.
   - **Payment data:** payment status and reference data (full card data
-    is processed by GoPay, not by the Controller).
+    is processed by Comgate, not by the Controller).
   - **Technical data:** IP address, cookies, device/browser data
     (depending on cookie choices).
 
@@ -35,8 +35,8 @@ the e-mail above.
 ## 4\. Recipients / processors
 
 We share personal data only with providers necessary for operating the
-E-shop, in particular: - **GoPay s.r.o.** (Czech Republic) — payment
-processing; - **Zásilkovna / Packeta** (Czech Republic) — delivery of
+E-shop, in particular: - **Comgate a.s.**, Business ID (IČO) 279 24 505 (Czech
+Republic) — payment processing; - **Zásilkovna / Packeta** (Czech Republic) — delivery of
 parcels/parts within the Czech Republic; - **A furniture
 manufacturing/material partner located in Poland (EU)** — produces and
 ships the panels/material parts **directly to you** and therefore
@@ -90,4 +90,4 @@ significant effects.
 
 GDPR requests: **myble.eu@gmail.com**.
 
-**Version 1.1 — Effective date: 27 June 2026.**
+**Version 1.2 — Effective date: 17 August 2026.**

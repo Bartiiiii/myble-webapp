@@ -3,6 +3,7 @@
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { SiteHeader } from "../../components/SiteHeader";
 import { SiteFooter } from "../../components/SiteFooter";
@@ -75,8 +76,6 @@ function issueText(t: TFn, iss: Issue): string {
       return t("validate.floating");
     case "tooMany":
       return t("validate.tooMany", { max: iss.value ?? 0 });
-    case "maxEdge":
-      return t("validate.maxEdge", { cm: iss.value ?? 0 });
     default: {
       const field = t(`design.${iss.field ?? "width"}`);
       if (iss.code === "nan") return t("validate.nan", { field });
@@ -103,10 +102,16 @@ function makePart(design: Design, role: Role): Part {
 export default function DesignPage() {
   const router = useRouter();
   const { t, fmt, locale } = useI18n();
+  const { data: session } = useSession();
   const [design, setDesign] = useState<Design>(DEFAULT_DESIGN);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [priceOpen, setPriceOpen] = useState(false); // collapsed by default
   const [shareState, setShareState] = useState<"idle" | "loading" | "copied" | "error">("idle");
+  const [saveState, setSaveState] = useState<"idle" | "loading" | "done" | "error">("idle");
+  // The slug this design was loaded from (a share link) or already saved
+  // under this session — lets saveToAccount() claim/update that row instead
+  // of inserting a duplicate on every click.
+  const [currentSlug, setCurrentSlug] = useState<string | null>(null);
   const [inspirationCount, setInspirationCount] = useState(INSPIRATION_PAGE_SIZE);
 
   // Hydrate on the client only (after mount, to avoid a hydration mismatch
@@ -118,8 +123,12 @@ export default function DesignPage() {
       fetch(`/api/designs?slug=${encodeURIComponent(slug)}`)
         .then((res) => (res.ok ? res.json() : null))
         .then((body) => {
-          if (body?.design) setDesign(body.design as Design);
-          else setDesign(loadDesign());
+          if (body?.design) {
+            setDesign(body.design as Design);
+            setCurrentSlug(slug);
+          } else {
+            setDesign(loadDesign());
+          }
         })
         .catch(() => setDesign(loadDesign()));
       return;
@@ -147,6 +156,33 @@ export default function DesignPage() {
       setShareState("error");
     } finally {
       setTimeout(() => setShareState("idle"), 2500);
+    }
+  }
+
+  // Save the current design to the signed-in customer's account (My Account →
+  // My Designs). Auto-named from the piece's own dimensions rather than a
+  // naming prompt, so saving stays a single click like sharing already is —
+  // it can be renamed later from the Designs tab.
+  async function saveToAccount() {
+    if (saveState === "loading") return;
+    setSaveState("loading");
+    try {
+      const { w, h, d } = design.outerCm;
+      const name = `${Math.round(w)}×${Math.round(h)}×${Math.round(d)} cm`;
+      const res = await fetch("/api/account/designs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ design, locale, name, slug: currentSlug ?? undefined }),
+      });
+      const body = await res.json();
+      if (!res.ok || !body?.slug) throw new Error("save failed");
+      setCurrentSlug(body.slug);
+      setSaveState("done");
+      posthog.capture("design_saved_to_account", { slug: body.slug, parts_count: design.parts.length });
+    } catch {
+      setSaveState("error");
+    } finally {
+      setTimeout(() => setSaveState("idle"), 2500);
     }
   }
 
@@ -275,6 +311,11 @@ export default function DesignPage() {
                 <FloatBtn onClick={shareDesign} tone="ghost">
                   {shareState === "copied" ? t("design.shareCopied") : shareState === "error" ? t("design.shareErr") : t("design.share")}
                 </FloatBtn>
+                {session?.user ? (
+                  <FloatBtn onClick={saveToAccount} tone="ghost">
+                    {saveState === "done" ? t("design.saveDone") : saveState === "error" ? t("design.saveErr") : t("design.save")}
+                  </FloatBtn>
+                ) : null}
               </div>
               <ShelfViewer
                 design={design}
@@ -324,11 +365,6 @@ export default function DesignPage() {
               {v.errors.length > 0 && (
                 <ul className="mt-4 space-y-1 rounded-xl bg-rose-50 p-3 text-xs text-rose-700 ring-1 ring-rose-100">
                   {v.errors.map((e, i) => <li key={i}>• {issueText(t, e)}</li>)}
-                </ul>
-              )}
-              {v.warnings.length > 0 && (
-                <ul className="mt-3 space-y-1 rounded-xl bg-amber-50 p-3 text-xs text-amber-700 ring-1 ring-amber-100">
-                  {v.warnings.map((wn, i) => <li key={i}>• {issueText(t, wn)}</li>)}
                 </ul>
               )}
             </div>

@@ -1,6 +1,6 @@
 # OBCHODNÍ PODMÍNKY — Myble (my-ble.eu)
 
-**Verze 1.2 (MVP) — Účinnost od: 3. července 2026**
+**Verze 1.3 (MVP) — Účinnost od: 17. srpna 2026**
 
 ## 1. Úvodní ustanovení
 1.1. Tyto obchodní podmínky ("**Podmínky**") upravují nákupy uskutečněné prostřednictvím internetového obchodu na adrese **my-ble.eu** ("**E-shop**").
@@ -26,8 +26,11 @@
 4.4. Odesláním objednávky Zákazník potvrzuje, že se s těmito Podmínkami seznámil a souhlasí s nimi, a bere na vědomí, že jelikož je Zboží Zbožím na míru, právo na odstoupení od smlouvy se neuplatní (článek 9).
 
 ## 5. Platba
-5.1. Platby jsou zpracovávány prostřednictvím služby **GoPay** (např. platby kartou a další metody dostupné v platební bráně GoPay).
-5.2. U Zboží na zakázku může Prodávající požadovat **platbu předem**, zcela nebo zčásti. Výroba je zahájena po přijetí platby, není-li dohodnuto jinak.
+5.1. Platby jsou zpracovávány prostřednictvím platební brány **Comgate**, kterou provozuje společnost **Comgate a.s.**, IČO 279 24 505, se sídlem Gočárova třída 1754/48b, 500 02 Hradec Králové, Česká republika. V platební bráně jsou dostupné zejména tyto způsoby platby: **platba kartou, Apple Pay, Google Pay, online bankovní převod (platební tlačítka bank) a QR platba.**
+5.2. Prodávající **nenabízí dobírku** ani **odloženou platbu či nákup na splátky**.
+5.3. **Po přechodnou dobu, než bude platební brána uvedena do provozu**, přijímá Prodávající objednávky bez okamžité online platby. V takovém případě Prodávající objednávku potvrdí e-mailem a platba se provede **bankovním převodem na základě vystavené faktury**. Zákazník je na tuto skutečnost výslovně upozorněn před odesláním objednávky.
+5.4. U Zboží na zakázku je cena splatná **předem**, zcela nebo zčásti, není-li dohodnuto jinak; při platbě na fakturu ve lhůtě splatnosti uvedené na faktuře.
+5.5. Výroba Zboží je zahájena **až po potvrzení objednávky a přijetí platby**, není-li dohodnuto jinak; od tohoto okamžiku běží uvedená doba výroby a dodání.
 
 ## 6. Dodání, doprava, dílčí zásilky
 6.1. Ve fázi MVP Prodávající **dodává pouze na území České republiky.** Objednávky s dodací adresou mimo Českou republiku nelze přijmout.
@@ -68,4 +71,4 @@
 ## 12. Závěrečná ustanovení
 12.1. Tyto Podmínky se řídí právem České republiky. Touto volbou práva není spotřebitel zbaven ochrany, kterou mu poskytují kogentní ustanovení jinak použitelného práva.
 12.2. Je-li některé ustanovení neplatné, ostatní ustanovení zůstávají v platnosti.
-12.3. **Verze 1.2 — Účinnost od: 3. července 2026.**
+12.3. **Verze 1.3 — Účinnost od: 17. srpna 2026.**

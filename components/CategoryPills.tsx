@@ -45,7 +45,12 @@ export function CategoryPills({
                 : "bg-white text-zinc-700 ring-zinc-200 hover:bg-zinc-50"
             }`}
           >
-            <span aria-hidden="true" className={isActive ? "text-white/70" : "text-zinc-400"}>
+            {/* `grayscale` keeps colour emoji (🐱) in the same black-and-white
+                register as the geometric glyphs (◆ ▤ ▬ …) next to them. */}
+            <span
+              aria-hidden="true"
+              className={`grayscale ${isActive ? "text-white/70" : "text-zinc-400"}`}
+            >
               {c.emoji}
             </span>
             {t(`library.categories.${c.id}`)}

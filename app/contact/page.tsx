@@ -13,6 +13,10 @@ const DOC_SLUGS = ["terms-and-conditions", "complaints-procedure", "privacy-poli
 function ContactForm() {
   const { t, locale } = useI18n();
   const [state, setState] = useState<"idle" | "loading" | "ok" | "error">("idle");
+  // Deep-linked from My Account → Settings ("Request my data"), same pattern
+  // LoginPage already uses for reading a query param at render time.
+  const isDataRequest =
+    typeof window !== "undefined" && new URLSearchParams(window.location.search).get("subject") === "data-request";
 
   async function send(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -60,7 +64,14 @@ function ContactForm() {
         </label>
         <label className="block sm:col-span-2">
           <span className="mb-1.5 block text-sm font-medium text-zinc-700">{t("contact.formMessage")}</span>
-          <textarea name="message" required maxLength={5000} rows={5} className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm outline-none transition focus:border-indigo-500" />
+          <textarea
+            name="message"
+            required
+            maxLength={5000}
+            rows={5}
+            defaultValue={isDataRequest ? t("contact.dataRequestPrefill") : undefined}
+            className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm outline-none transition focus:border-indigo-500"
+          />
         </label>
         <div className="sm:col-span-2">
           <button

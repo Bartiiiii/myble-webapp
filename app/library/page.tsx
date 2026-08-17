@@ -94,11 +94,11 @@ function LibraryCard({
 
   return (
     <Reveal delay={(index % 3) * 90}>
-      {/* The 🔥 control is a SIBLING overlay, not a child of the card button —
-          nesting one button inside another is invalid HTML and breaks
+      {/* The 🔥 control is a SIBLING overlay, not a child of the card's click
+          target — nesting one button inside another is invalid HTML and breaks
           hydration. It sits above the card via z-index instead. */}
       <div className="relative">
-        <div className="card-lift group relative overflow-hidden rounded-2xl bg-white text-left ring-1 ring-zinc-200 sm:rounded-3xl">
+        <div className="card-lift relative overflow-hidden rounded-2xl bg-white text-left ring-1 ring-zinc-200 sm:rounded-3xl">
           <div className="relative aspect-square overflow-hidden bg-[#ece7df]">
             <LazyStage item={item} reduced={reduced} />
           </div>

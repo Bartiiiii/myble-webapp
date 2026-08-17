@@ -1,6 +1,6 @@
 # ZÁSADY OCHRANY OSOBNÍCH ÚDAJŮ (GDPR) — Myble (my-ble.eu)
 
-**Verze 1.1 (MVP) — Účinnost od: 27. června 2026**
+**Verze 1.2 (MVP) — Účinnost od: 17. srpna 2026**
 
 ## 1\. Správce údajů
 
@@ -17,7 +17,7 @@ uvedeném e-mailu.
   - **Údaje o objednávce:** obsah objednávky, údaje o konfiguraci
     (rozměry/specifikace), cena, údaje o doručení, historie komunikace.
   - **Platební údaje:** stav platby a referenční údaje (úplné údaje o
-    kartě zpracovává GoPay, nikoli Správce).
+    kartě zpracovává Comgate, nikoli Správce).
   - **Technické údaje:** IP adresa, cookies, údaje o zařízení/prohlížeči
     (podle voleb cookies).
 
@@ -34,8 +34,8 @@ uvedeném e-mailu.
 ## 4\. Příjemci / zpracovatelé
 
 Osobní údaje sdílíme pouze s poskytovateli nezbytnými pro provoz
-E-shopu, zejména: - **GoPay s.r.o.** (Česká republika) — zpracování
-plateb; - **Zásilkovna / Packeta** (Česká republika) — doručování
+E-shopu, zejména: - **Comgate a.s.**, IČO 279 24 505 (Česká republika) —
+zpracování plateb; - **Zásilkovna / Packeta** (Česká republika) — doručování
 zásilek/dílů v rámci České republiky; - **Výrobní/materiálový partner
 se sídlem v Polsku (EU)** — vyrábí a odesílá panely/materiálové díly
 **přímo Vám**, a proto obdrží Vaše jméno a dodací adresu; - **Vercel
@@ -83,4 +83,4 @@ významnými účinky.
 
 Žádosti podle GDPR: **myble.eu@gmail.com**.
 
-**Verze 1.1 — Účinnost od: 27. června 2026.**
+**Verze 1.2 — Účinnost od: 17. srpna 2026.**

@@ -8,7 +8,12 @@ import {
 } from "./model";
 
 const BOARD = 1.8; // 18 mm default board, in cm (preset/legacy authoring)
-const round1 = (n: number) => Math.round(n * 10) / 10;
+const round1 = (n: number) => Math.round(n * 10) / 10; // authoring coords (mm-ish)
+// Derived part centres get 0.01 cm. Rounding them to 0.1 like the authoring
+// coords costs up to 0.05 cm — exactly the geometry engine's flush tolerance —
+// so a board meant to sit against a wall could land a hair off it and read as
+// floating, or a hair into its neighbour and read as a clash.
+const round2 = (n: number) => Math.round(n * 100) / 100;
 
 // --- Carcass ----------------------------------------------------------------
 /**
@@ -60,12 +65,12 @@ function plankToPart(pl: LegacyPlank, w: number, h: number, d: number): Part {
     // Horizontal shelf: thickness on Y.
     const xC = ix0 + pl.x + pl.len / 2;
     const yC = BOARD + pl.y + BOARD / 2 - h / 2;
-    return { id: pl.id || makeId(), role: "shelf", axis: "y", aCm: pl.len, bCm: d, pos: { x: round1(xC), y: round1(yC), z: 0 } };
+    return { id: pl.id || makeId(), role: "shelf", axis: "y", aCm: pl.len, bCm: d, pos: { x: round2(xC), y: round2(yC), z: 0 } };
   }
   // Vertical divider: thickness on X.
   const xC = ix0 + pl.x + BOARD / 2;
   const yC = BOARD + pl.y + pl.len / 2 - h / 2;
-  return { id: pl.id || makeId(), role: "divider", axis: "x", aCm: pl.len, bCm: d, pos: { x: round1(xC), y: round1(yC), z: 0 } };
+  return { id: pl.id || makeId(), role: "divider", axis: "x", aCm: pl.len, bCm: d, pos: { x: round2(xC), y: round2(yC), z: 0 } };
 }
 
 // Build N evenly-spaced full-width shelves (legacy authoring helper).
@@ -85,7 +90,19 @@ function evenShelves(widthCm: number, heightCm: number, n: number): LegacyPlank[
 function skrinkaPlanks(widthCm: number, heightCm: number): LegacyPlank[] {
   const iw = round1(Math.max(0, widthCm - 2 * BOARD));
   const ih = round1(Math.max(0, heightCm - 2 * BOARD));
-  return [...evenShelves(widthCm, heightCm, 4), { id: "d0", o: "v", x: round1(iw / 2 - BOARD / 2), y: 0, len: ih }];
+  const shelves = evenShelves(widthCm, heightCm, 4);
+  // The centre divider is cut into one board per bay. A single full-height plank
+  // would have to pass through every shelf — boards are solid, so meble can't
+  // make that and the editor would flag it the moment you moved anything.
+  const x = round1(iw / 2 - BOARD / 2);
+  const dividers: LegacyPlank[] = [];
+  let from = 0;
+  shelves.forEach((s, i) => {
+    dividers.push({ id: `d${i}`, o: "v", x, y: from, len: round1(s.y - from) });
+    from = round1(s.y + BOARD);
+  });
+  dividers.push({ id: `d${shelves.length}`, o: "v", x, y: from, len: round1(ih - from) });
+  return [...shelves, ...dividers];
 }
 
 /** Migrate any legacy design (carcass + planks, or {shelves:N}) → parts model. */

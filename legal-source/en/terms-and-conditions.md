@@ -1,6 +1,6 @@
 # TERMS & CONDITIONS — Myble (my-ble.eu)
 
-**Version 1.2 (MVP) — Effective date: 3 July 2026**
+**Version 1.3 (MVP) — Effective date: 17 August 2026**
 
 ## 1. Introduction
 1.1. These Terms & Conditions ("**Terms**") govern purchases made via the online store at **my-ble.eu** ("**E-shop**").
@@ -26,8 +26,11 @@
 4.4. By submitting an order, the Customer confirms they have read and accept these Terms and acknowledges that, because the Goods are Custom Goods, the right of withdrawal does not apply (Article 9).
 
 ## 5. Payment
-5.1. Payments are processed via **GoPay** (e.g. card payments and other methods available in the GoPay checkout).
-5.2. For Made-to-order Goods, the Seller may require **payment in advance**, in full or in part. Production begins after payment is received unless agreed otherwise.
+5.1. Payments are processed via the **Comgate** payment gateway, operated by **Comgate a.s.**, Business ID (IČO) 279 24 505, registered office at Gočárova třída 1754/48b, 500 02 Hradec Králové, Czech Republic. The following payment methods are available in the gateway in particular: **card payment, Apple Pay, Google Pay, online bank transfer (bank buttons) and QR payment.**
+5.2. The Seller does **not offer cash on delivery**, nor **deferred payment or payment in instalments**.
+5.3. **For a transitional period, until the payment gateway goes live**, the Seller accepts orders without an immediate online payment. In that case the Seller confirms the order by e-mail and payment is made by **bank transfer on the basis of an issued invoice**. The Customer is expressly informed of this before submitting the order.
+5.4. For Made-to-order Goods the price is payable **in advance**, in full or in part, unless agreed otherwise; where payment is made against an invoice, within the due date stated on the invoice.
+5.5. Production of the Goods begins **only after the order is confirmed and payment is received**, unless agreed otherwise; the stated production and delivery time runs from that moment.
 
 ## 6. Delivery, shipping, split shipments
 6.1. At MVP stage the Seller **delivers only within the Czech Republic.** Orders with a delivery address outside the Czech Republic cannot be accepted.
@@ -68,4 +71,4 @@
 ## 12. Final provisions
 12.1. These Terms are governed by the laws of the Czech Republic. This choice of law does not deprive a consumer of the protection of mandatory provisions that would otherwise apply.
 12.2. If any provision is invalid, the remaining provisions remain in effect.
-12.3. **Version 1.2 — Effective date: 3 July 2026.**
+12.3. **Version 1.3 — Effective date: 17 August 2026.**

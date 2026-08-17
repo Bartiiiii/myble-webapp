@@ -8,9 +8,9 @@ import { SiteHeader } from "../../components/SiteHeader";
 import { SiteFooter } from "../../components/SiteFooter";
 import { Design, DEFAULT_DESIGN, loadDesign, DELIVERY_CZK } from "../../lib/design";
 import { quoteDesign } from "../../lib/quote";
-import { cutListData, downloadCutList } from "../../lib/cutlist";
 import { useI18n, useT } from "../../lib/i18n";
 import { acceptedDocVersions } from "../../lib/legal";
+import { PAYMENTS_ENABLED } from "../../lib/comgate/config";
 import { safeValidateConfiguratorDesign } from "../../lib/rules-engine/configurator";
 import posthog from "posthog-js";
 
@@ -24,6 +24,19 @@ function persistConsent(record: unknown) {
     /* ignore quota / privacy-mode errors */
   }
 }
+
+/** Contact + delivery address as read off the checkout form. */
+type Customer = {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  phone?: string;
+  street?: string;
+  city?: string;
+  zip?: string;
+  country?: string;
+  deliveryMethod?: string;
+};
 
 function PreviewLoading() {
   const t = useT();
@@ -51,7 +64,9 @@ export default function OrderPage() {
   const quote = useMemo(() => quoteDesign(design), [design]);
   const kit = quote.kitCZK;
   const total = quote.customerCZK;
-  const cutList = useMemo(() => cutListData(design), [design]);
+  // The cut list (lib/cutlist.ts) is production data for us, not the customer:
+  // it ships with the order payload (`design`) and lives in the admin, so the
+  // checkout page never renders it.
 
   // Sales-first rules validation at checkout: severity-3 recommendations become
   // "Order anyway" acknowledgements. Nothing here blocks placing the order.
@@ -82,17 +97,20 @@ export default function OrderPage() {
   const canPlace = confirmed && acceptedTerms && acceptedCustom && allAcknowledged;
 
 
-  function placeOrder(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    if (!canPlace) return;
+  // ── Submit flow ────────────────────────────────────────────────────────────
+  // While PAYMENTS_ENABLED is false nothing is charged here, so the submit is
+  // interrupted by an interstitial the customer has to confirm. The order still
+  // completes end to end either way — Comgate has to be able to walk it.
+  const [pendingCustomer, setPendingCustomer] = useState<Customer | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const submitBtnRef = React.useRef<HTMLButtonElement>(null);
 
-    const orderNo = `MB-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
-
+  function readCustomer(form: HTMLFormElement): Customer {
     // Contact + CZ delivery address entered above. Read straight off the form so
     // the order route can persist who ordered and where to ship.
-    const fd = new FormData(e.currentTarget);
+    const fd = new FormData(form);
     const str = (k: string) => (fd.get(k)?.toString().trim() || undefined);
-    const customer = {
+    return {
       firstName: str("firstName"),
       lastName: str("lastName"),
       email: str("email"),
@@ -103,6 +121,29 @@ export default function OrderPage() {
       country: str("country") ?? "CZ",
       deliveryMethod: str("delivery"),
     };
+  }
+
+  function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!canPlace || submitting) return;
+    const customer = readCustomer(e.currentTarget);
+    if (!PAYMENTS_ENABLED) {
+      setPendingCustomer(customer); // opens the interstitial; nothing is sent yet
+      return;
+    }
+    placeOrder(customer);
+  }
+
+  function cancelPending() {
+    setPendingCustomer(null);
+    submitBtnRef.current?.focus();
+  }
+
+  function placeOrder(customer: Customer) {
+    if (submitting) return;
+    setSubmitting(true);
+
+    const orderNo = `MB-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
 
     // B4: consent record — accepted document versions, locale, timestamp.
     // Also records the customer-set specification (confirmed dimensions etc.),
@@ -184,6 +225,7 @@ export default function OrderPage() {
       rules_health: rules.report.health,
       rules_catalogue_version: rules.report.catalogue_version,
       rules_acknowledgements: acknowledgements.length,
+      payments_enabled: PAYMENTS_ENABLED,
     });
     router.push(`/order/confirmation?order=${encodeURIComponent(orderNo)}`);
   }
@@ -194,7 +236,7 @@ export default function OrderPage() {
     <main className="min-h-screen bg-zinc-50 text-zinc-900">
       <SiteHeader variant="app" />
 
-      <form onSubmit={placeOrder} className="mx-auto w-full max-w-7xl px-5 py-8">
+      <form onSubmit={onSubmit} className="mx-auto w-full max-w-7xl px-5 py-8">
         <div className="mb-6">
           <div className="flex items-center justify-between gap-4">
             <h1 className="text-2xl font-semibold tracking-tight">{t("order.title")}</h1>
@@ -289,91 +331,8 @@ export default function OrderPage() {
               </section>
             )}
 
-            {/* Dimension confirmation */}
-            <section className="rounded-3xl bg-white p-6 ring-1 ring-indigo-200">
-              <h2 className="text-lg font-semibold">{t("order.confirmTitle")}</h2>
-              <p className="mt-1 text-sm text-zinc-600">{t("order.confirmBody")}</p>
-              <div className="mt-4 grid grid-cols-3 gap-3">
-                <DimChip label={t("design.width")} value={`${w} cm`} />
-                <DimChip label={t("design.height")} value={`${h} cm`} />
-                <DimChip label={t("design.depth")} value={`${d} cm`} />
-                <DimChip label={t("order.colour")} value={t(`colors.${design.colour}`)} />
-                <DimChip label={t("order.thickness")} value={`${design.thickness} mm`} />
-                <DimChip label={t("order.partsLbl")} value={t("parts.count", { n: design.parts.length })} />
-              </div>
-              <p className="mt-3 text-xs text-zinc-500">
-                {t("order.backEdge", { v: design.bandBack ? t("order.backEdgeOn") : t("order.backEdgeOff") })}
-              </p>
-              <Link href="/design" className="mt-2 inline-block text-sm font-medium text-indigo-600 hover:text-indigo-500">
-                {t("order.editIn")}
-              </Link>
-              <label className="mt-4 flex items-start gap-3 rounded-2xl bg-indigo-50/60 p-4">
-                <input
-                  type="checkbox"
-                  checked={confirmed}
-                  onChange={(e) => setConfirmed(e.target.checked)}
-                  className="mt-0.5 h-4 w-4 rounded border-zinc-300"
-                />
-                <span className="text-sm text-zinc-700">
-                  {t("order.measuredOk1")} <Link href="/" className="font-medium text-indigo-600 underline">{t("order.measuredGuide")}</Link> {t("order.measuredOk2")}
-                </span>
-              </label>
-            </section>
-
-            {/* Cut list for production (meble): every board in mm, edges, drilling. */}
-            <section className="rounded-3xl bg-white p-6 ring-1 ring-zinc-200">
-              <div className="flex items-center justify-between gap-3">
-                <h2 className="text-lg font-semibold">{t("order.cutTitle")}</h2>
-                <span className="text-xs text-zinc-500">{cutList.materialLabel} · {t("order.cutUnits", { n: cutList.totalBoards })}</span>
-              </div>
-              <p className="mt-1 text-sm text-zinc-600">{t("order.cutBody")}</p>
-              <div className="mt-4 overflow-hidden rounded-2xl ring-1 ring-zinc-200">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-zinc-50 text-zinc-500">
-                    <tr>
-                      <th className="px-3 py-2 font-medium">{t("order.colDil")}</th>
-                      <th className="px-3 py-2 font-medium">{t("order.colSize")}</th>
-                      <th className="px-3 py-2 font-medium">{t("order.colQty")}</th>
-                      <th className="px-3 py-2 font-medium">{t("order.colEdges")}</th>
-                      <th className="px-3 py-2 font-medium">{t("order.colDrill")}</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-zinc-100">
-                    {cutList.rows.map((r, i) => (
-                      <tr key={i}>
-                        <td className="px-3 py-2 text-zinc-700">{t(`roles.${r.role}`)}</td>
-                        <td className="px-3 py-2 tabular-nums text-zinc-700">{r.widthMm}×{r.heightMm}</td>
-                        <td className="px-3 py-2 tabular-nums text-zinc-700">{r.quantity}</td>
-                        <td className="px-3 py-2 text-zinc-500">{r.banding}</td>
-                        <td className="px-3 py-2 text-zinc-500">{r.drilled ? t("order.yes") : t("order.no")}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <div className="mt-4 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    downloadCutList(design, "csv");
-                    posthog.capture("cut_list_downloaded", { format: "csv" });
-                  }}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-zinc-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-800"
-                >
-                  {t("order.downloadCsv")}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    downloadCutList(design, "json");
-                    posthog.capture("cut_list_downloaded", { format: "json" });
-                  }}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-zinc-900 ring-1 ring-zinc-300 transition hover:bg-zinc-50"
-                >
-                  {t("order.downloadJson")}
-                </button>
-              </div>
-            </section>
+            {/* Dimension confirmation now lives in the summary column, next to
+                the price and the §1837 notice — see the aside below. */}
           </div>
 
           {/* Right */}
@@ -396,10 +355,46 @@ export default function OrderPage() {
                   the reference price. */}
               <div className="space-y-3 rounded-2xl bg-zinc-50 p-4">
                 <Row label={t("order.summaryKit", { dims: `${w}×${h}×${d}` })} value={fmt(kit)} />
-                <Row label={t("order.summaryDelivery")} value={fmt(DELIVERY_CZK)} />
+                {/* Must be the delivery actually included in the total — it is
+                    free at/above FREE_SHIP_CZK, and a hardcoded 199 made the
+                    lines fail to add up. */}
+                <Row
+                  label={t("order.summaryDelivery")}
+                  value={quote.deliveryCZK > 0 ? fmt(quote.deliveryCZK) : t("order.deliveryFree")}
+                />
                 <div className="border-t border-zinc-200 pt-3">
                   <Row label={t("order.summaryTotal")} value={fmt(total)} strong />
                 </div>
+              </div>
+
+              {/* Dimension confirmation, compact. It sits with the other two
+                  consent checks (custom-made, terms) directly above the order
+                  button, so everything that gates the order is in one column. */}
+              <div className="mt-4 rounded-2xl bg-indigo-50/60 p-4 ring-1 ring-indigo-200">
+                <div className="flex items-baseline justify-between gap-3">
+                  <p className="text-sm font-semibold text-indigo-900">{t("order.confirmTitle")}</p>
+                  <Link href="/design" className="shrink-0 text-xs font-medium text-indigo-600 hover:text-indigo-500">
+                    {t("order.editIn")}
+                  </Link>
+                </div>
+                <p className="mt-1.5 text-sm font-semibold tabular-nums text-zinc-900">{w} × {h} × {d} cm</p>
+                <p className="mt-0.5 text-xs text-zinc-600">
+                  {t(`colors.${design.colour}`)} · {design.thickness} mm · {t("parts.count", { n: design.parts.length })} ·{" "}
+                  {t("order.backEdge", { v: design.bandBack ? t("order.backEdgeOn") : t("order.backEdgeOff") })}
+                </p>
+                <label className="mt-3 flex items-start gap-2.5">
+                  <input
+                    type="checkbox"
+                    checked={confirmed}
+                    onChange={(e) => setConfirmed(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 rounded border-zinc-300 accent-indigo-600"
+                  />
+                  <span className="text-xs leading-5 text-indigo-900">
+                    {t("order.measuredOk1")}{" "}
+                    <Link href="/" className="font-medium text-indigo-600 underline">{t("order.measuredGuide")}</Link>{" "}
+                    {t("order.measuredOk2")}
+                  </span>
+                </label>
               </div>
 
               {/* B3: custom-made notice + un-prechecked §1837 acknowledgement. */}
@@ -442,12 +437,24 @@ export default function OrderPage() {
                 </span>
               </label>
 
+              {/* Payments not live yet: say so in the form itself, not only in
+                  the modal, so the customer knows before they commit. */}
+              {!PAYMENTS_ENABLED && (
+                <div className="mt-4 rounded-2xl bg-indigo-50/60 p-4 ring-1 ring-indigo-200">
+                  <p className="text-sm font-semibold text-indigo-900">{t("checkout.paymentsOff.noticeTitle")}</p>
+                  <p className="mt-1 text-xs leading-5 text-indigo-800">{t("checkout.paymentsOff.noticeBody")}</p>
+                </div>
+              )}
+
               <button
+                ref={submitBtnRef}
                 type="submit"
-                disabled={!canPlace}
+                disabled={!canPlace || submitting}
                 className="mt-5 inline-flex w-full items-center justify-center rounded-2xl bg-indigo-600 px-5 py-3.5 text-base font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:bg-zinc-300"
               >
-                {t("order.place")}
+                {/* Nothing is charged while payments are off, so the button must
+                    not promise a payment. */}
+                {PAYMENTS_ENABLED ? t("order.place") : t("order.placeNoPay")}
               </button>
               {!confirmed && (
                 <p className="mt-2 text-center text-xs text-amber-600">{t("order.confirmFirst")}</p>
@@ -469,8 +476,103 @@ export default function OrderPage() {
         </div>
       </form>
 
+      {pendingCustomer && (
+        <PaymentsOffDialog
+          submitting={submitting}
+          onCancel={cancelPending}
+          onConfirm={() => placeOrder(pendingCustomer)}
+        />
+      )}
+
       <SiteFooter />
     </main>
+  );
+}
+
+// Checkout interstitial shown while online payment is off. It does not block the
+// order — it makes sure the customer knows a real, binding order is being placed
+// and that payment will be arranged by invoice.
+function PaymentsOffDialog({
+  submitting,
+  onConfirm,
+  onCancel,
+}: {
+  submitting: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  const t = useT();
+  const panelRef = React.useRef<HTMLDivElement>(null);
+  const confirmRef = React.useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    confirmRef.current?.focus();
+  }, []);
+
+  // Escape cancels, and Tab is trapped inside the panel.
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onCancel();
+        return;
+      }
+      if (e.key !== "Tab" || !panelRef.current) return;
+      const focusable = panelRef.current.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])',
+      );
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = document.activeElement;
+      if (e.shiftKey && (active === first || !panelRef.current.contains(active))) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [onCancel]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center">
+      {/* Backdrop click cancels — it must never submit by accident. */}
+      <div className="absolute inset-0 bg-zinc-900/50" onClick={onCancel} aria-hidden="true" />
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="payments-off-title"
+        className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-xl ring-1 ring-zinc-200"
+      >
+        <h2 id="payments-off-title" className="text-lg font-semibold text-zinc-900">
+          {t("checkout.paymentsOff.modalTitle")}
+        </h2>
+        <p className="mt-3 text-sm leading-6 text-zinc-600">{t("checkout.paymentsOff.modalBody1")}</p>
+        <p className="mt-2 text-sm leading-6 text-zinc-600">{t("checkout.paymentsOff.modalBody2")}</p>
+        <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="inline-flex items-center justify-center rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-zinc-900 ring-1 ring-zinc-300 transition hover:bg-zinc-50"
+          >
+            {t("checkout.paymentsOff.modalCancel")}
+          </button>
+          <button
+            ref={confirmRef}
+            type="button"
+            onClick={onConfirm}
+            disabled={submitting}
+            className="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:bg-zinc-300"
+          >
+            {submitting ? t("checkout.paymentsOff.submitting") : t("checkout.paymentsOff.modalConfirm")}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -492,15 +594,6 @@ function Input({ type = "text", name, placeholder, required }: { type?: string; 
       required={required}
       className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm outline-none transition focus:border-indigo-500"
     />
-  );
-}
-
-function DimChip({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-xl bg-zinc-50 p-3 text-center ring-1 ring-zinc-200">
-      <p className="text-xs text-zinc-500">{label}</p>
-      <p className="mt-0.5 text-sm font-semibold">{value}</p>
-    </div>
   );
 }
 
