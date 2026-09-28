@@ -18,6 +18,7 @@ import { useLibraryPool } from "../lib/useLibraryPool";
 import { useIsNarrow } from "../lib/useIsNarrow";
 import { useI18n, useT, tList, type Locale } from "../lib/i18n";
 import posthog from "posthog-js";
+import { PRODUCTS_JSON_LD } from "../lib/structuredData";
 
 function HeroLoading() {
   const t = useT();
@@ -515,6 +516,10 @@ export default function HomePage() {
   return (
     <ReactionsProvider>
     <div className="min-h-screen bg-white text-zinc-900">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(PRODUCTS_JSON_LD) }}
+      />
       <SiteHeader />
 
       {/* Hero — split: staggered copy left, live configurator stage right */}
