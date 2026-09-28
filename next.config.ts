@@ -21,7 +21,7 @@ const nextConfig: NextConfig = {
   // The legal pages read their markdown from `legal-source/` via fs at build
   // time. Trace those files into the standalone/serverless output so they ship.
   outputFileTracingIncludes: {
-    "/legal/[doc]": ["./legal-source/**/*"],
+    "/[locale]/legal/[doc]": ["./legal-source/**/*"],
   },
 };
 

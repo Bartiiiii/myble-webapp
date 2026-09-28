@@ -1,7 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import Link, { useLocalePathname } from "../lib/localeNav";
 import React from "react";
 import { HomeNavAuth } from "./HomeNavAuth";
 import { useT } from "../lib/i18n";
@@ -27,7 +26,7 @@ export function MybleMark({ className = "h-7 w-7", accent = "#4F46E5" }: { class
 }
 
 export function Logo({ dark = false }: { dark?: boolean }) {
-  const pathname = usePathname();
+  const pathname = useLocalePathname();
 
   return (
     <Link

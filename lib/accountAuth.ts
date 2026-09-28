@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/auth";
+import { DEFAULT_LOCALE, localizePath, type Locale } from "./locale";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // My Account auth — one gate: signed in with Google. Unlike backstage
@@ -26,9 +27,9 @@ async function getAccountSession(): Promise<AccountSession | null> {
 }
 
 /** Page guard: redirects to /login (with a callback back here) when signed out. */
-export async function requireAccount(callbackPath = "/account"): Promise<AccountSession> {
+export async function requireAccount(locale: Locale = DEFAULT_LOCALE, callbackPath = "/account"): Promise<AccountSession> {
   const session = await getAccountSession();
-  if (!session) redirect(`/login?callbackUrl=${encodeURIComponent(callbackPath)}`);
+  if (!session) redirect(localizePath(`/login?callbackUrl=${encodeURIComponent(localizePath(callbackPath, locale))}`, locale));
   return session;
 }
 

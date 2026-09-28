@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link from "../lib/localeNav";
 import React from "react";
 import { Logo } from "./SiteHeader";
 import { LanguageSwitcher } from "./LanguageSwitcher";

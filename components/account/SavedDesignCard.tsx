@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import React from "react";
 import type { Design } from "../../lib/model";
 import { useT } from "../../lib/i18n";
+import { useLocalizePath } from "../../lib/localeNav";
 import { formatDate } from "./ui";
 
 const ShelfViewer = dynamic(() => import("../ShelfViewer"), { ssr: false });
@@ -82,6 +83,7 @@ export function SavedDesignCard({
   onDeleted: (slug: string) => void;
 }) {
   const t = useT();
+  const lp = useLocalizePath();
   const [editing, setEditing] = React.useState(false);
   const [draftName, setDraftName] = React.useState(item.name ?? "");
   const [busy, setBusy] = React.useState(false);
@@ -169,7 +171,7 @@ export function SavedDesignCard({
         </div>
 
         <div className="mt-3 flex items-center justify-between gap-2">
-          <a href={`/design?d=${item.slug}`} className="text-xs font-semibold text-indigo-600 hover:text-indigo-500">
+          <a href={lp(`/design?d=${item.slug}`)} className="text-xs font-semibold text-indigo-600 hover:text-indigo-500">
             {t("account.designs.open")} →
           </a>
           {!editing && (

@@ -1,7 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import Link, { useLocalePathname } from "../../lib/localeNav";
 import { useT } from "../../lib/i18n";
 
 // The top tab bar the user asked for instead of a backstage-style left
@@ -18,7 +17,7 @@ const TABS = [
 
 export function AccountTabs() {
   const t = useT();
-  const pathname = usePathname();
+  const pathname = useLocalePathname();
 
   return (
     <div

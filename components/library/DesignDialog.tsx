@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useRouter } from "next/navigation";
+import { useLocaleRouter } from "../../lib/localeNav";
 import React, { useEffect } from "react";
 import posthog from "posthog-js";
 import { FireButton } from "../FireButton";
@@ -36,7 +36,7 @@ export function DesignDialog({
 }) {
   const { t } = useI18n();
   const reduced = usePrefersReducedMotion();
-  const router = useRouter();
+  const router = useLocaleRouter();
 
   useEffect(() => {
     if (!item) return;

@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { usePathname } from "next/navigation";
 import { useConsent, type ConsentState } from "../lib/consent";
 import { useI18n } from "../lib/i18n";
-import Link from "next/link";
+import Link from "../lib/localeNav";
 
 // B6: consent banner (opt-in). "Reject all" is as prominent and easy as
 // "Accept all". Granular Analytics / Marketing toggles live in the settings

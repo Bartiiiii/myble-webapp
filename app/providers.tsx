@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect } from "react";
-import { usePathname, useRouter } from "next/navigation";
 import { SessionProvider, useSession } from "next-auth/react";
 import { LocaleProvider } from "../lib/i18n";
+import type { Locale } from "../lib/locale";
+import { useLocalePathname, useLocaleRouter } from "../lib/localeNav";
 import { ConsentProvider, useConsent } from "../lib/consent";
 import { CookieConsent } from "../components/CookieConsent";
 import { Analytics } from "../components/Analytics";
@@ -37,8 +38,8 @@ function PostHogIdentify() {
  */
 function ProfileBootstrap() {
   const { status } = useSession();
-  const router = useRouter();
-  const pathname = usePathname();
+  const router = useLocaleRouter();
+  const pathname = useLocalePathname();
 
   useEffect(() => {
     if (status !== "authenticated") return;
@@ -74,10 +75,10 @@ function ProfileBootstrap() {
   return null;
 }
 
-export function Providers({ children }: { children: React.ReactNode }) {
+export function Providers({ locale, children }: { locale?: Locale; children: React.ReactNode }) {
   return (
     <SessionProvider>
-      <LocaleProvider>
+      <LocaleProvider locale={locale}>
         <ConsentProvider>
           <PostHogIdentify />
           <ProfileBootstrap />

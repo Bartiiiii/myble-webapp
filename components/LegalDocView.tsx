@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link from "../lib/localeNav";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { SiteHeader } from "./SiteHeader";
@@ -9,9 +9,7 @@ import { useI18n } from "../lib/i18n";
 import { type LegalSlug } from "../lib/legal";
 
 // Renders one legal document. The server passes the verbatim markdown for BOTH
-// locales; we pick the one matching the current locale from context, so the
-// footer language switcher updates the document live (the app has no per-locale
-// URL routing — see lib/i18n.tsx).
+// locales; we render the one matching the page's locale.
 export function LegalDocView({
   slug,
   en,

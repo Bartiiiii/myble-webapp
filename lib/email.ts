@@ -1,5 +1,6 @@
 import { Resend } from "resend";
 import type { ConsentRecord, Customer } from "@/app/api/order/route";
+import { localizePath } from "./locale";
 // ^ type-only import: erased at compile time, so this module never pulls in
 // next/server or the route handler at runtime.
 
@@ -141,9 +142,9 @@ export function buildHtml(params: OrderConfirmationEmailParams): string {
       <h2 style="font-size:15px;margin-top:24px;">${t.docsTitle}</h2>
       <p style="font-size:14px;color:#3f3f46;">${t.docsBody}</p>
       <p style="font-size:14px;">
-        <a href="${SITE_URL}/legal/terms-and-conditions" style="color:#4f46e5;">${t.terms}</a><br/>
+        <a href="${SITE_URL}${localizePath("/legal/terms-and-conditions", locale)}" style="color:#4f46e5;">${t.terms}</a><br/>
         <a href="${SITE_URL}${withdrawalDoc}" style="color:#4f46e5;">${t.withdrawal}</a><br/>
-        <a href="${SITE_URL}/legal/privacy-policy" style="color:#4f46e5;">${t.privacy}</a>
+        <a href="${SITE_URL}${localizePath("/legal/privacy-policy", locale)}" style="color:#4f46e5;">${t.privacy}</a>
       </p>
       <p style="margin-top:24px;font-size:12px;color:#a1a1aa;">${t.footer}</p>
     </div>

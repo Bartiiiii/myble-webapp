@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link from "../lib/localeNav";
 import React, { useState } from "react";
 import posthog from "posthog-js";
 import { useI18n } from "../lib/i18n";

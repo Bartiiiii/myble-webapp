@@ -18,6 +18,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { enablePostHog, disablePostHog } from "./posthogClient";
 import { LEGAL_DOCS } from "./legal";
+import { pathLocaleSegment, segmentToLocale } from "./locale";
 
 export type ConsentCategory = "analytics" | "marketing";
 export type ConsentState = { analytics: boolean; marketing: boolean };
@@ -70,6 +71,8 @@ function getOrCreateConsentId(): string {
 }
 
 function readLocale(): string {
+  const seg = pathLocaleSegment(window.location.pathname);
+  if (seg) return segmentToLocale(seg);
   try {
     const v = window.localStorage.getItem(LOCALE_STORAGE_KEY);
     if (v === "en" || v === "cs") return v;

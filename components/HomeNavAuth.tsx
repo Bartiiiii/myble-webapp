@@ -3,9 +3,11 @@
 import { signOut, useSession } from "next-auth/react";
 import React from "react";
 import { useT } from "../lib/i18n";
+import { useLocalizePath } from "../lib/localeNav";
 
 export function HomeNavAuth() {
   const t = useT();
+  const lp = useLocalizePath();
   const { data: session, status } = useSession();
   const [menuOpen, setMenuOpen] = React.useState(false);
   const wrapRef = React.useRef<HTMLDivElement>(null);
@@ -13,12 +15,12 @@ export function HomeNavAuth() {
   // through a design in the configurator loses it otherwise. Read after mount
   // so the server-rendered link (plain /login) and the first client render
   // agree, then upgrade it to carry the current URL.
-  const [loginHref, setLoginHref] = React.useState("/login");
+  const [loginHref, setLoginHref] = React.useState(() => lp("/login"));
 
   React.useEffect(() => {
     const here = window.location.pathname + window.location.search;
-    setLoginHref(here === "/" ? "/login" : `/login?callbackUrl=${encodeURIComponent(here)}`);
-  }, []);
+    setLoginHref(lp(`/login?callbackUrl=${encodeURIComponent(here)}`));
+  }, [lp]);
 
   React.useEffect(() => {
     function onDocClick(e: MouseEvent) {
@@ -68,7 +70,7 @@ export function HomeNavAuth() {
             {user?.email ?? user?.name ?? t("auth.signedIn")}
           </p>
           <a
-            href="/account"
+            href={lp("/account")}
             role="menuitem"
             className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium text-zinc-800 hover:bg-zinc-50"
           >
@@ -95,7 +97,7 @@ export function HomeNavAuth() {
             type="button"
             role="menuitem"
             className="w-full px-3 py-2 text-left text-sm text-zinc-800 hover:bg-zinc-50"
-            onClick={() => signOut({ callbackUrl: "/" })}
+            onClick={() => signOut({ callbackUrl: lp("/") })}
           >
             {t("auth.logout")}
           </button>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useLocaleRouter } from "../../lib/localeNav";
 import React from "react";
 import posthog from "posthog-js";
 import { Reveal } from "../Reveal";
@@ -34,7 +34,7 @@ export function DesignCard({
   from?: string;
 }) {
   const { t } = useI18n();
-  const router = useRouter();
+  const router = useLocaleRouter();
   const reduced = usePrefersReducedMotion();
   const narrow = useIsNarrow();
   const name = itemName(item, t);

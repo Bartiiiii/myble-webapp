@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link from "../../lib/localeNav";
 import React from "react";
 import { Avatar, type AvatarSize } from "../Avatar";
 import type { Author } from "../../lib/designers";

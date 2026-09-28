@@ -1,22 +1,23 @@
 "use client";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Lightweight client-side localisation. Default = English (US). A footer switcher
-// flips to Czech; the choice persists in localStorage + a cookie and updates
-// <html lang>. No URL routing — the app is client-rendered, so a context is the
-// pragmatic fit. Add a locale by extending LOCALES + the `messages` dictionary.
+// Localisation. Site pages get their locale from the /cz or /en URL segment
+// (app/[locale]/layout.tsx passes it in), so the server renders the right
+// language and switching navigates to the same page in the other language.
+// Unrouted pages (admin, /brand) and tests fall back to a client-side switch.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { DEFAULT_LOCALE, LOCALE_COOKIE, localizePath, pathLocaleSegment, type Locale } from "./locale";
 
-export type Locale = "en" | "cs";
-export const DEFAULT_LOCALE: Locale = "en";
+export { DEFAULT_LOCALE, type Locale };
 export const LOCALES: { id: Locale; label: string; short: string; flag: string }[] = [
   { id: "en", label: "English", short: "EN", flag: "🇬🇧" },
   { id: "cs", label: "Čeština", short: "CZ", flag: "🇨🇿" },
 ];
 
-const STORAGE_KEY = "myble.locale";
+const STORAGE_KEY = LOCALE_COOKIE;
 
 type Msg = string | ((p: Record<string, string | number>) => string);
 // Values are strings, parameterized functions, nested trees, or raw arrays
@@ -1620,29 +1621,42 @@ function readInitial(): Locale {
   return DEFAULT_LOCALE;
 }
 
-export function LocaleProvider({ children }: { children: React.ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>(DEFAULT_LOCALE);
+/** Remember an explicit language choice; the proxy reads the cookie on unprefixed URLs. */
+export function rememberLocale(l: Locale) {
+  try {
+    window.localStorage.setItem(STORAGE_KEY, l);
+    document.cookie = `${STORAGE_KEY}=${l};path=/;max-age=31536000;samesite=lax`;
+  } catch {
+    /* ignore */
+  }
+}
 
-  // Hydrate the saved choice after mount (avoids SSR mismatch; server renders EN).
+export function LocaleProvider({ locale: routedLocale, children }: { locale?: Locale; children: React.ReactNode }) {
+  const router = useRouter();
+  const [unroutedLocale, setUnroutedLocale] = useState<Locale>(DEFAULT_LOCALE);
+  const locale = routedLocale ?? unroutedLocale;
+
+  // Unrouted pages have no locale in the URL: hydrate the saved choice after mount.
   useEffect(() => {
+    if (routedLocale) return;
     const initial = readInitial();
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (initial !== DEFAULT_LOCALE) setLocaleState(initial);
-  }, []);
+    if (initial !== DEFAULT_LOCALE) setUnroutedLocale(initial);
+  }, [routedLocale]);
 
   useEffect(() => {
     document.documentElement.lang = locale;
   }, [locale]);
 
-  const setLocale = useCallback((l: Locale) => {
-    setLocaleState(l);
-    try {
-      window.localStorage.setItem(STORAGE_KEY, l);
-      document.cookie = `${STORAGE_KEY}=${l};path=/;max-age=31536000;samesite=lax`;
-    } catch {
-      /* ignore */
-    }
-  }, []);
+  const setLocale = useCallback(
+    (l: Locale) => {
+      rememberLocale(l);
+      const { pathname, search, hash } = window.location;
+      if (pathLocaleSegment(pathname)) router.push(localizePath(pathname + search + hash, l));
+      else setUnroutedLocale(l);
+    },
+    [router],
+  );
 
   const value = useMemo<Ctx>(() => {
     const t: TFn = (key, params) => {
