@@ -77,7 +77,7 @@ export default function BrandPage() {
             image: the 73 cm alcove that defeated three standard units, finally holding a piece that
             looks like the building was designed around it.
           </p>
-          <p className="mt-6 font-mono text-sm text-zinc-500">Tagline: „Na milimetr." · EN: "To the millimetre."</p>
+          <p className="mt-6 font-mono text-sm text-zinc-500">Tagline: „Na milimetr.“ · EN: “To the millimetre.”</p>
         </Reveal>
       </section>
 
@@ -88,7 +88,7 @@ export default function BrandPage() {
           <p className="mt-4 max-w-2xl text-base leading-7 text-zinc-600">
             A shelving frame with offset shelves, the way real Myble pieces are built, and one
             compartment holding a fitted accent block: your piece, in your gap. It reads at once as a
-            piece of furniture, a floor plan of a niche, and a map that says "you are here."
+            piece of furniture, a floor plan of a niche, and a map that says “you are here.”
           </p>
         </Reveal>
         <div className="mt-10 grid gap-5 sm:grid-cols-3">
@@ -197,10 +197,10 @@ export default function BrandPage() {
             <div className="h-full rounded-3xl bg-indigo-50 p-8 ring-1 ring-indigo-100">
               <p className="text-sm font-semibold text-indigo-700">Sounds like us</p>
               <ul className="mt-4 space-y-3 text-base leading-7 text-zinc-800">
-                <li>„Nika 73 cm, do které se nic nevejde?"</li>
-                <li>„Sedí na milimetr."</li>
-                <li>„Cena hned. Bez konzultace, bez čekání."</li>
-                <li>„Navrhněte za 5 minut, sestavte za 30."</li>
+                <li>„Nika 73 cm, do které se nic nevejde?“</li>
+                <li>„Sedí na milimetr.“</li>
+                <li>„Cena hned. Bez konzultace, bez čekání.“</li>
+                <li>„Navrhněte za 5 minut, sestavte za 30.“</li>
               </ul>
             </div>
           </Reveal>
@@ -208,9 +208,9 @@ export default function BrandPage() {
             <div className="h-full rounded-3xl bg-white p-8 ring-1 ring-zinc-200">
               <p className="text-sm font-semibold text-zinc-500">Never</p>
               <ul className="mt-4 space-y-3 text-base leading-7 text-zinc-500">
-                <li className="line-through decoration-zinc-300">„Revoluční nábytek budoucnosti!"</li>
-                <li className="line-through decoration-zinc-300">„Nejlepší volba pro váš domov"</li>
-                <li className="line-through decoration-zinc-300">„Levnější než IKEA"</li>
+                <li className="line-through decoration-zinc-300">„Revoluční nábytek budoucnosti!“</li>
+                <li className="line-through decoration-zinc-300">„Nejlepší volba pro váš domov“</li>
+                <li className="line-through decoration-zinc-300">„Levnější než IKEA“</li>
                 <li className="line-through decoration-zinc-300">Discount theatre, urgency timers</li>
               </ul>
             </div>

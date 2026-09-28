@@ -88,8 +88,13 @@ describe("checkout interstitial — payments disabled", () => {
   });
 
   it("states in the form, before the button, that no card payment happens yet", async () => {
+    // The promise this protects is the customer's, not any one panel's: before
+    // committing they must read that nothing is charged here. It used to live
+    // in a payments-off notice; it now lives in the Payment section, which says
+    // the same thing and also says what does happen instead.
     await renderOrderPage(false);
-    expect(screen.getByText(/Online card payment is being activated/)).toBeTruthy();
+    expect(screen.getByText(/Nothing is charged on this page/)).toBeTruthy();
+    expect(screen.getByText(/QR payment once we confirm your order/)).toBeTruthy();
   });
 
   it("opens the dialog on submit instead of placing the order straight away", async () => {

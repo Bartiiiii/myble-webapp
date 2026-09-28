@@ -1,11 +1,13 @@
-// Edge-banding geometry (spec §6.6): exposed edges get banded, buried (jointed)
-// edges stay raw; the "don't band the back" lever drops the wall-facing edges.
+// Edge banding (spec §6.6). Myble bands every edge of every board — see
+// `bandedEdges` for why — so what this module actually computes is which edges
+// are EXPOSED, which the rules engine still needs to reason about a design.
 import {
   type Design,
   type EdgeKey,
   type Part,
   EDGE_KEYS,
   edgeDir,
+  faceAxes,
   partBox,
   thicknessCm,
 } from "../model";
@@ -14,8 +16,8 @@ import { EPS } from "./core";
 const OUT_DELTA = 0.3; // how far outside the edge to probe for a covering part
 const SAMPLES = 5;
 
-const aWorld = (p: Part) => (p.axis === "x" ? "y" : "x");
-const bWorld = (p: Part) => (p.axis === "z" ? "y" : "z");
+const aWorld = (p: Part) => faceAxes(p).a;
+const bWorld = (p: Part) => faceAxes(p).b;
 
 function pointInBox(
   pt: { x: number; y: number; z: number },
@@ -61,31 +63,32 @@ function edgeBuried(part: Part, edge: EdgeKey, others: Part[], tCm: number): boo
   return buriedSamples * 2 >= SAMPLES; // majority covered ⇒ buried
 }
 
-const isBackEdge = (part: Part, edge: EdgeKey) => edgeDir(part, edge).z <= -0.99;
-
 /**
- * Which of a part's four edges are banded, given the whole design.
- * exposed → banded; buried → raw; "don't band the back" drops rear edges;
- * an explicit `bandOverride` always wins.
+ * Which of a part's four edges are banded: ALL FOUR, on every board, always.
+ *
+ * Myble bands every edge, including the ones buried inside a joint. It costs a
+ * few percent more edge tape than banding only what shows, and buys three
+ * things worth more than that:
+ *   • meble will only drill a formatka online when all four edges are banded
+ *     (meble.pl/plyty-informacje) — raw edges would push every order onto the
+ *     manual cnc@meble.pl route,
+ *   • their import CSV carries one banding code per DIMENSION, so a part
+ *     banded on one edge of a pair can't be expressed in the file at all,
+ *   • a sealed edge is what stops chipboard swelling, and the customer decides
+ *     later which way the piece faces the room.
+ *
+ * It stays a function of the part so the exports, the price and the rules
+ * engine all read the policy from one place instead of hard-coding `true`.
  */
 export function bandedEdges(part: Part, design: Design): Record<EdgeKey, boolean> {
-  const t = thicknessCm(design);
-  const others = design.parts.filter((p) => p.id !== part.id);
+  void part;
+  void design;
   const out = {} as Record<EdgeKey, boolean>;
-  for (const e of EDGE_KEYS) {
-    const override = part.bandOverride?.[e];
-    if (override !== undefined) {
-      out[e] = override;
-      continue;
-    }
-    let banded = !edgeBuried(part, e, others, t); // exposed ⇒ banded
-    if (banded && !design.bandBack && isBackEdge(part, e)) banded = false;
-    out[e] = banded;
-  }
+  for (const e of EDGE_KEYS) out[e] = true;
   return out;
 }
 
-/** The exposed (un-buried) edges of a part, ignoring bandBack/overrides. */
+/** The exposed (un-buried) edges of a part — what a person actually sees. */
 export function exposedEdges(part: Part, design: Design): Record<EdgeKey, boolean> {
   const t = thicknessCm(design);
   const others = design.parts.filter((p) => p.id !== part.id);

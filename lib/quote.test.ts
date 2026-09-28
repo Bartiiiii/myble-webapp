@@ -3,7 +3,7 @@ import { quoteDesign, designToCutParts, breakdownCZK, priceFromMeble, ceilTo90, 
 import { calculatePrice } from "./pricing";
 import { DEFAULT_DESIGN, presetDesign } from "./build";
 import { type Design, type Part } from "./model";
-import { DELIVERY_CZK } from "./model";
+import { DELIVERY_CZK, IN_ROOM_DELIVERY_SURCHARGE_CZK } from "./model";
 import { FREE_SHIP_CZK, PRICE_FLOOR_CZK } from "./pricingConfig";
 
 describe("designToCutParts", () => {
@@ -21,7 +21,7 @@ describe("designToCutParts", () => {
 
   it("a lone board is not drilled and is fully banded", () => {
     const shelf: Part = { id: "s", role: "shelf", axis: "y", aCm: 40, bCm: 30, pos: { x: 0, y: 0, z: 0 } };
-    const d: Design = { colour: "white", thickness: 18, bandBack: true, outerCm: { w: 40, h: 40, d: 30 }, parts: [shelf] };
+    const d: Design = { colour: "white", thickness: 18, outerCm: { w: 40, h: 40, d: 30 }, parts: [shelf] };
     const parts = designToCutParts(d);
     expect(parts).toHaveLength(1);
     expect(parts[0].drilled).toBe(false);
@@ -113,10 +113,17 @@ describe("quoteDesign — behaviour", () => {
     expect(q.sticker).toBeGreaterThan(q.landedCZK); // markup > 1
   });
 
-  it("'don't band the back' lowers the price (drops rear edge banding)", () => {
-    const full = quoteDesign({ ...DEFAULT_DESIGN, bandBack: true });
-    const noBack = quoteDesign({ ...DEFAULT_DESIGN, bandBack: false });
-    expect(noBack.kitCZK).toBeLessThanOrEqual(full.kitCZK);
+  it("bills edge banding on all four edges of every board", () => {
+    const q = quoteDesign(DEFAULT_DESIGN);
+    const parts = designToCutParts(DEFAULT_DESIGN);
+    // Every cut part asks for all four edges…
+    for (const p of parts) {
+      expect(p.edgeBanding).toEqual({ top: true, bottom: true, left: true, right: true });
+    }
+    // …so the billed edge metres cover the full perimeter of every piece.
+    const perimeterM =
+      parts.reduce((m, p) => m + 2 * (p.widthMm + p.heightMm) * (p.quantity ?? 1), 0) / 1000;
+    expect(q.pricing.detail.edgeActualMetres).toBeCloseTo(perimeterM, 3);
   });
 
   it("the CZK breakdown components sum EXACTLY to the kit sticker", () => {
@@ -146,7 +153,6 @@ describe("quoteDesign — floor & delivery", () => {
   const tiny: Design = {
     colour: "white",
     thickness: 18,
-    bandBack: true,
     outerCm: { w: 20, h: 20, d: 15 },
     parts: [{ id: "s", role: "shelf", axis: "y", aCm: 10, bCm: 10, pos: { x: 0, y: 0, z: 0 } }],
   };
@@ -166,5 +172,52 @@ describe("quoteDesign — floor & delivery", () => {
     const q = quoteDesign(presetDesign("police")); // ≥ 3000
     expect(q.price).toBeGreaterThanOrEqual(FREE_SHIP_CZK);
     expect(q.deliveryCZK).toBe(0);
+  });
+});
+
+// The in-room surcharge is the one number the customer picks that the server has
+// to reproduce exactly: assertPriceMatches() in lib/payments.ts is zero-tolerance,
+// so a client/server disagreement here is a hard checkout failure, not a rounding
+// nit. These lock the arithmetic down on both sides of the free-ship threshold.
+describe("quoteDesign — in-room delivery surcharge", () => {
+  const tiny: Design = {
+    colour: "white",
+    thickness: 18,
+    outerCm: { w: 20, h: 20, d: 15 },
+    parts: [{ id: "s", role: "shelf", axis: "y", aCm: 10, bCm: 10, pos: { x: 0, y: 0, z: 0 } }],
+  };
+  const empty: Design = { colour: "white", thickness: 18, outerCm: { w: 0, h: 0, d: 0 }, parts: [] };
+
+  it("curbside (and omitted) charge no surcharge", () => {
+    expect(quoteDesign(tiny, { deliveryMethod: "curbside" }).deliveryCZK).toBe(DELIVERY_CZK);
+    expect(quoteDesign(tiny).deliveryCZK).toBe(DELIVERY_CZK);
+  });
+
+  it("adds the surcharge on top of a charged base fee", () => {
+    const q = quoteDesign(tiny, { deliveryMethod: "in-room" });
+    expect(q.price).toBeLessThan(FREE_SHIP_CZK);
+    expect(q.deliveryCZK).toBe(DELIVERY_CZK + IN_ROOM_DELIVERY_SURCHARGE_CZK);
+  });
+
+  // Business rule per the in-room fix: the surcharge is a service fee, so free
+  // curbside shipping does not make in-room free too.
+  it("still applies when base delivery is free", () => {
+    const q = quoteDesign(presetDesign("police"), { deliveryMethod: "in-room" });
+    expect(q.price).toBeGreaterThanOrEqual(FREE_SHIP_CZK);
+    expect(q.deliveryCZK).toBe(IN_ROOM_DELIVERY_SURCHARGE_CZK);
+  });
+
+  it("flows into the customer total, not just the delivery line", () => {
+    const curbside = quoteDesign(presetDesign("police"), { deliveryMethod: "curbside" });
+    const inRoom = quoteDesign(presetDesign("police"), { deliveryMethod: "in-room" });
+    expect(inRoom.customerCZK - curbside.customerCZK).toBe(IN_ROOM_DELIVERY_SURCHARGE_CZK);
+    expect(inRoom.total).toBe(inRoom.kitCZK + inRoom.deliveryCZK);
+  });
+
+  it("applies to the empty-design branch too", () => {
+    expect(quoteDesign(empty).deliveryCZK).toBe(DELIVERY_CZK);
+    const q = quoteDesign(empty, { deliveryMethod: "in-room" });
+    expect(q.deliveryCZK).toBe(DELIVERY_CZK + IN_ROOM_DELIVERY_SURCHARGE_CZK);
+    expect(q.total).toBe(q.deliveryCZK);
   });
 });

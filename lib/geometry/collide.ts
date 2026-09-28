@@ -6,8 +6,8 @@
 // resolved one axis at a time (swept, from the part's previous position) which
 // gives free sliding along a blocker's face and makes tunnelling impossible even
 // on a fast flick.
-import { type Axis, type Part, partBox, partSize } from "../model";
-import { AXES, EPS, overlap1D } from "./core";
+import { type Axis, type Part, type Design, MIN_PART_CM, OUTER_DIM, faceAxes, partBox, partSize } from "../model";
+import { AXES, EPS, overlap1D, round1 } from "./core";
 
 const SIZE_INDEX: Record<Axis, 0 | 1 | 2> = { x: 0, y: 1, z: 2 };
 
@@ -153,3 +153,78 @@ export function nudgeClear(
   }
   return part;
 }
+
+/**
+ * Candidate positions along one axis, nearest `base` first, clamped to
+ * `range` and de-duplicated — the same expanding-outward order `nudgeClear`
+ * uses, exposed here so `fitClear` can sweep two axes at once.
+ */
+function sweepFrom(base: number, range: { min: number; max: number }, step: number): number[] {
+  const clamp = (v: number) => Math.min(range.max, Math.max(range.min, v));
+  const start = clamp(base);
+  const out = [round1(start)];
+  const seen = new Set(out);
+  const reach = Math.max(range.max - start, start - range.min);
+  const steps = reach > 0 ? Math.ceil(reach / step) : 0;
+  for (let i = 1; i <= steps; i++) {
+    for (const dir of [1, -1] as const) {
+      const v = start + dir * i * step;
+      if (v < range.min - EPS || v > range.max + EPS) continue;
+      const vc = round1(clamp(v));
+      if (seen.has(vc)) continue;
+      seen.add(vc);
+      out.push(vc);
+    }
+  }
+  return out;
+}
+
+/**
+ * Like `nudgeClear`, but for a board that has nowhere obvious to go — a fresh
+ * duplicate landing exactly on its source, or a flip whose new orientation
+ * doesn't fit anywhere at full size. Tries, in order: the requested slot; a
+ * different level along the thickness axis (plain `nudgeClear`); a sideways
+ * shift along the board's own length, still at full size; and only as a last
+ * resort, a shorter board.
+ *
+ * The old behaviour when nothing was free was to silently keep the part at
+ * its (colliding) candidate position — two boards rendered inside each other.
+ * This never does that: it returns `null` instead, so the caller can refuse
+ * the action rather than ship an overlap.
+ */
+export function fitClear(
+  part: Part,
+  others: Part[],
+  tCm: number,
+  outerCm: Design["outerCm"],
+): Part | null {
+  const thickOuter = outerCm[OUTER_DIM[part.axis]];
+  const thickRange = { min: -thickOuter / 2 + tCm / 2, max: thickOuter / 2 - tCm / 2 };
+  const thickStep = Math.max(tCm, 0.5);
+
+  const nudged = nudgeClear(part, others, tCm, thickRange);
+  if (isClear(nudged, others, tCm)) return nudged;
+
+  const { a: aAxis } = faceAxes(part);
+  const aOuter = outerCm[OUTER_DIM[aAxis]];
+  const aStep = Math.max(tCm, 5);
+  const sizeStep = 5;
+
+  for (let size = part.aCm; size >= MIN_PART_CM - EPS; size -= sizeStep) {
+    const aCm = Math.max(MIN_PART_CM, round1(size));
+    const halfA = aCm / 2;
+    const aRange = { min: -aOuter / 2 + halfA, max: aOuter / 2 - halfA };
+    if (aRange.min <= aRange.max + EPS) {
+      for (const aCentre of sweepFrom(part.pos[aAxis], aRange, aStep)) {
+        for (const tPos of sweepFrom(part.pos[part.axis], thickRange, thickStep)) {
+          const candidate: Part = { ...part, aCm, pos: { ...part.pos, [aAxis]: aCentre, [part.axis]: tPos } };
+          if (isClear(candidate, others, tCm)) return candidate;
+        }
+      }
+    }
+    if (aCm <= MIN_PART_CM + EPS) break; // already tried the smallest board
+  }
+
+  return null;
+}
+

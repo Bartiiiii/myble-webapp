@@ -55,46 +55,35 @@ export default function OrderPage() {
   const [confirmed, setConfirmed] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false); // B4
   const [acceptedCustom, setAcceptedCustom] = useState(false); // B3 (§1837)
+  // One delivery arrangement, so this is a constant rather than a choice. It
+  // still feeds the quote, which prices the in-room service separately, so
+  // reinstating that option later is a matter of making this state again.
+  const deliveryMethod = "curbside" as const;
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setDesign(loadDesign());
   }, []);
 
-  const quote = useMemo(() => quoteDesign(design), [design]);
+  const quote = useMemo(() => quoteDesign(design, { deliveryMethod }), [design, deliveryMethod]);
   const kit = quote.kitCZK;
   const total = quote.customerCZK;
   // The cut list (lib/cutlist.ts) is production data for us, not the customer:
   // it ships with the order payload (`design`) and lives in the admin, so the
   // checkout page never renders it.
 
-  // Sales-first rules validation at checkout: severity-3 recommendations become
-  // "Order anyway" acknowledgements. Nothing here blocks placing the order.
+  // Sales-first rules validation at checkout: severity-3 findings are shown as
+  // expert tips, read-only. They are advice, not a gate — the customer never has
+  // to tick anything to get past them; we still record which ones they were
+  // shown with the order so our team sees them before production.
   // Stage is "design", not "order": the order-pipeline invariants (part labels,
   // generated instructions, packaging spec) are produced by us AFTER the order
   // is placed, so asserting them against a customer's cart wrongly flags every
   // correct design. Same stage the server re-validates with (app/api/order).
   const rules = useMemo(() => safeValidateConfiguratorDesign(design, { locale, stage: "design" }), [design, locale]);
-  const [ackKeys, setAckKeys] = useState<Set<string>>(new Set());
-  // Recommendations start collapsed — a wall of open expert-advice cards at
-  // checkout reads as "something's wrong" even when it's routine guidance.
-  const [recsOpen, setRecsOpen] = useState(false);
-  // Re-key acknowledgements by rule + inputs hash so an edit invalidates them.
-  const ackId = (f: { rule_id: string; inputs_hash: string }) => `${f.rule_id}:${f.inputs_hash}`;
-  const allAcknowledged = rules.acknowledgements.every((f) => ackKeys.has(ackId(f)));
-  function toggleAck(key: string, on: boolean) {
-    setAckKeys((prev) => {
-      const next = new Set(prev);
-      if (on) next.add(key);
-      else next.delete(key);
-      return next;
-    });
-  }
-
-  // All consent + every severity-3 recommendation acknowledged. The rules
-  // engine never gates this: it advises, we review. See `orderable` in
-  // lib/rules-engine/configurator.ts.
-  const canPlace = confirmed && acceptedTerms && acceptedCustom && allAcknowledged;
+  // Consent only. The rules engine never gates this: it advises, we review.
+  // See `orderable` in lib/rules-engine/configurator.ts.
+  const canPlace = confirmed && acceptedTerms && acceptedCustom;
 
 
   // ── Submit flow ────────────────────────────────────────────────────────────
@@ -162,20 +151,22 @@ export default function OrderPage() {
         colour: design.colour,
         thickness_mm: design.thickness,
         parts_count: design.parts.length,
-        band_back: design.bandBack,
+        edge_banding: "all_edges",
       },
     };
 
-    // Recommendations the customer chose to "order anyway", recorded with the
-    // exact message shown, rule id, catalogue version, design hash and time.
+    // Recommendations the customer was shown, recorded with the exact message,
+    // rule id, catalogue version, design hash and time. These are *shown*, not
+    // acknowledged: the checkout no longer asks the customer to tick them, so
+    // the record must not claim consent that was never given.
     const nowIso = new Date().toISOString();
-    const acknowledgements = rules.acknowledgements.map((f) => ({
+    const recommendationsShown = rules.acknowledgements.map((f) => ({
       rule_id: f.rule_id,
       catalogue_version: rules.report.catalogue_version,
       message: f.message ?? f.rule_name,
       inputs_hash: f.inputs_hash,
       design_hash: rules.report.design_hash,
-      acknowledged_at: nowIso,
+      shown_at: nowIso,
     }));
 
     const payload = {
@@ -185,14 +176,14 @@ export default function OrderPage() {
       // Full parts list — the production/cut-list source of truth. Without it
       // the order can't be manufactured (localStorage is not a datastore).
       design,
-      // Sales-first rules record: health, catalogue version and the customer's
-      // acknowledgements. The server re-validates and stores the full report.
+      // Sales-first rules record: health, catalogue version and the tips the
+      // customer saw. The server re-validates and stores the full report.
       rules: {
         catalogue_version: rules.report.catalogue_version,
         engine_version: rules.report.engine_version,
         health: rules.report.health,
         design_hash: rules.report.design_hash,
-        acknowledgements,
+        recommendationsShown,
       },
       summary: {
         width_cm: design.outerCm.w,
@@ -207,7 +198,10 @@ export default function OrderPage() {
       },
     };
 
-    persistConsent(consent);
+    // Also persist the total/delivery method locally (NOT sent to /api/order —
+    // `consent` above is unchanged) so the confirmation page can show accurate
+    // bank-transfer instructions without a second round-trip to the server.
+    persistConsent({ ...consent, totalCzk: total, deliveryMethod });
     // B5: hand off to the (stub) order route which records consent and will send
     // the durable-medium confirmation e-mail. Fire-and-forget; the on-screen
     // confirmation is the durable copy until email is wired.
@@ -224,7 +218,7 @@ export default function OrderPage() {
       accepted_doc_versions: JSON.stringify(consent.acceptedDocVersions),
       rules_health: rules.report.health,
       rules_catalogue_version: rules.report.catalogue_version,
-      rules_acknowledgements: acknowledgements.length,
+      rules_recommendations_shown: recommendationsShown.length,
       payments_enabled: PAYMENTS_ENABLED,
     });
     router.push(`/order/confirmation?order=${encodeURIComponent(orderNo)}`);
@@ -279,9 +273,30 @@ export default function OrderPage() {
 
             <section className="rounded-3xl bg-white p-6 ring-1 ring-zinc-200">
               <h2 className="text-lg font-semibold">{t("order.shipping")}</h2>
-              <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                <DeliveryOption name="delivery" value="curbside" defaultChecked title={t("order.ship1")} sub={t("order.ship1sub")} price={fmt(DELIVERY_CZK)} />
-                <DeliveryOption name="delivery" value="in-room" title={t("order.ship2")} sub={t("order.ship2sub")} price={fmt(DELIVERY_CZK + 100)} />
+              {/* The option subtitles say "included in your total delivery estimate
+                  above" — this is that estimate. */}
+              <p className="mt-1 text-sm text-zinc-600">{t("order.deliveryEstimate")}</p>
+              {/* One way to get it, so this states the arrangement rather than
+                  asking a question. The value still rides along with the order
+                  so the record says how it was shipped. */}
+              <input type="hidden" name="delivery" value="courier" />
+              <div className="mt-5">
+                <FixedOption
+                  title={t("order.shipCourier")}
+                  sub={t("order.shipCourierSub")}
+                  price={fmt(DELIVERY_CZK)}
+                />
+              </div>
+            </section>
+
+            <section className="rounded-3xl bg-white p-6 ring-1 ring-zinc-200">
+              <h2 className="text-lg font-semibold">{t("order.payment")}</h2>
+              {/* Also the place the customer is told nothing is charged here:
+                  the order comes first, we check it can be built, and only then
+                  does the invoice go out. QR code or plain transfer details,
+                  whichever the customer's bank makes easier. */}
+              <div className="mt-5">
+                <FixedOption title={t("order.payQr")} sub={t("order.payQrSub")} />
               </div>
             </section>
 
@@ -290,46 +305,6 @@ export default function OrderPage() {
                 They're recorded with the order (rules.health / needsReview,
                 full findings in the server's stored report) for our team to
                 review before production. */}
-
-            {/* Severity-3 recommendations — "Order anyway" acknowledgements.
-                Collapsed by default: a wall of open warnings at checkout reads
-                as "something's wrong with my design" even when it's routine
-                expert advice, so we tuck it behind a summary line. */}
-            {rules.acknowledgements.length > 0 && (
-              <section className="rounded-3xl bg-white p-6 ring-1 ring-amber-200">
-                <details open={recsOpen} onToggle={(e) => setRecsOpen(e.currentTarget.open)}>
-                  <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
-                    <span>
-                      <h2 className="inline text-lg font-semibold">{t("rules.recommendations")}</h2>
-                      <span className="ml-2 text-sm text-zinc-500">
-                        {t("rules.recommendationsCount", { n: rules.acknowledgements.length })}
-                      </span>
-                    </span>
-                    <span className={`text-zinc-400 transition-transform ${recsOpen ? "rotate-180" : ""}`}>▾</span>
-                  </summary>
-                  <p className="mt-1 text-sm text-zinc-600">{t("rules.recommendationsHint")}</p>
-                  <div className="mt-4 space-y-3">
-                    {rules.acknowledgements.map((f) => {
-                      const key = `${f.rule_id}:${f.inputs_hash}`;
-                      return (
-                        <label key={key} className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50/50 p-4">
-                          <input
-                            type="checkbox"
-                            checked={ackKeys.has(key)}
-                            onChange={(e) => toggleAck(key, e.target.checked)}
-                            className="mt-0.5 h-4 w-4 rounded border-zinc-300"
-                          />
-                          <span className="text-sm text-zinc-700">
-                            {f.message ?? f.rule_name}
-                            <span className="mt-0.5 block text-xs font-medium text-amber-700">{t("rules.orderAnyway")}</span>
-                          </span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                </details>
-              </section>
-            )}
 
             {/* Dimension confirmation now lives in the summary column, next to
                 the price and the §1837 notice — see the aside below. */}
@@ -342,8 +317,12 @@ export default function OrderPage() {
                 <h2 className="text-sm font-semibold">{t("order.yourDesign")}</h2>
                 <span className="text-xs text-zinc-500">{t("parts.label")} · {t("parts.count", { n: design.parts.length })} · {t(`colors.${design.colour}`)} {design.thickness} mm</span>
               </div>
+              {/* Drag/pinch to look the design over before paying. Manual
+                  control replaces the old auto-spin: a piece drifting on its
+                  own while someone is trying to check it closely at checkout
+                  fights the thing they're actually here to do. */}
               <div className="mt-4 overflow-hidden rounded-2xl ring-1 ring-zinc-200">
-                <ShelfViewer design={design} height={260} interactive={false} autoRotate />
+                <ShelfViewer design={design} height={260} interactive />
               </div>
             </section>
 
@@ -367,53 +346,47 @@ export default function OrderPage() {
                 </div>
               </div>
 
-              {/* Dimension confirmation, compact. It sits with the other two
-                  consent checks (custom-made, terms) directly above the order
-                  button, so everything that gates the order is in one column. */}
-              <div className="mt-4 rounded-2xl bg-indigo-50/60 p-4 ring-1 ring-indigo-200">
-                <div className="flex items-baseline justify-between gap-3">
-                  <p className="text-sm font-semibold text-indigo-900">{t("order.confirmTitle")}</p>
-                  <Link href="/design" className="shrink-0 text-xs font-medium text-indigo-600 hover:text-indigo-500">
-                    {t("order.editIn")}
-                  </Link>
-                </div>
-                <p className="mt-1.5 text-sm font-semibold tabular-nums text-zinc-900">{w} × {h} × {d} cm</p>
-                <p className="mt-0.5 text-xs text-zinc-600">
-                  {t(`colors.${design.colour}`)} · {design.thickness} mm · {t("parts.count", { n: design.parts.length })} ·{" "}
-                  {t("order.backEdge", { v: design.bandBack ? t("order.backEdgeOn") : t("order.backEdgeOff") })}
-                </p>
-                <label className="mt-3 flex items-start gap-2.5">
+              {/* The three things that gate the order, all read the same way.
+                  They used to sit in coloured panels of their own, which made
+                  the two legal ones look like warnings rather than the consents
+                  they are. The wording is untouched: the §1837 exclusion still
+                  states why the withdrawal right does not apply, right where it
+                  is being agreed to. */}
+              <div className="mt-4 space-y-3">
+                <label className="flex items-start gap-2.5">
                   <input
                     type="checkbox"
                     checked={confirmed}
                     onChange={(e) => setConfirmed(e.target.checked)}
                     className="mt-0.5 h-4 w-4 rounded border-zinc-300 accent-indigo-600"
                   />
-                  <span className="text-xs leading-5 text-indigo-900">
+                  <span className="text-xs leading-5 text-zinc-600">
                     {t("order.measuredOk1")}{" "}
                     <Link href="/" className="font-medium text-indigo-600 underline">{t("order.measuredGuide")}</Link>{" "}
                     {t("order.measuredOk2")}
                   </span>
                 </label>
-              </div>
 
-              {/* B3: custom-made notice + un-prechecked §1837 acknowledgement. */}
-              <div className="mt-4 rounded-2xl bg-amber-50 p-4 ring-1 ring-amber-200">
-                <p className="text-sm font-semibold text-amber-900">{t("checkout.customTitle")}</p>
-                <p className="mt-1 text-xs leading-5 text-amber-800">{t("checkout.customNotice")}</p>
-                <label className="mt-3 flex items-start gap-2.5">
+                {/* B3: the un-prechecked §1837 acknowledgement. The notice that
+                    explains *why* the withdrawal right does not apply used to
+                    sit above it as its own paragraph, which said the same thing
+                    twice in a row. It is still shown verbatim, now on the info
+                    tip attached to the line it is the reason for. */}
+                <label className="relative flex items-start gap-2.5">
                   <input
                     type="checkbox"
                     checked={acceptedCustom}
                     onChange={(e) => setAcceptedCustom(e.target.checked)}
                     className="mt-0.5 h-4 w-4 rounded border-zinc-300 accent-indigo-600"
                   />
-                  <span className="text-xs text-amber-900">{t("checkout.customAck")}</span>
+                  <span className="text-xs leading-5 text-zinc-600">
+                    {t("checkout.customAck")}
+                    <InfoTip label={t("checkout.customNoticeTip")} text={t("checkout.customNotice")} />
+                  </span>
                 </label>
-              </div>
 
               {/* B4: un-prechecked Terms/Complaints/Privacy acceptance. */}
-              <label className="mt-3 flex items-start gap-2.5">
+              <label className="flex items-start gap-2.5">
                 <input
                   type="checkbox"
                   checked={acceptedTerms}
@@ -436,15 +409,7 @@ export default function OrderPage() {
                   {t("checkout.termsEnd")}
                 </span>
               </label>
-
-              {/* Payments not live yet: say so in the form itself, not only in
-                  the modal, so the customer knows before they commit. */}
-              {!PAYMENTS_ENABLED && (
-                <div className="mt-4 rounded-2xl bg-indigo-50/60 p-4 ring-1 ring-indigo-200">
-                  <p className="text-sm font-semibold text-indigo-900">{t("checkout.paymentsOff.noticeTitle")}</p>
-                  <p className="mt-1 text-xs leading-5 text-indigo-800">{t("checkout.paymentsOff.noticeBody")}</p>
-                </div>
-              )}
+              </div>
 
               <button
                 ref={submitBtnRef}
@@ -465,12 +430,6 @@ export default function OrderPage() {
               {confirmed && acceptedCustom && !acceptedTerms && (
                 <p className="mt-2 text-center text-xs text-amber-600">{t("checkout.mustAccept")}</p>
               )}
-
-              <div className="mt-4 space-y-2 text-xs text-zinc-500">
-                <p className="flex items-center gap-2"><span className="text-emerald-600">✓</span> {t("order.badge1")}</p>
-                <p className="flex items-center gap-2"><span className="text-emerald-600">✓</span> {t("order.badge2")}</p>
-                <p className="flex items-center gap-2"><span className="text-emerald-600">✓</span> {t("order.badge3")}</p>
-              </div>
             </section>
           </aside>
         </div>
@@ -597,6 +556,46 @@ function Input({ type = "text", name, placeholder, required }: { type?: string; 
   );
 }
 
+/** The "why" behind a consent line, one hover away. Legal copy that has to be
+ *  shown but does not have to be read before ticking sits here rather than as a
+ *  paragraph of its own, which is what used to push the order button down the
+ *  page. Hover and keyboard focus are handled in CSS so the note never depends
+ *  on JS; the click toggle is for touch, where there is no hover at all.
+ *
+ *  The bubble is positioned against the row it hangs off (the label carries
+ *  `relative`), not against the 16px mark — anchored to the mark it runs off the
+ *  edge of the summary column, since that is where the mark sits. */
+function InfoTip({ label, text }: { label: string; text: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <span className="group ml-1 inline-block align-middle">
+      <button
+        type="button"
+        aria-label={label}
+        aria-expanded={open}
+        // Inside a <label>: stop the click here so revealing the note never
+        // ticks the checkbox it explains.
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setOpen((v) => !v);
+        }}
+        className="flex h-4 w-4 items-center justify-center rounded-full border border-zinc-300 text-[10px] font-semibold leading-none text-zinc-500 transition hover:border-zinc-400 hover:text-zinc-700"
+      >
+        i
+      </button>
+      <span
+        role="tooltip"
+        className={`pointer-events-none absolute bottom-full left-0 right-0 z-20 mb-2 rounded-xl bg-zinc-900 px-3 py-2 text-[11px] font-normal leading-5 text-white shadow-lg ${
+          open ? "block" : "hidden group-hover:block group-focus-within:block"
+        }`}
+      >
+        {text}
+      </span>
+    </span>
+  );
+}
+
 function Row({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) {
   return (
     <div className="flex items-center justify-between gap-4">
@@ -606,31 +605,23 @@ function Row({ label, value, strong = false }: { label: string; value: string; s
   );
 }
 
-function DeliveryOption({
-  name,
-  value,
-  title,
-  sub,
-  price,
-  defaultChecked,
-}: {
-  name: string;
-  value: string;
-  title: string;
-  sub: string;
-  price: string;
-  defaultChecked?: boolean;
-}) {
+/** The one way this happens, stated rather than offered. A radio group with a
+ *  single option asks a question that has no second answer; this reads as the
+ *  arrangement it is, while still looking like the selected choice. */
+function FixedOption({ title, sub, price }: { title: string; sub: string; price?: string }) {
   return (
-    <label className="flex cursor-pointer items-start justify-between gap-3 rounded-2xl border border-zinc-200 p-4 transition has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-50/50">
+    <div className="flex items-start justify-between gap-3 rounded-2xl border border-indigo-500 bg-indigo-50/50 p-4">
       <span className="flex items-start gap-3">
-        <input type="radio" name={name} value={value} defaultChecked={defaultChecked} className="mt-0.5 h-4 w-4 border-zinc-300" />
+        <span
+          aria-hidden="true"
+          className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-[5px] border-indigo-600 bg-white"
+        />
         <span>
           <span className="block text-sm font-semibold text-zinc-900">{title}</span>
-          <span className="block text-xs text-zinc-500">{sub}</span>
+          <span className="block text-xs leading-5 text-zinc-500">{sub}</span>
         </span>
       </span>
-      <span className="text-sm font-semibold text-zinc-900">{price}</span>
-    </label>
+      {price && <span className="shrink-0 text-sm font-semibold text-zinc-900">{price}</span>}
+    </div>
   );
 }

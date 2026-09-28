@@ -8,6 +8,7 @@ import {
   type Part,
   AABB,
   LIMITS,
+  MAX_PART_CM,
   MIN_PART_CM,
   partBox,
   partSize,
@@ -48,13 +49,21 @@ function setEnd(p: Part, ax: Axis, dim: "aCm" | "bCm", end: "lo" | "hi", target:
   const hi = p.pos[ax] + cur / 2;
   const nLo = end === "lo" ? target : lo;
   const nHi = end === "hi" ? target : hi;
-  const newDim = Math.max(MIN_PART_CM, nHi - nLo);
+  const newDim = clampCut(nHi - nLo);
   p[dim] = newDim;
   p.pos[ax] = (nHi + nLo) / 2;
 }
 
-/** Re-snap every part's in-plane ends to nearby opposing faces within SNAP_CM. */
-function closeGaps(parts: Part[], tCm: number): void {
+/**
+ * Re-snap every part's in-plane ends to nearby opposing faces within `tolCm`.
+ *
+ * The tolerance has to grow with the scale factor. Positions and cut lengths
+ * scale, but board THICKNESS cannot, so each wall in the path leaves up to
+ * `t × (factor − 1)` of slack — 3.1 cm when a 73 cm piece is pulled out to
+ * 200 cm. Against a fixed 3 cm that lands just outside the snap, and every
+ * shelf in the piece comes away from its walls at once.
+ */
+function closeGaps(parts: Part[], tCm: number, tolCm: number): void {
   for (let pass = 0; pass < 2; pass++) {
     for (const p of parts) {
       const others = parts.filter((o) => o.id !== p.id);
@@ -73,10 +82,10 @@ function closeGaps(parts: Part[], tCm: number): void {
           if (!fits(ob)) continue;
           // hi end meets the other part's lower face.
           const dHi = ob.min[ax] - pb.max[ax];
-          if (dHi >= -EPS && dHi <= SNAP_CM && (hiTarget === null || ob.min[ax] < hiTarget)) hiTarget = ob.min[ax];
+          if (dHi >= -EPS && dHi <= tolCm && (hiTarget === null || ob.min[ax] < hiTarget)) hiTarget = ob.min[ax];
           // lo end meets the other part's upper face.
           const dLo = pb.min[ax] - ob.max[ax];
-          if (dLo >= -EPS && dLo <= SNAP_CM && (loTarget === null || ob.max[ax] > loTarget)) loTarget = ob.max[ax];
+          if (dLo >= -EPS && dLo <= tolCm && (loTarget === null || ob.max[ax] > loTarget)) loTarget = ob.max[ax];
         }
         if (hiTarget !== null) setEnd(p, ax, dim, "hi", hiTarget);
         if (loTarget !== null) setEnd(p, ax, dim, "lo", loTarget);
@@ -86,6 +95,11 @@ function closeGaps(parts: Part[], tCm: number): void {
 }
 
 const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
+
+/** A cut dimension, held between the shortest board we can cut and the longest
+ *  one the partner can cut and a courier will carry. Scaling the piece up past
+ *  that point stops stretching boards: past it the piece needs more of them. */
+const clampCut = (n: number) => clamp(n, MIN_PART_CM, MAX_PART_CM);
 
 export function scaleParts(design: Design, newOuter: { w: number; h: number; d: number }): Design {
   const t = thicknessCm(design);
@@ -102,8 +116,8 @@ export function scaleParts(design: Design, newOuter: { w: number; h: number; d: 
     const np: Part = {
       ...p,
       pos: { x: p.pos.x * f.x, y: p.pos.y * f.y, z: p.pos.z * f.z },
-      aCm: Math.max(MIN_PART_CM, p.aCm * fByAxis(aWorld(p))),
-      bCm: Math.max(MIN_PART_CM, p.bCm * fByAxis(bWorld(p))),
+      aCm: clampCut(p.aCm * fByAxis(aWorld(p))),
+      bCm: clampCut(p.bCm * fByAxis(bWorld(p))),
     };
     return np;
   });
@@ -123,8 +137,11 @@ export function scaleParts(design: Design, newOuter: { w: number; h: number; d: 
     }
   }
 
-  // 3) Re-snap interior parts to the pinned walls / each other.
-  closeGaps(parts, t);
+  // 3) Re-snap interior parts to the pinned walls / each other. The slack a
+  //    scale leaves behind is thickness that could not scale with it, so the
+  //    tolerance follows the factor rather than sitting at a fixed 3 cm.
+  const stretch = Math.max(f.x, f.y, f.z);
+  closeGaps(parts, t, SNAP_CM + t * Math.max(0, stretch - 1));
 
   // 4) Clamp to limits + round.
   const outer = {
@@ -133,8 +150,8 @@ export function scaleParts(design: Design, newOuter: { w: number; h: number; d: 
     d: clamp(Math.round(newOuter.d), LIMITS.d.min, LIMITS.d.max),
   };
   for (const p of parts) {
-    p.aCm = round1(Math.max(MIN_PART_CM, p.aCm));
-    p.bCm = round1(Math.max(MIN_PART_CM, p.bCm));
+    p.aCm = round1(clampCut(p.aCm));
+    p.bCm = round1(clampCut(p.bCm));
     p.pos = { x: round1(p.pos.x), y: round1(p.pos.y), z: round1(p.pos.z) };
   }
 

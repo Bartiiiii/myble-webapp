@@ -29,33 +29,64 @@ export interface Part {
   bCm: number;
   /** Part centre in carcass space (cm), centre-origin. */
   pos: { x: number; y: number; z: number };
-  /** User forces band/raw on a specific edge (rare). Omit = geometry decides. */
-  bandOverride?: Partial<Record<EdgeKey, boolean>>;
 }
 
 export interface Design {
   colour: Colour;
   thickness: Thickness;
-  /** false = "Neohranovat zadní hranu" — drop banding on the wall-facing edges. */
-  bandBack: boolean;
   /** Overall bounding box of the piece (cm); drives the proportional size panel. */
   outerCm: { w: number; h: number; d: number };
   parts: Part[];
 }
 
 // --- Limits & shipping -------------------------------------------------------
-// The 120 cm max-edge parcel rule is sacred (verified shipping constraint).
-export const MAX_EDGE_CM = 120;
-export const DELIVERY_CZK = 199;
+// Two different ceilings, and conflating them is what used to keep the whole
+// piece down at 120 cm:
+//
+//   • ONE BOARD is bounded by what the partner can cut and what a courier will
+//     carry. meble.pl price by a 1397 × 1032 mm panel, the raw sheet trims to
+//     2740 × 2010 mm (rules catalogue MAT-SIZE-002), and GLS take a parcel side
+//     of at most 2000 mm (the source behind SCOPE-SIZE-003). Shipping is the
+//     binding one, so no board's cut dimension may exceed 200 cm.
+//   • THE WHOLE PIECE has no such ceiling, because it is assembled from many
+//     boards. A 5 m run of shelving is ganged modules, not one impossible board.
+//
+// Anything that can grow a board therefore checks MAX_PART_CM, and only the
+// envelope checks LIMITS.
 
+/** Sheet the partner cuts from, minus trim (mm → cm). Documented, not enforced:
+ *  shipping bites first. Kept so the cutting ceiling is visible if we ever move
+ *  to freight. */
+export const SHEET_MAX_CM = { long: 274, short: 201 } as const;
+/** Longest parcel side a courier will take (GLS CZ). */
+export const PARCEL_MAX_SIDE_CM = 200;
+/** The real ceiling on a single board's cut dimensions: the lower of the two. */
+export const MAX_PART_CM = Math.min(SHEET_MAX_CM.long, PARCEL_MAX_SIDE_CM);
+export const DELIVERY_CZK = 199;
+/** Extra charged for in-room (vs. curbside) delivery. Added on top of DELIVERY_CZK. */
+export const IN_ROOM_DELIVERY_SURCHARGE_CZK = 100;
+
+/**
+ * The envelope the whole piece may occupy — which is also how far a board can
+ * travel before the piece stops growing to follow it.
+ *
+ * Width runs to 5 m because a wall of shelving is exactly what ganged modules
+ * are for. Height stops at 3 m: ceilings are 2.5–2.7 m, and a taller
+ * freestanding piece cannot be stood up safely (EN 14749). Depth stops at 1 m
+ * because depth is the one dimension that is nearly always a single board's,
+ * and nothing anyone calls furniture is deeper than a wardrobe.
+ */
 export const LIMITS = {
-  w: { min: 20, max: 120 },
-  h: { min: 20, max: 120 },
-  d: { min: 15, max: 60 },
+  w: { min: 20, max: 500 },
+  h: { min: 20, max: 300 },
+  d: { min: 15, max: 100 },
 } as const;
 
 export const MIN_PART_CM = 10; // shortest board we'll cut
 export const MAX_PARTS = 40;
+
+/** Which outer dimension a board's own axis measures against. */
+export const OUTER_DIM: Record<Axis, "w" | "h" | "d"> = { x: "w", y: "h", z: "d" };
 
 // --- Material colours (swatches) --------------------------------------------
 export const COLOURS: { id: Colour; name: string; hex: string }[] = [
@@ -113,11 +144,22 @@ export function partBox(part: Part, tCm: number): AABB {
   };
 }
 
+/**
+ * The world axes a board's `aCm` and `bCm` run along. A board is drawn (and cut,
+ * and drilled) as a flat rectangle: `a` is its width, `b` its height, and its
+ * thickness runs along `axis`. Everything that maps between carcass space and a
+ * single board's own 2-D frame goes through here.
+ */
+export function faceAxes(part: Pick<Part, "axis">): { a: Axis; b: Axis } {
+  return {
+    a: part.axis === "x" ? "y" : "x",
+    b: part.axis === "z" ? "y" : "z",
+  };
+}
+
 /** Outward 3D unit direction of one of a part's four face edges. */
 export function edgeDir(part: Part, edge: EdgeKey): { x: number; y: number; z: number } {
-  // Local face axes per board axis: (aAxis, bAxis) in world terms.
-  const aAxis = part.axis === "x" ? "y" : "x"; // a runs along this world axis
-  const bAxis = part.axis === "z" ? "y" : "z"; // b runs along this world axis
+  const { a: aAxis, b: bAxis } = faceAxes(part);
   const sign = edge === "top" || edge === "right" ? 1 : -1;
   const along = edge === "left" || edge === "right" ? aAxis : bAxis;
   return { x: along === "x" ? sign : 0, y: along === "y" ? sign : 0, z: along === "z" ? sign : 0 };

@@ -30,10 +30,10 @@ export interface LegalDocMeta {
 // these in sync when a file changes (the withdrawal form carries no version line
 // of its own, so it tracks the T&C release it ships with).
 export const LEGAL_DOCS: Record<LegalSlug, LegalDocMeta> = {
-  "terms-and-conditions": { slug: "terms-and-conditions", titleKey: "legal.docs.terms-and-conditions.title", version: "1.3" },
+  "terms-and-conditions": { slug: "terms-and-conditions", titleKey: "legal.docs.terms-and-conditions.title", version: "1.4" },
   "privacy-policy": { slug: "privacy-policy", titleKey: "legal.docs.privacy-policy.title", version: "1.2" },
   "cookies-policy": { slug: "cookies-policy", titleKey: "legal.docs.cookies-policy.title", version: "1.1" },
-  "withdrawal-form": { slug: "withdrawal-form", titleKey: "legal.docs.withdrawal-form.title", version: "1.3" },
+  "withdrawal-form": { slug: "withdrawal-form", titleKey: "legal.docs.withdrawal-form.title", version: "1.4" },
   "complaints-procedure": { slug: "complaints-procedure", titleKey: "legal.docs.complaints-procedure.title", version: "1.0" },
   "product-safety": { slug: "product-safety", titleKey: "legal.docs.product-safety.title", version: "1.0" },
 };

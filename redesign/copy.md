@@ -87,7 +87,7 @@ _(Placeholder until real reviews exist — DO NOT ship fake names. Use a "Buďte
 
 ## 9. FAQ — "Časté dotazy"
 - **`Jak změřím svůj prostor?`** — `Stačí svinovací metr a náš návod na měření. Šířku měřte na třech místech (nahoře, uprostřed, dole) a zadejte nejmenší hodnotu. Rozměry pak potvrdíte před výrobou.`
-- **`Jak dlouho to trvá?`** — `Výroba obvykle 5–8 pracovních dnů, poté doručení Zásilkovnou nebo PPL. Přesný termín vidíte u objednávky.`
+- **`Jak dlouho to trvá?`** — `Výroba obvykle trvá 10 až 15 pracovních dnů od potvrzení rozměrů a přijetí platby, poté následuje doprava. Celkově většina objednávek dorazí do 3–4 týdnů od platby, vždy však do 28 dnů. Přesný odhadovaný termín doručení uvidíte u své objednávky.`
 - **`Zvládnu sestavení sám?`** — `Ano. Díly jsou očíslované, spoje jednoduché a návod je na míru vašemu kusu. Většina lidí to má hotové do 30–45 minut.`
 - **`Můžu vrátit nábytek na míru?`** — `Protože vyrábíme na míru, objednávka je ze zákona nevratná. Vady ale řešíme férově a obratem — na kování platí záruka.`
 - **`Co když to dorazí poškozené?`** — `Balíme bytelně a testujeme pádem. Pokud i tak něco přijde poškozené, pošlete fotku a my díl bezplatně vyměníme.`

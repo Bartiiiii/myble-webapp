@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { CATEGORIES, categoryCount, type CategoryId } from "../lib/library";
+import { CATEGORIES, categoryCount, type CategoryId, type LibraryItem } from "../lib/library";
 import { useT } from "../lib/i18n";
 
 /**
@@ -16,10 +16,14 @@ export function CategoryPills({
   active,
   onSelect,
   showCounts = true,
+  pool,
 }: {
   active: CategoryId;
   onSelect: (id: CategoryId) => void;
   showCounts?: boolean;
+  /** Counted set — pass the merged curated + community pool where there is
+   *  one, so the numbers on the pills match the grid under them. */
+  pool?: LibraryItem[];
 }) {
   const t = useT();
 
@@ -31,7 +35,7 @@ export function CategoryPills({
     >
       {CATEGORIES.map((c) => {
         const isActive = c.id === active;
-        const n = categoryCount(c.id);
+        const n = categoryCount(c.id, pool);
         if (n === 0) return null;
         return (
           <button

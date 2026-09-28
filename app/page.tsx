@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SiteHeader } from "../components/SiteHeader";
 import { SiteFooter } from "../components/SiteFooter";
 import { NewsletterForm } from "../components/NewsletterForm";
@@ -10,8 +10,11 @@ import { Reveal } from "../components/Reveal";
 import { CategoryPills } from "../components/CategoryPills";
 import { FireButton } from "../components/FireButton";
 import { type Design, type LegacyDesign, legacyToDesign } from "../lib/design";
-import { sortedByHeat, type CategoryId, type LibraryItem } from "../lib/library";
+import { AuthorChip } from "../components/library/AuthorChip";
+import { DesignDialog } from "../components/library/DesignDialog";
+import { itemName, sortedByHeat, type CategoryId, type LibraryItem } from "../lib/library";
 import { ReactionsProvider, useReactions } from "../lib/reactions";
+import { useLibraryPool } from "../lib/useLibraryPool";
 import { useIsNarrow } from "../lib/useIsNarrow";
 import { useI18n, useT, tList, type Locale } from "../lib/i18n";
 import posthog from "posthog-js";
@@ -368,10 +371,12 @@ function FaqList() {
 function LibraryHighlights() {
   const { t } = useI18n();
   const { counts } = useReactions();
+  const { pool } = useLibraryPool();
   const [category, setCategory] = useState<CategoryId>("all");
+  const [detail, setDetail] = useState<LibraryItem | null>(null);
   const reduced = usePrefersReducedMotion();
 
-  const items = useMemo(() => sortedByHeat(counts, category).slice(0, 6), [counts, category]);
+  const items = useMemo(() => sortedByHeat(counts, category, pool).slice(0, 6), [counts, category, pool]);
 
   return (
     <section id="nabidka" className="mx-auto w-full max-w-6xl scroll-mt-20 px-5 pb-24">
@@ -395,17 +400,21 @@ function LibraryHighlights() {
 
       <Reveal delay={60}>
         <div className="mt-8">
-          <CategoryPills active={category} onSelect={setCategory} />
+          <CategoryPills active={category} onSelect={setCategory} pool={pool} />
         </div>
       </Reveal>
 
       <div className="mt-6 grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3">
         {items.map((item, i) => (
           <Reveal key={item.id} delay={(i % 3) * 80}>
-            <HighlightCard item={item} reduced={reduced} t={t} />
+            <HighlightCard item={item} reduced={reduced} t={t} onDetails={setDetail} />
           </Reveal>
         ))}
       </div>
+
+      {/* Rendered here, not inside a card: <Reveal> applies a transform, and a
+          fixed-position dialog inside one would resolve against the card. */}
+      <DesignDialog item={detail} onClose={() => setDetail(null)} from="home" />
     </section>
   );
 }
@@ -414,21 +423,25 @@ function HighlightCard({
   item,
   reduced,
   t,
+  onDetails,
 }: {
   item: LibraryItem;
   reduced: boolean;
   t: ReturnType<typeof useI18n>["t"];
+  onDetails: (item: LibraryItem) => void;
 }) {
-  const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
   const narrow = useIsNarrow();
+  const name = itemName(item, t);
 
   // Only run the WebGL preview while the card is near the viewport, so six
-  // spinning models never hold six live GL contexts at once.
-  useEffect(() => {
-    const el = ref.current;
-    if (!el || typeof IntersectionObserver === "undefined") {
-      setVisible(true);
+  // spinning models never hold six live GL contexts at once. A ref callback
+  // rather than an effect: the node arrives at commit time, so nothing reads
+  // ref.current and nothing sets state from inside an effect.
+  const observe = useCallback((el: HTMLDivElement | null) => {
+    if (!el) return;
+    if (typeof IntersectionObserver === "undefined") {
+      setVisible(true); // no observer support: just render it
       return;
     }
     const io = new IntersectionObserver(([e]) => setVisible(e.isIntersecting), {
@@ -439,15 +452,11 @@ function HighlightCard({
   }, []);
 
   return (
-    // The 🔥 control is a SIBLING overlay, not a child of the link — interactive
-    // content nested inside an <a> is invalid HTML and breaks hydration.
+    // The 🔥 control and the designer link are SIBLING overlays, not children of
+    // the card's click target — nesting interactive content breaks hydration.
     <div className="relative">
-      <Link
-        href="/library"
-        onClick={() => posthog.capture("home_highlight_clicked", { id: item.id })}
-        className="card-lift group block overflow-hidden rounded-3xl bg-white ring-1 ring-zinc-200"
-      >
-        <div ref={ref} className="relative flex aspect-[4/3] items-center justify-center overflow-hidden bg-[#ece7df]">
+      <div className="card-lift group relative overflow-hidden rounded-3xl bg-white ring-1 ring-zinc-200">
+        <div ref={observe} className="relative flex aspect-[4/3] items-center justify-center overflow-hidden bg-[#ece7df]">
           {visible && (
             <ShelfViewer
               design={item.design}
@@ -460,16 +469,33 @@ function HighlightCard({
             />
           )}
         </div>
-        <div className="flex items-center justify-between gap-3 p-5">
-          <h3 className="truncate text-base font-semibold text-zinc-900">
-            {t(`library.items.${item.id}.n`)}
-          </h3>
-          <span className="shrink-0 font-mono text-[11px] text-zinc-400">
-            {t(`library.categories.${item.category}`)}
-          </span>
+        <div className="p-4 sm:p-5">
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="truncate text-base font-semibold text-zinc-900">{name}</h3>
+            <span className="shrink-0 font-mono text-[11px] text-zinc-400">
+              {t(`library.categories.${item.category}`)}
+            </span>
+          </div>
+          <div className="mt-2 flex items-center">
+            <AuthorChip
+              author={item.author}
+              onNavigate={() => posthog.capture("designer_opened", { handle: item.author.handle, from: "home_card" })}
+            />
+          </div>
         </div>
-      </Link>
-      <div className="absolute left-3 top-3 z-10">
+        {/* Tapping the card opens the same detail dialog the library uses,
+            rather than sending the visitor off to /library to find it again. */}
+        <button
+          type="button"
+          onClick={() => {
+            posthog.capture("home_highlight_clicked", { id: item.id });
+            onDetails(item);
+          }}
+          aria-label={`${name}, ${t("library.details")}`}
+          className="absolute inset-0 z-10 rounded-3xl"
+        />
+      </div>
+      <div className="absolute left-3 top-3 z-20">
         <FireButton id={item.id} size="sm" />
       </div>
     </div>

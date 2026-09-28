@@ -140,8 +140,11 @@ export interface AuthoritativePrice {
 export function authoritativePrice(
   design: Design,
   country: string | null | undefined,
+  deliveryMethod?: "curbside" | "in-room" | null,
 ): AuthoritativePrice {
-  const quote = quoteDesign(design);
+  const quote = quoteDesign(design, {
+    deliveryMethod: deliveryMethod === "in-room" ? "in-room" : "curbside",
+  });
   const totalCzk = Math.round(quote.total);
   if (!Number.isFinite(totalCzk) || totalCzk <= 0) {
     throw new Error(`refusing to charge a non-positive total: ${totalCzk}`);
@@ -181,6 +184,9 @@ export interface StartPaymentInput {
   zip?: string | null;
   country?: string | null;
   locale?: string | null;
+  /** "in-room" adds IN_ROOM_DELIVERY_SURCHARGE_CZK server-side — must match what
+   *  the customer selected at checkout, or assertPriceMatches below will fail. */
+  deliveryMethod?: "curbside" | "in-room" | null;
   /** What the browser showed. Checked, never trusted. */
   clientTotalCzk?: number | null;
 }
@@ -226,7 +232,7 @@ export async function startPaymentForOrder(input: StartPaymentInput): Promise<St
     };
   }
 
-  const price = authoritativePrice(input.design, input.country);
+  const price = authoritativePrice(input.design, input.country, input.deliveryMethod);
   assertPriceMatches(input.clientTotalCzk, price);
 
   const usePreauth = CAPTURE_MODE === "preauth";

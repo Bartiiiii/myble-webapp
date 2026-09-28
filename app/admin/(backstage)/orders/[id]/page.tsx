@@ -1,8 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { fetchOrder } from "@/lib/backstageData";
-import { formatCzk, formatDate, Section, StatusBadge } from "@/components/admin/ui";
+import { fetchOrder, fetchOrderDeadline } from "@/lib/backstageData";
+import { coerceDesign } from "@/lib/build";
+import { DeadlineBadge, formatCzk, formatDate, Section, StatusBadge } from "@/components/admin/ui";
 import { OrderStatusControl } from "@/components/admin/BackstageControls";
+import { MebleProduction } from "@/components/admin/MebleProduction";
+import { OrderDesignViewer } from "@/components/admin/OrderDesignViewer";
 
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
   return (
@@ -35,7 +38,11 @@ export default async function BackstageOrderDetail({
   const order = await fetchOrder(id);
   if (!order) notFound();
 
+  // Same §6.2a clock the orders list shows, so acting on one order does not
+  // require going back to the list to see how much time is left.
+  const deadline = fetchOrderDeadline(order);
   const customerName = [order.first_name, order.last_name].filter(Boolean).join(" ");
+  const design = coerceDesign(order.design ?? order.design_spec);
 
   return (
     <div className="space-y-6">
@@ -43,11 +50,12 @@ export default async function BackstageOrderDetail({
         <div>
           <Link href="/admin/orders" className="text-xs font-medium text-zinc-500 hover:text-zinc-700">← Orders</Link>
           <h1 className="mt-1 flex items-center gap-3 text-2xl font-semibold tracking-tight">
-            {order.order_no} <StatusBadge status={order.status} />
+            {order.order_no} <StatusBadge status={order.status} /> <DeadlineBadge deadline={deadline} />
           </h1>
           <p className="mt-1 text-sm text-zinc-500">
             Placed {formatDate(order.created_at)} · locale {order.locale}
             {order.updated_at ? ` · updated ${formatDate(order.updated_at)}` : ""}
+            {deadline.tracked ? ` · paid ${formatDate(order.paid_at, false)}, delivery due ${formatDate(deadline.dueAt, false)} (T&C §6.2a)` : ""}
           </p>
         </div>
         <OrderStatusControl orderId={order.id} status={order.status} />
@@ -97,13 +105,38 @@ export default async function BackstageOrderDetail({
         </Section>
       </div>
 
-      <Section title="Product & production data">
-        <div className="space-y-3">
-          <JsonBlock title="Order summary (design_spec)" data={order.design_spec} />
-          {order.design ? <JsonBlock title="Full design JSON — cut-list source of truth" data={order.design} /> : null}
-          {order.custom_specification ? <JsonBlock title="Custom specification (§1837 proof)" data={order.custom_specification} /> : null}
-        </div>
-      </Section>
+      {/* The production hand-off and the piece it makes, side by side and the
+          same height: everything but the files you actually download starts
+          folded away, and the 3D preview stretches to whatever that leaves. */}
+      <div className="grid items-stretch gap-6 lg:grid-cols-2">
+        <Section title="Product & production data" fill>
+          <div className="space-y-4">
+            {design ? (
+              <MebleProduction items={[{ ref: order.order_no, design }]} query={`ids=${order.id}`} bare />
+            ) : (
+              <p className="text-sm text-zinc-500">No readable design on this order — nothing to send to meble.pl.</p>
+            )}
+            <details className="rounded-xl border border-zinc-200">
+              <summary className="cursor-pointer select-none px-4 py-3 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50">
+                Raw order data (JSON)
+              </summary>
+              <div className="space-y-3 border-t border-zinc-100 p-4">
+                <JsonBlock title="Order summary (design_spec)" data={order.design_spec} />
+                {order.design ? <JsonBlock title="Full design JSON — cut-list source of truth" data={order.design} /> : null}
+                {order.custom_specification ? <JsonBlock title="Custom specification (§1837 proof)" data={order.custom_specification} /> : null}
+              </div>
+            </details>
+          </div>
+        </Section>
+
+        <Section title="Design" fill>
+          {design ? (
+            <OrderDesignViewer design={design} orderNo={order.order_no} />
+          ) : (
+            <p className="text-sm text-zinc-500">No readable design on this order.</p>
+          )}
+        </Section>
+      </div>
 
       <Section title="Audit trail">
         <dl className="grid grid-cols-2 gap-4">

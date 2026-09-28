@@ -59,7 +59,6 @@ export interface CutListExport {
   materialLabel: string;
   colour: string;
   thicknessMm: number;
-  bandBack: boolean;
   outerCm: { w: number; h: number; d: number };
   rows: CutListRow[];
   totalBoards: number;
@@ -74,7 +73,6 @@ export function cutListData(design: Design): CutListExport {
     materialLabel: MATERIAL_LABEL[id] ?? id,
     colour: design.colour === "black" ? "Black" : "White",
     thicknessMm: design.thickness,
-    bandBack: design.bandBack,
     outerCm: design.outerCm,
     rows,
     totalBoards: rows.reduce((n, r) => n + r.quantity, 0),
@@ -94,7 +92,7 @@ export function cutListCSV(design: Design): string {
   const data = cutListData(design);
   const lines: string[] = [];
   lines.push(`# Myble cut list (meble) — ${data.materialLabel}`);
-  lines.push(`# Size ${data.outerCm.w}×${data.outerCm.h}×${data.outerCm.d} cm · back edge: ${data.bandBack ? "banded" : "raw"}`);
+  lines.push(`# Size ${data.outerCm.w}×${data.outerCm.h}×${data.outerCm.d} cm · all edges banded`);
   lines.push(["part", "width_mm", "height_mm", "qty", "edges", "drilled"].join(","));
   for (const r of data.rows) {
     lines.push([r.name, r.widthMm, r.heightMm, r.quantity, r.banding, r.drilled ? "yes" : "no"].map(csvCell).join(","));

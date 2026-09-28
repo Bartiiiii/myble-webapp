@@ -26,21 +26,20 @@ with HSTS. Supabase is RLS deny-all on every table, every `/api/admin/*` route c
 | Seller identification (name, IČO, address, sole-trader status, VAT status) now on **every page**, not only `/contact` | `components/SiteFooter.tsx:70-84` |
 | Checkout delivery line showed a hardcoded 199 Kč that was not in the total | `app/order/page.tsx:441-447` |
 | Checkout gate while payments are off (Part C) | `lib/comgate/config.ts:47`, `app/order/page.tsx`, `app/order/confirmation/page.tsx:51` |
+| Lead time made consistent across all six touchpoints + a binding 28-day delivery cap (T&C §6.2a); T&C 1.3 → **1.4** | `lib/i18n.tsx`, `legal-source/{cz,en}/terms-and-conditions.md`, `lib/legal.ts` |
+| Checkout now states the delivery estimate the option subtitles refer to | `app/order/page.tsx:276-279`, `lib/i18n.tsx` (`order.deliveryEstimate`) |
+| Backstage flags paid-but-unshipped orders before they breach the 28-day deadline | `lib/deliveryDeadline.ts`, `lib/backstageData.ts`, `app/admin/(backstage)/orders/` |
 
 ### Blocks the Comgate application
 
-1. **Lead time is stated two different ways.** The site says **5–8 business days**
-   (`lib/i18n.tsx:82,116,296,298,340`); the brief for this pass says the real
-   made-to-order wait is **2–4 weeks**, and the new interstitial copy says so too.
-   Both numbers now appear in the same checkout. One of them is wrong and it must be
-   resolved before Comgate reviews the site — a published lead time the business
-   cannot hit is exactly what turns into chargebacks later. **Needs Bartek's decision;
-   see Open questions.**
-2. **`npx eslint` fails with 16 pre-existing errors** (see A5). None are in code
-   touched by this pass, but the definition of done requires a clean run.
-3. **The "in-room delivery +100 Kč" option is never charged.** The radio says 299 Kč,
-   the total only ever includes `quote.deliveryCZK`. Either price it or remove the
-   option.
+~~1. Lead time is stated two different ways.~~ **Fixed 18 Aug 2026.** Every surface now
+   states the same thing: production **10–15 business days** from confirmed dimensions +
+   payment, total **3–4 weeks**, hard cap **28 days**. See "Lead time" below.
+~~2. `npx eslint` fails with 16 pre-existing errors.~~ **Fixed 17 Aug 2026** — 0 errors.
+   See A5.
+~~3. The "in-room delivery +100 Kč" option is never charged.~~ **Fixed 17 Aug 2026** — the
+   surcharge is now threaded through `quoteDesign()` and, critically, through the server-side
+   payment authority. See "In-room delivery surcharge" below.
 
 ### Deferred (explicitly out of scope for this pass)
 
@@ -127,14 +126,14 @@ site reads as "no returns at all". The customer-facing checkout notice
   records persisted via `POST /api/consent` (`supabase/migrations/0003_cookie_consents.sql`).
 - PostHog is lazy-initialised only after consent (`lib/posthogClient.ts`).
 
-### A1.8 Delivery and payment terms — **PARTIAL** (blocker #1 and #3 above)
+### A1.8 Delivery and payment terms — **PASS**
 
 | Item | State |
 |---|---|
 | Delivery methods | PASS — Zásilkovna / PPL to address, chosen at checkout (`app/order/page.tsx:241-242`); T&C §6.3 names Zásilkovna |
 | Delivery cost | **Was FAIL, now PASS** — `DELIVERY_CZK = 199` (`lib/model.ts:49`), free at/above `FREE_SHIP_CZK = 3000` (`lib/pricingConfig.ts:52`). The checkout summary hardcoded `fmt(DELIVERY_CZK)` while the total used `quote.customerCZK`, so for every order ≥ 3 000 Kč (which, given `PRICE_FLOOR_CZK = 1490` and typical designs, is most of them) the lines did not add up: 3 690 + 199 was displayed as a 3 690 total. Fixed at `app/order/page.tsx:441-447` — the row now shows `quote.deliveryCZK`, or "Free"/"Zdarma". |
-| In-room delivery upcharge | **FAIL** — the option is priced at `DELIVERY_CZK + 100` in the UI (`app/order/page.tsx:242`) but `quoteDesign()` knows nothing about the delivery method, so the +100 is never in the total or in the order record. `lib/quote.ts` is out of scope for this pass; needs a decision (price it, or drop the option). |
-| Lead time | **FAIL** — see blocker #1. Stated as 5–8 business days in the trust bar, the comparison table, both delivery options and the confirmation steps; the brief and the new interstitial say 2–4 weeks. |
+| In-room delivery upcharge | **Was FAIL, now PASS** — see "In-room delivery surcharge" below. |
+| Lead time | **Was FAIL, now PASS** — one consistent set of numbers everywhere, plus a contractual 28-day ceiling in T&C §6.2a. See "Lead time" below. |
 | Payment methods | **Was FAIL, now PASS** — T&C §5.1 previously named GoPay. Now names Comgate a.s. with the exact method list, and §5.2 rules out COD and instalments. |
 | Payment before commitment | PASS — T&C §3.1 lists the pre-contractual disclosures; the button carries the "Objednávka zavazující k platbě" label mandated by §4.2 when payments are live. |
 
@@ -263,23 +262,31 @@ on more than one Vercel instance.
 | Command | Result |
 |---|---|
 | `npx tsc --noEmit` | **PASS** — clean |
-| `npx vitest run` | **PASS** — 223 tests in 14 files (216 pre-existing + 7 new checkout tests) |
+| `npx vitest run` | **PASS** — 248 tests in 16 files (7 checkout-interstitial + 5 in-room-surcharge tests are ours) |
 | `npm run build` | **PASS with a caveat** — see below |
-| `npx eslint .` | **FAIL** — 16 errors, 13 warnings |
+| `npx eslint .` | **PASS** — 0 errors, 15 warnings (warnings pre-date this work) |
 
-### eslint — 16 pre-existing errors, none in code touched by this pass
+### eslint — all 16 errors fixed (17 Aug 2026)
 
-| File | Count | Rule |
-|---|---|---|
-| `app/brand/page.tsx:80,91,200-213` | 12 | `react/no-unescaped-entities` (mechanical fix) |
-| `app/design/page.tsx:511` | 1 | `react-hooks/set-state-in-effect` |
-| `app/library/page.tsx:53` | 1 | `react-hooks/set-state-in-effect` |
-| `app/page.tsx:431` | 1 | `react-hooks/set-state-in-effect` |
-| `instrumentation.ts:19` | 1 | `@typescript-eslint/no-explicit-any` |
+All five files were fully committed at the time of the fix (re-checked live against
+`git status`), so none of the in-flight Wave 1 work was touched.
 
-Left alone deliberately: three of the five files are uncommitted working-tree changes belonging
-to the Wave 1 redesign, and editing them here would collide with that work. The `app/brand`
-ones are a one-line mechanical fix whenever you want it.
+| File | Count | Rule | Fix |
+|---|---|---|---|
+| `app/brand/page.tsx:80,91,200-213` | 12 | `react/no-unescaped-entities` | Straight `"` was being used to close quotes opened with `„`. Replaced with the correct typographic pairs (CZ `„…“`, EN `“…”`), which fixes a real typography bug on the brand page rather than escaping the symptom. |
+| `app/page.tsx:431` | 1 | `react-hooks/set-state-in-effect` | Same lazy-WebGL-mount pattern in all three: an effect read `ref.current`, and called `setVisible(true)` when `IntersectionObserver` was missing. Rewritten as a React 19 ref callback with a returned cleanup — the node arrives at commit time, so there is no ref read and no state set from an effect. Behaviour is identical, including the no-observer fallback. |
+| `app/design/page.tsx:554` | 1 | `react-hooks/set-state-in-effect` | as above |
+| `app/library/page.tsx:53` | 1 | `react-hooks/set-state-in-effect` | as above |
+| `instrumentation.ts:19` | 1 | `@typescript-eslint/no-explicit-any` | `(globalThis as any).__posthogLogger` → a named `PosthogGlobal` type deriving the logger type from `ReturnType<LoggerProvider["getLogger"]>`. |
+
+**Judgment call worth knowing about:** the three `set-state-in-effect` sites could not be fixed
+by moving the fallback into `useState`'s initialiser — `IntersectionObserver` is undefined during
+SSR, so a lazy initialiser would render visible on the server and hidden on the client, producing
+a hydration mismatch. The ref-callback rewrite is the fix that keeps SSR output identical. No
+error was suppressed.
+
+The 15 remaining **warnings** (unused eslint-disable directives, `<img>` vs `next/image`, unused
+vars in the dead `utils/supabase/middleware.ts`) pre-date this work and are non-blocking.
 
 ### `npm run build` — fails locally, passes with valid env
 
@@ -387,17 +394,119 @@ overrides.
 
 ---
 
+## Lead time (fixed 18 August 2026)
+
+The site advertised **5–8 business days** in six places while the checkout interstitial said
+**2–4 weeks** — two different promises inside the same purchase. Now one set of numbers:
+
+| Surface | `lib/i18n.tsx` | Reads |
+|---|---|---|
+| Hero trust bar | 82 / 608 | "Ready in weeks, not months" · "Hotovo za týdny, ne za měsíce" |
+| Comparison table, "when you get it" | 116 / 642 | "3–4 weeks" · "3–4 týdny" (carpenter column stays 8–16 weeks) |
+| FAQ, "how long does it take" | 163 / 687 | 10–15 business days production, 3–4 weeks total, always within 28 days |
+| Checkout delivery estimate | 298 / 823 | "Total delivery: 3–4 weeks from payment, always within 28 days." — rendered directly under the "Delivery" heading, above the two options |
+| Checkout delivery options | 300,302 / 825,827 | "Included in your total delivery estimate above" — refers to the line above; no transit number asserted |
+| Payment interstitial + confirmation | 517,523 / 1040,1046 | "3–4 week delivery estimate … (always within 28 days)" |
+| Confirmation "what happens next" | 346 / 870 | "production usually 10–15 business days" |
+
+The delivery-option subtitles previously repeated the **production** figure as if it were the
+**transit** figure, which was wrong twice over. There is no verified PL→CZ transit SLA from the
+manufacturing partner, so no number is asserted there.
+
+**T&C §6.2a (new, both locales):** the Seller delivers no later than **28 days** from the start
+of production (i.e. from receipt of payment, per §5.5), unless a longer period is agreed in
+writing. This is a binding commitment, not marketing copy, so T&C went **1.3 → 1.4** (effective
+18 Aug 2026) in the markdown and in `lib/legal.ts`; `withdrawal-form` tracked it to 1.4 per the
+convention at `lib/legal.ts:29-31`. Consent proof for orders placed under 1.3 is unaffected —
+they keep recording 1.3.
+
+Verified against the built output, not just the source: the prerendered homepage contains
+"Ready in weeks, not months", "3–4 weeks", "10 to 15 business days" and "within 28 days"; the
+prerendered T&C page contains §6.2a and "Version 1.4"/"Verze 1.4" in both locales; and the
+strings `5–8 business days` and `2–4 week lead time` appear nowhere in `.next/`.
+
+---
+
+## Ops safeguard: the 28-day deadline (added 18 August 2026)
+
+§6.2a is a contractual ceiling, so the risk is no longer that the customer is misinformed — it is
+that an order quietly runs past 28 days. The schema supports catching that: `orders.payment_status`
+and `orders.paid_at` come from `0006_payments.sql`, and `orders.status` already has real terminal
+values (`shipped`, `delivered`, `cancelled`, per `0002_newsletter_contact_designs.sql:83`). **No
+schema gap — nothing had to be invented.**
+
+`lib/deliveryDeadline.ts` (pure, dependency-free, 11 unit tests) classifies an order:
+
+- The clock runs only when `payment_status = 'paid'`, `paid_at` is set, and the status is not
+  terminal. Everything else is untracked and renders as "—".
+- `daysElapsed ≥ 21` → **due** (amber). `daysElapsed ≥ 28` → **overdue** (rose).
+- 21 was chosen for a week of headroom: roughly the shortest window in which a panel order can
+  still be re-cut and shipped.
+
+Where Barti sees it:
+
+| Surface | What appears |
+|---|---|
+| `/admin/orders` | A **Deadline** column: "14 d left" in grey while safe, an amber "5 d left" pill from day 21, a rose "3 d overdue" pill past day 28. Flagged rows get a tinted background and **sort to the top**, ahead of the usual newest-first order. |
+| `/admin/orders` (banner) | When anything is at risk, a banner above the status filters: "2 orders are past the 28-day delivery deadline" (rose) or "3 orders approaching the 28-day delivery deadline" (amber), explaining that they are paid, unshipped and listed first. |
+| `/admin/orders/[id]` | The same badge beside the order number, plus "paid 3 Aug 2026, delivery due 31 Aug 2026 (T&C §6.2a)" in the subheading. |
+
+The badge's tooltip carries the exact due date. No cron, no e-mail, no new dependency — the
+classification happens inside the existing service-role read (`fetchOrdersWithDeadlines`), which
+also keeps `Date.now()` out of the render path so the whole list is measured against one instant.
+
+---
+
+## In-room delivery surcharge (fixed 17 Aug 2026)
+
+The checkout offered "PPL to address" at `DELIVERY_CZK + 100` as a hardcoded label, but nothing
+downstream knew about it. Three layers had to move together, and the third is the one that
+mattered:
+
+1. **`lib/quote.ts`** had no concept of a delivery method at all. `PriceOptions` now carries
+   `deliveryMethod?: "curbside" | "in-room"`, and `priceFromMeble` adds
+   `IN_ROOM_DELIVERY_SURCHARGE_CZK` (new, `lib/model.ts`) on top of the base fee. The
+   empty-design branch of `quoteDesign` was patched to match.
+2. **`app/order/page.tsx`** read the delivery radio only at submit time, via `FormData`, so the
+   selection never reached the live quote. The radios are now controlled by a `deliveryMethod`
+   state that feeds `quoteDesign(design, { deliveryMethod })` — one source of truth, so the
+   displayed price and the submitted field cannot disagree. The `name`/`value` attributes are
+   unchanged, so `readCustomer()` still works.
+3. **The server-side payment authority.** `authoritativePrice()` in `lib/payments.ts`
+   recomputes the charge from the stored design alone, and `app/api/payment/create/route.ts`
+   was not even selecting `delivery_method` from the row. `assertPriceMatches()` is
+   zero-tolerance, so fixing only the client would have made **every in-room order fail at
+   checkout** the moment Comgate went live: client says total + 100, server says total, hard
+   error. `deliveryMethod` is now selected from the order row and threaded through
+   `startPaymentForOrder` → `authoritativePrice` → `quoteDesign`, so both sides compute the
+   same number from the same stored fact.
+
+**Business rule chosen:** the surcharge applies *even when base delivery is free* (an order
+above `FREE_SHIP_CZK`) — it is a service fee, not transport cost. That is the revenue-preserving
+default, flagged in a comment in `priceFromMeble` and listed as an open question below.
+
+Covered by five tests in `lib/quote.test.ts` ("quoteDesign — in-room delivery surcharge"):
+curbside and omitted charge nothing extra, the surcharge stacks on a charged base fee, it still
+applies when base delivery is free, it reaches `customerCZK` and not just the delivery line, and
+the empty-design branch honours it.
+
+Verified in the browser: selecting in-room on a 3 690 Kč design moved the delivery line from
+"Free" to "100 Kč" and the total from 3 690 Kč to 3 790 Kč, with `FormData.get("delivery")`
+still returning `"in-room"`.
+
+---
+
 ## Open questions — need Bartek
 
-1. **Lead time: 5–8 business days or 2–4 weeks?** The site says the former in five places
-   (`lib/i18n.tsx:82,116,296,298,340`), this pass's brief says the latter and the new
-   interstitial copy states 2–4 weeks. They now contradict each other inside the same checkout.
-   Whichever is true, the other must go — this is the single highest-risk item in the audit.
-   The interstitial phrases live in one place (`checkout.paymentsOff.modalBody2` /
-   `confirmationBody`) so changing them is a two-line edit.
+1. **Can you actually hit 28 days?** T&C §6.2a is now a contractual ceiling, not an estimate.
+   It needs to hold for the slowest realistic case (PL panel production + cross-border transit +
+   your own accessory shipment). If the partner has no committed SLA, this is the clause that
+   turns a late order into a breach.
 2. **Confirm the Comgate legal entity** against the signed contract before launch.
-3. **In-room delivery +100 Kč** — price it in `lib/quote.ts` (out of scope here) or remove the
-   option from the checkout.
+3. **In-room surcharge vs. free shipping** — the surcharge now applies even when the order
+   qualifies for free curbside delivery (treated as a service fee, not transport cost). That is a
+   revenue-preserving default, not a decision you made; confirm it. It is one comparison in
+   `priceFromMeble` (`lib/quote.ts`) and a test named "still applies when base delivery is free".
 4. **Phone number** — is there one to publish? It would materially strengthen A1.2.
 5. **Bank details for the transitional invoice flow** — T&C §5.3 now promises an invoice by
    e-mail. Nothing in the codebase generates one; today it is a manual step. Confirm that is

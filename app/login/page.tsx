@@ -1,17 +1,34 @@
 "use client";
 
 import Link from "next/link";
+import { Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { signIn, useSession } from "next-auth/react";
 import { useT } from "../../lib/i18n";
 import posthog from "posthog-js";
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <Login />
+    </Suspense>
+  );
+}
+
+/** Only same-site paths, so ?callbackUrl= can't bounce anyone off the site. */
+function safeCallback(raw: string | null): string {
+  return raw && raw.startsWith("/") && !raw.startsWith("//") ? raw : "/";
+}
+
+function Login() {
   const t = useT();
   const { status } = useSession();
-  const callbackUrl =
-    typeof window !== "undefined"
-      ? new URLSearchParams(window.location.search).get("callbackUrl") || "/"
-      : "/";
+  // From the router, not window.location: arriving here by a client-side
+  // <Link> (the share dialog's "Sign in"), this page renders before the
+  // address bar changes, so window.location still said /design with no
+  // callbackUrl, the fallback "/" got baked into the button, and everyone
+  // landed on the homepage after Google.
+  const callbackUrl = safeCallback(useSearchParams().get("callbackUrl"));
   const isLoading = status === "loading";
   const isSignedIn = status === "authenticated";
 

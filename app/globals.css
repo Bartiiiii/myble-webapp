@@ -313,3 +313,75 @@ body {
   font-family: var(--font-mono), monospace;
   font-size: 0.85em;
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   About / founder story — the two bits of motion the .reveal and .card-lift
+   vocabulary doesn't already cover.
+
+   .story-chip  — mono dimension chips rise onto the photo once the block
+                  it sits in has revealed (it rides the parent .reveal state).
+   .story-print — the offset photo cards, angled like a print dropped on a
+                  desk; they straighten and lift on hover/focus.
+   ──────────────────────────────────────────────────────────────────────── */
+.story-chip {
+  opacity: 0;
+  transform: translateY(8px);
+  transition:
+    opacity var(--stagger-dur) var(--stagger-ease),
+    transform var(--stagger-dur) var(--stagger-ease);
+}
+.reveal.is-shown .story-chip {
+  opacity: 1;
+  transform: translateY(0);
+  transition-delay: 380ms;
+}
+
+/* Tailwind v4's rotate-* utilities set the standalone `rotate` property, not
+   `transform`, so straightening the card has to unset `rotate` itself. */
+.story-print {
+  transition:
+    rotate 200ms var(--ease-smooth-out),
+    transform 200ms var(--ease-smooth-out),
+    box-shadow 200ms var(--ease-smooth-out);
+}
+/* Guarded rather than undone below: the rotation comes from a utility class,
+   so there is no value to restore it to inside the reduce block. */
+@media (prefers-reduced-motion: no-preference) {
+  .story-print:hover,
+  .story-print:focus-within {
+    rotate: 0deg;
+    transform: scale(1.03);
+    z-index: 30;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .story-chip {
+    transition: none !important;
+    opacity: 1;
+    transform: none;
+  }
+  .story-print {
+    transition: none !important;
+  }
+}
+
+/* The configurator is a canvas you drag, pinch and long-press, not a document.
+   On a phone a held finger otherwise starts a text selection that swallows the
+   whole editor (and iOS adds its copy/lookup callout on top). Fields keep
+   selection explicitly: iOS Safari won't let you type into an input whose
+   ancestors are user-select: none unless the input opts back in. */
+.no-text-select {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.no-text-select input,
+.no-text-select textarea,
+.no-text-select select,
+.no-text-select [contenteditable="true"] {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
+}

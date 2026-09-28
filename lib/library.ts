@@ -18,10 +18,12 @@
 // left wall, one ending at w - 3.6 meets the right wall.
 //
 // Names/descriptions live in lib/i18n.tsx under `library.items.<id>`.
-// User-submitted designs will join this list later via the backstage
-// approval flow (Supabase `designs` table) — this array is the curated seed.
+// This array is the curated seed; approved community submissions join it at
+// runtime as `communityItem()`s (Supabase `designs` rows with
+// share_status = 'published' — see /api/library and lib/community.ts).
 
 import { type Design, legacyToDesign, type LegacyDesign, presetDesign } from "./design";
+import { type Author, curatedAuthor } from "./designers";
 
 /**
  * Browse categories. `all` is the default pseudo-category (never assigned to an
@@ -36,6 +38,9 @@ export const CATEGORIES = [
   { id: "media", emoji: "♪" },
   { id: "office", emoji: "✎" },
   { id: "pets", emoji: "🐱" },
+  // Last on purpose: the catch-all for what the list above doesn't name. In the
+  // share dialog, picking it reveals a free-text "add a new type" field.
+  { id: "other", emoji: "◇" },
 ] as const;
 
 export type CategoryId = (typeof CATEGORIES)[number]["id"];
@@ -43,11 +48,23 @@ export type CategoryId = (typeof CATEGORIES)[number]["id"];
 export type ItemCategory = Exclude<CategoryId, "all">;
 
 export interface LibraryItem {
-  /** Stable id — also the i18n key (`library.items.<id>`). */
+  /** Curated: the i18n key (`library.items.<id>`). Community: the design slug. */
   id: string;
   /** Primary browse category. One per design keeps the pill counts honest. */
   category: ItemCategory;
   design: Design;
+  /**
+   * Where the piece came from. Curated entries take their name and story from
+   * the i18n dictionary; community entries carry their own title/note, written
+   * by the person who shared them.
+   */
+  source: "curated" | "community";
+  /** Who designed it — drawn on the card and linking to /u/<handle>. */
+  author: Author;
+  /** Community only. */
+  title?: string;
+  note?: string;
+  createdAt?: string;
 }
 
 /** Legacy-format sources for the curated pieces (BOARD = 1.8 cm). */
@@ -140,41 +157,89 @@ const L: Record<string, LegacyDesign> = {
   },
 };
 
+/** Curated entry helper — every one is authored by a house designer. */
+function curated(id: string, category: ItemCategory, design: Design): LibraryItem {
+  return { id, category, design, source: "curated", author: curatedAuthor(id) };
+}
+
 export const LIBRARY: LibraryItem[] = [
-  { id: "staggered", category: "shelves", design: legacyToDesign(L.staggered) },
-  { id: "catbench", category: "pets", design: legacyToDesign(L.catbench) },
-  { id: "record", category: "media", design: legacyToDesign(L.record) },
-  // The three configurator presets belong here too — same source of truth.
-  { id: "police", category: "shelves", design: presetDesign("police") },
-  { id: "coffee", category: "tables", design: legacyToDesign(L.coffee) },
-  { id: "grid", category: "shelves", design: legacyToDesign(L.grid) },
-  { id: "nightstand", category: "tables", design: legacyToDesign(L.nightstand) },
-  { id: "tvbench", category: "media", design: legacyToDesign(L.tvbench) },
-  { id: "skrinka", category: "storage", design: presetDesign("skrinka") },
-  { id: "shoebench", category: "storage", design: legacyToDesign(L.shoebench) },
-  { id: "worknook", category: "office", design: legacyToDesign(L.worknook) },
-  { id: "stolek", category: "tables", design: presetDesign("stolek") },
+  curated("staggered", "shelves", legacyToDesign(L.staggered)),
+  curated("catbench", "pets", legacyToDesign(L.catbench)),
+  curated("record", "media", legacyToDesign(L.record)),
+  curated("police", "shelves", presetDesign("police")),
+  curated("coffee", "tables", legacyToDesign(L.coffee)),
+  curated("grid", "shelves", legacyToDesign(L.grid)),
+  curated("nightstand", "tables", legacyToDesign(L.nightstand)),
+  curated("tvbench", "media", legacyToDesign(L.tvbench)),
+  curated("skrinka", "storage", presetDesign("skrinka")),
+  curated("shoebench", "storage", legacyToDesign(L.shoebench)),
+  curated("worknook", "office", legacyToDesign(L.worknook)),
+  curated("stolek", "tables", presetDesign("stolek")),
 ];
 
-/** Server-side allowlist: only these ids may receive reactions. */
+/** The curated ids, the only ones whose name/story come from the dictionary. */
 export const LIBRARY_IDS: readonly string[] = LIBRARY.map((i) => i.id);
 
+/**
+ * A community piece someone shared and backstage approved. Same shape as a
+ * curated item, so every card, dialog and sort works on both without knowing
+ * which is which — only the name/story lookup differs (see `itemName`).
+ */
+export interface CommunityDesign {
+  slug: string;
+  title: string | null;
+  note: string | null;
+  category: string | null;
+  design: Design;
+  createdAt: string;
+  author: Author;
+}
+
+/** The categories a submission may actually claim (everything but `all`). */
+const CATEGORY_IDS = new Set<string>(
+  CATEGORIES.map((c) => c.id).filter((id): id is ItemCategory => id !== "all"),
+);
+
+export function communityItem(d: CommunityDesign): LibraryItem {
+  return {
+    id: d.slug,
+    category: (d.category && CATEGORY_IDS.has(d.category) ? d.category : "shelves") as ItemCategory,
+    design: d.design,
+    source: "community",
+    author: d.author,
+    title: d.title ?? undefined,
+    note: d.note ?? undefined,
+    createdAt: d.createdAt,
+  };
+}
+
+/** Display name for either kind of item (curated names are translated). */
+export function itemName(item: LibraryItem, t: (key: string) => string): string {
+  return item.source === "curated" ? t(`library.items.${item.id}.n`) : item.title || t("library.untitled");
+}
+
+/** The story under the name. Community pieces may have none. */
+export function itemNote(item: LibraryItem, t: (key: string) => string): string {
+  return item.source === "curated" ? t(`library.items.${item.id}.d`) : item.note ?? "";
+}
+
 /** How many designs sit in each category (drives the pill counts). */
-export function categoryCount(id: CategoryId): number {
-  return id === "all" ? LIBRARY.length : LIBRARY.filter((i) => i.category === id).length;
+export function categoryCount(id: CategoryId, pool: LibraryItem[] = LIBRARY): number {
+  return id === "all" ? pool.length : pool.filter((i) => i.category === id).length;
 }
 
 /**
- * Designs in a category, hottest first. Ties keep the curated array order, so
- * the grid is stable before any reactions exist.
+ * Designs in a category, hottest first. Ties keep the pool's own order, so the
+ * grid is stable before any reactions exist.
  */
 export function sortedByHeat(
   counts: Record<string, number>,
   category: CategoryId = "all",
+  pool: LibraryItem[] = LIBRARY,
 ): LibraryItem[] {
-  const pool = category === "all" ? LIBRARY : LIBRARY.filter((i) => i.category === category);
-  return [...pool].sort((a, b) => {
+  const filtered = category === "all" ? [...pool] : pool.filter((i) => i.category === category);
+  return filtered.sort((a, b) => {
     const diff = (counts[b.id] ?? 0) - (counts[a.id] ?? 0);
-    return diff !== 0 ? diff : LIBRARY.indexOf(a) - LIBRARY.indexOf(b);
+    return diff !== 0 ? diff : pool.indexOf(a) - pool.indexOf(b);
   });
 }

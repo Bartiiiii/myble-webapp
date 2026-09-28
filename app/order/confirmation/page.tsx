@@ -7,11 +7,17 @@ import { SiteHeader } from "../../../components/SiteHeader";
 import { SiteFooter } from "../../../components/SiteFooter";
 import { useI18n } from "../../../lib/i18n";
 import { PAYMENTS_ENABLED } from "../../../lib/comgate/config";
+import {
+  BANK_TRANSFER_ACCOUNT_NUMBER,
+  BANK_TRANSFER_DUE_DAYS,
+  variableSymbolFromOrderNo,
+} from "../../../lib/bankTransfer";
 
 export default function OrderConfirmationPage() {
   const { t, locale } = useI18n();
   const [design, setDesign] = useState<Design>(DEFAULT_DESIGN);
   const [orderNo, setOrderNo] = useState<string>("");
+  const [totalCzk, setTotalCzk] = useState<number | null>(null);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -19,8 +25,27 @@ export default function OrderConfirmationPage() {
     // Order number comes from the checkout redirect (?order=…); fall back to a
     // generated one if the page is opened directly.
     const fromUrl = new URLSearchParams(window.location.search).get("order");
+    const resolvedOrderNo = fromUrl || `MB-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setOrderNo(fromUrl || `MB-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`);
+    setOrderNo(resolvedOrderNo);
+
+    // The total is only known locally if this is the same browser session that
+    // just placed THIS order (persisted in app/order/page.tsx's placeOrder()).
+    // Guard on orderNo matching: a customer who placed a newer order since, or
+    // opened this URL directly/from an old bookmark, must never see a stale or
+    // mismatched amount next to a bank-transfer variable symbol — that's a real
+    // "customer transfers the wrong amount" risk, not just a display bug.
+    try {
+      const raw = window.localStorage.getItem("myble.lastOrder");
+      if (raw) {
+        const parsed = JSON.parse(raw) as { orderNo?: string; totalCzk?: number };
+        if (parsed.orderNo === resolvedOrderNo && typeof parsed.totalCzk === "number") {
+          setTotalCzk(parsed.totalCzk);
+        }
+      }
+    } catch {
+      /* ignore — falls back to the "check your email" copy below */
+    }
   }, []);
 
   const withdrawalDoc = locale === "cs" ? "/legal/withdrawal-form-cz.docx" : "/legal/withdrawal-form-en.docx";
@@ -56,6 +81,41 @@ export default function OrderConfirmationPage() {
             <div className="mx-auto mt-6 max-w-lg rounded-2xl bg-indigo-50/60 p-5 text-left ring-1 ring-indigo-200">
               <p className="text-sm font-semibold text-indigo-900">{t("checkout.paymentsOff.confirmationTitle")}</p>
               <p className="mt-1 text-sm leading-6 text-indigo-800">{t("checkout.paymentsOff.confirmationBody")}</p>
+              {orderNo && (
+                <div className="mt-4 rounded-xl bg-white p-4 ring-1 ring-indigo-200">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-indigo-500">
+                    {t("checkout.paymentsOff.bankTransferTitle")}
+                  </p>
+                  {totalCzk != null ? (
+                    <dl className="mt-2 space-y-1 text-sm text-indigo-900">
+                      <div className="flex justify-between gap-4">
+                        <dt className="text-indigo-700">{t("checkout.paymentsOff.bankTransferAccount")}</dt>
+                        <dd className="font-semibold tabular-nums">{BANK_TRANSFER_ACCOUNT_NUMBER}</dd>
+                      </div>
+                      <div className="flex justify-between gap-4">
+                        <dt className="text-indigo-700">{t("checkout.paymentsOff.bankTransferVS")}</dt>
+                        <dd className="font-semibold tabular-nums">{variableSymbolFromOrderNo(orderNo)}</dd>
+                      </div>
+                      <div className="flex justify-between gap-4">
+                        <dt className="text-indigo-700">{t("checkout.paymentsOff.bankTransferAmount")}</dt>
+                        <dd className="font-semibold tabular-nums">
+                          {totalCzk.toLocaleString(locale === "cs" ? "cs-CZ" : "en-GB")} Kč
+                        </dd>
+                      </div>
+                    </dl>
+                  ) : (
+                    <p className="mt-2 text-sm text-indigo-800">{t("checkout.paymentsOff.bankTransferFallback")}</p>
+                  )}
+                  <p className="mt-3 text-xs text-indigo-600">
+                    {t("checkout.paymentsOff.bankTransferDue", { n: BANK_TRANSFER_DUE_DAYS })}
+                  </p>
+                  {/* Only when the details are actually on screen — in the
+                      fallback state the copy above already points at the e-mail. */}
+                  {totalCzk != null && (
+                    <p className="mt-1 text-xs text-indigo-500">{t("checkout.paymentsOff.bankTransferEmailNote")}</p>
+                  )}
+                </div>
+              )}
             </div>
           )}
 

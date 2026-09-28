@@ -1,4 +1,10 @@
 import { createAdminClient } from "@/utils/supabase/admin";
+import {
+  byDeadlineUrgency,
+  deliveryDeadline,
+  isAtRisk,
+  type DeliveryDeadline,
+} from "@/lib/deliveryDeadline";
 
 // Server-side reads for the backstage. All queries run with the service-role
 // key, so every caller MUST sit behind requireBackstage().
@@ -19,6 +25,9 @@ export interface OrderRow {
   zip: string | null;
   country: string | null;
   delivery_method: string | null;
+  /** Payment lifecycle (0006_payments.sql). Drives the §6.2a delivery clock. */
+  payment_status: string;
+  paid_at: string | null;
   design_spec: Record<string, unknown>;
   design: Record<string, unknown> | null;
   kit_price_czk: number | null;
@@ -89,11 +98,41 @@ export async function fetchOrders(statusFilter?: string): Promise<OrderRow[]> {
   return (data ?? []) as OrderRow[];
 }
 
+export interface OrderWithDeadline {
+  order: OrderRow;
+  deadline: DeliveryDeadline;
+}
+
+/**
+ * Orders classified against the T&C §6.2a 28-day delivery deadline, most urgent
+ * first. The whole list is measured against a single instant so rows cannot
+ * disagree about "now", and the clock is read here rather than in the page so
+ * the render stays pure.
+ */
+export async function fetchOrdersWithDeadlines(statusFilter?: string): Promise<{
+  orders: OrderWithDeadline[];
+  atRisk: OrderWithDeadline[];
+  overdue: OrderWithDeadline[];
+}> {
+  const rows = await fetchOrders(statusFilter);
+  const now = Date.now();
+  const orders = rows
+    .map((order) => ({ order, deadline: deliveryDeadline(order, now) }))
+    .sort((a, b) => byDeadlineUrgency(a.deadline, b.deadline));
+  const atRisk = orders.filter((o) => isAtRisk(o.deadline));
+  return { orders, atRisk, overdue: atRisk.filter((o) => o.deadline.level === "overdue") };
+}
+
 export async function fetchOrder(id: string): Promise<OrderRow | null> {
   const supabase = createAdminClient();
   const { data, error } = await supabase.from("orders").select("*").eq("id", id).maybeSingle();
   if (error) throw new Error(`order query failed: ${error.message}`);
   return (data as OrderRow) ?? null;
+}
+
+/** The §6.2a clock for a single order. Kept here so pages never read the clock. */
+export function fetchOrderDeadline(order: OrderRow): DeliveryDeadline {
+  return deliveryDeadline(order, Date.now());
 }
 
 export async function fetchSubscribers(): Promise<SubscriberRow[]> {

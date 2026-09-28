@@ -54,7 +54,6 @@ describe("divider coordinates are unit-relative", () => {
   const withDivider = (x: number): Design => ({
     colour: "white",
     thickness: 18,
-    bandBack: true,
     outerCm: { w: 80, h: 100, d: 30 },
     parts: [
       { id: "left", role: "wall", axis: "x", aCm: 100, bCm: 30, pos: { x: -39.1, y: 0, z: 0 } },
@@ -87,8 +86,7 @@ describe("safeValidateConfiguratorDesign", () => {
     const broken: Design = {
       colour: "white",
       thickness: 18,
-      bandBack: true,
-      outerCm: { w: 40, h: 40, d: 30 },
+        outerCm: { w: 40, h: 40, d: 30 },
       parts: [{ id: "z", role: "shelf", axis: "y", aCm: 0, bCm: 0, pos: { x: 0, y: 0, z: 0 } }],
     };
     expect(() => validateConfiguratorDesign(broken)).toThrow();

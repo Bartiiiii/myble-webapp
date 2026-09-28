@@ -40,6 +40,36 @@ export interface SavedDesign {
   name: string | null;
   design: Design;
   created_at: string;
+  /** private | pending | published | rejected (0007_community.sql). */
+  share_status?: string;
+  title?: string | null;
+  review_note?: string | null;
+}
+
+/**
+ * What sharing to the Design Library did to this design.
+ *
+ * "Shared" is deliberately not the same word as "Saved": a submission waits
+ * for a human to approve it, and the card has to say so, otherwise the
+ * designer refreshes the library looking for a piece that was never going to
+ * be there yet.
+ */
+function ShareBadge({ status }: { status: string }) {
+  const t = useT();
+  if (status === "private" || !status) return null;
+
+  const style =
+    status === "published"
+      ? "bg-emerald-50 text-emerald-700 ring-emerald-600/20"
+      : status === "rejected"
+        ? "bg-zinc-100 text-zinc-600 ring-zinc-500/20"
+        : "bg-amber-50 text-amber-700 ring-amber-600/20";
+
+  return (
+    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset ${style}`}>
+      {t(`account.designs.status.${status}`)}
+    </span>
+  );
 }
 
 export function SavedDesignCard({
@@ -127,9 +157,16 @@ export function SavedDesignCard({
             </button>
           </div>
         ) : (
-          <h3 className="truncate text-sm font-semibold text-zinc-900">{item.name || t("account.designs.untitled")}</h3>
+          // A design shared with the library was named in the share dialog, so
+          // fall back to that title before calling it untitled.
+          <h3 className="truncate text-sm font-semibold text-zinc-900">
+            {item.name || item.title || t("account.designs.untitled")}
+          </h3>
         )}
-        <p className="mt-1 text-xs text-zinc-500">{t("account.designs.savedOn", { date: formatDate(item.created_at) })}</p>
+        <div className="mt-1 flex flex-wrap items-center gap-2">
+          <p className="text-xs text-zinc-500">{t("account.designs.savedOn", { date: formatDate(item.created_at) })}</p>
+          <ShareBadge status={item.share_status ?? "private"} />
+        </div>
 
         <div className="mt-3 flex items-center justify-between gap-2">
           <a href={`/design?d=${item.slug}`} className="text-xs font-semibold text-indigo-600 hover:text-indigo-500">

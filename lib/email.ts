@@ -31,6 +31,16 @@ const copy = {
     colour: "Colour",
     thickness: "Thickness",
     total: "Total",
+    paymentTitle: "Payment instructions",
+    paymentIntro: "Please pay by bank transfer using the details below:",
+    paymentAccount: "Account number",
+    paymentBank: "Bank",
+    paymentVS: "Variable symbol",
+    paymentAmount: "Amount",
+    paymentDue: (n: number) => `Please transfer within ${n} business days.`,
+    /** Replaces `intro` while payments are off: production has NOT started yet. */
+    introAwaitingPayment:
+      "Thanks for your order — we have your design. Production starts as soon as your payment arrives.",
     docsTitle: "Your documents",
     docsBody: "Keep these for your records:",
     terms: "Terms & Conditions",
@@ -48,6 +58,16 @@ const copy = {
     colour: "Barva",
     thickness: "Tloušťka",
     total: "Celkem",
+    paymentTitle: "Platební údaje",
+    paymentIntro: "Uhraďte prosím bankovním převodem podle údajů níže:",
+    paymentAccount: "Číslo účtu",
+    paymentBank: "Banka",
+    paymentVS: "Variabilní symbol",
+    paymentAmount: "Částka",
+    paymentDue: (n: number) => `Prosíme o úhradu do ${n} pracovních dnů.`,
+    /** Nahrazuje `intro`, dokud nejsou platby spuštěné: výroba ještě nezačala. */
+    introAwaitingPayment:
+      "Děkujeme za objednávku — máme váš návrh. Výrobu zahájíme, jakmile dorazí vaše platba.",
     docsTitle: "Vaše dokumenty",
     docsBody: "Uschovejte si je pro vlastní evidenci:",
     terms: "Obchodní podmínky",
@@ -62,13 +82,26 @@ export interface OrderConfirmationEmailParams {
   customer?: Customer;
   consent: ConsentRecord;
   summary?: Record<string, unknown>;
+  /** Set only when payments are off (bank-transfer flow) — omit/null once
+   *  Comgate is live, since the customer has already paid by then. Computed by
+   *  the caller (app/api/order/route.ts), not here — this module stays a pure
+   *  function of its inputs, same reasoning as the "type-only import" note at
+   *  the top of this file. */
+  paymentInstructions?: {
+    accountNumber: string;
+    bankName: string;
+    variableSymbol: string;
+    amountCzk: number;
+    dueDays: number;
+  } | null;
 }
 
 function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] as string));
 }
 
-function buildHtml(params: OrderConfirmationEmailParams): string {
+/** Exported for tests: the payment block must appear only while payments are off. */
+export function buildHtml(params: OrderConfirmationEmailParams): string {
   const locale = params.consent.locale === "cs" ? "cs" : "en";
   const t = copy[locale];
   const name = escapeHtml([params.customer?.firstName, params.customer?.lastName].filter(Boolean).join(" "));
@@ -85,7 +118,7 @@ function buildHtml(params: OrderConfirmationEmailParams): string {
   return `
     <div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;max-width:560px;margin:0 auto;color:#18181b;">
       <p>${t.greeting(name)}</p>
-      <p>${t.intro}</p>
+      <p>${params.paymentInstructions ? t.introAwaitingPayment : t.intro}</p>
       <h2 style="font-size:15px;margin-top:24px;">${t.summaryTitle}</h2>
       <table style="border-collapse:collapse;font-size:14px;">
         ${row(t.order, params.orderNo)}
@@ -94,6 +127,17 @@ function buildHtml(params: OrderConfirmationEmailParams): string {
         ${row(t.thickness, summary.thickness_mm ? `${summary.thickness_mm} mm` : undefined)}
         ${row(t.total, summary.total_price_czk ? `${summary.total_price_czk} Kč` : undefined)}
       </table>
+      ${params.paymentInstructions ? `
+      <h2 style="font-size:15px;margin-top:24px;">${t.paymentTitle}</h2>
+      <p style="font-size:14px;color:#3f3f46;">${t.paymentIntro}</p>
+      <table style="border-collapse:collapse;font-size:14px;">
+        ${row(t.paymentAccount, params.paymentInstructions.accountNumber)}
+        ${row(t.paymentBank, params.paymentInstructions.bankName)}
+        ${row(t.paymentVS, params.paymentInstructions.variableSymbol)}
+        ${row(t.paymentAmount, `${params.paymentInstructions.amountCzk} Kč`)}
+      </table>
+      <p style="font-size:13px;color:#71717a;">${t.paymentDue(params.paymentInstructions.dueDays)}</p>
+      ` : ""}
       <h2 style="font-size:15px;margin-top:24px;">${t.docsTitle}</h2>
       <p style="font-size:14px;color:#3f3f46;">${t.docsBody}</p>
       <p style="font-size:14px;">

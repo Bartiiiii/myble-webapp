@@ -13,6 +13,11 @@ export interface AccountDesignRow {
   design: Record<string, unknown>;
   locale: string;
   created_at: string;
+  /** private | pending | published | rejected — see 0007_community.sql. */
+  share_status: string;
+  /** The title given when sharing to the library (null while private). */
+  title: string | null;
+  review_note: string | null;
 }
 
 export interface AccountOrderRow {
@@ -29,7 +34,7 @@ export async function fetchAccountDesigns(email: string): Promise<AccountDesignR
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("designs")
-    .select("id,slug,name,design,locale,created_at")
+    .select("id,slug,name,design,locale,created_at,share_status,title,review_note")
     .eq("user_email", email)
     .order("created_at", { ascending: false })
     .limit(200);

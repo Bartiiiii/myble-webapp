@@ -27,10 +27,10 @@ describe("cut list", () => {
     expect(dataLines.filter(Boolean).length).toBe(rows);
   });
 
-  it("JSON round-trips and carries colour/thickness/bandBack", () => {
-    const d = { ...presetDesign("police"), bandBack: false };
+  it("JSON round-trips and carries colour + thickness", () => {
+    const d = presetDesign("police");
     const parsed = JSON.parse(cutListJSON(d));
-    expect(parsed.bandBack).toBe(false);
+    expect(parsed.thicknessMm).toBe(18);
     expect(parsed.colour).toBe("White");
     expect(parsed.outerCm).toEqual(d.outerCm);
     expect(Array.isArray(parsed.rows)).toBe(true);

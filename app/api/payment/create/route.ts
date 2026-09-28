@@ -38,7 +38,9 @@ export async function POST(req: Request) {
   const supabase = createAdminClient();
   const { data: order, error } = await supabase
     .from("orders")
-    .select("id, order_no, email, first_name, last_name, phone, street, city, zip, country, locale, design, payment_status")
+    .select(
+      "id, order_no, email, first_name, last_name, phone, street, city, zip, country, locale, design, payment_status, delivery_method",
+    )
     .eq("order_no", orderNo)
     .maybeSingle();
 
@@ -74,6 +76,7 @@ export async function POST(req: Request) {
       zip: order.zip as string | null,
       country: order.country as string | null,
       locale: order.locale as string | null,
+      deliveryMethod: order.delivery_method === "in-room" ? "in-room" : "curbside",
       clientTotalCzk: body.displayedTotalCzk ?? null,
     });
 

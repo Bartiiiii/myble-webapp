@@ -1,54 +1,110 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
+import { randomUUID } from "node:crypto";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/auth";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { LIBRARY_IDS } from "@/lib/library";
+import { publishedSlugs } from "@/lib/community";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 🔥 reactions on Design Library pieces.
 //
-// GET            → { ok, counts: { [designId]: number } }
-// POST { id, delta: 1 | -1 } → { ok, count }
+// GET                    → { ok, counts: { [designId]: number }, mine: string[] }
+// POST { id, on: bool }  → { ok, count, on }
 //
-// The `design_reactions` table is RLS deny-all; both directions use the
-// service-role client. Design ids are validated against the curated LIBRARY
-// allowlist, so a caller can neither create arbitrary rows nor inflate a
-// counter for something that isn't a real design.
+// ONE 🔥 PER PERSON, enforced by the database, not by the browser.
 //
-// Fail-soft by design: if the table doesn't exist yet (migration 0005 not run)
-// or Supabase env is missing, GET returns empty counts and POST reports
-// ok:false rather than throwing. The UI then falls back to local-only state,
-// so the feature degrades instead of breaking the page.
+// The old version took a client-supplied ±1 and added it to a counter, with
+// localStorage as the only record of who had already reacted — so clearing
+// storage, opening a second browser, or simply posting {delta: 1} in a loop
+// drove the number up forever. Now every 🔥 is a ROW keyed
+// (design_id, reactor_key) with that pair as the primary key: the request says
+// "this person is on/off for this design", never "add one", and the count is
+// count(*) over those rows. Repeating a request is a no-op, so spamming the
+// button (or the endpoint) cannot move the number past 1 per person.
+//
+// Who "this person" is:
+//   • signed in  → 'u:<e-mail>' from the session — same on every device.
+//   • otherwise  → 'a:<uuid>' from an httpOnly cookie we set here. Being
+//     httpOnly, page JS can neither read nor clear it, unlike the localStorage
+//     marker it replaces.
+//
+// Ids are validated against the curated library plus the slugs backstage has
+// published, so no arbitrary row can be created.
+//
+// Fail-soft: if the tables/functions aren't migrated yet (0007_community.sql),
+// GET returns empty state and POST reports ok:false, and the UI degrades to
+// showing zero rather than breaking the page.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const dynamic = "force-dynamic";
 
-const ALLOWED = new Set(LIBRARY_IDS);
+const VISITOR_COOKIE = "myble_vid";
+const CURATED = new Set(LIBRARY_IDS);
+
+/** The stable identity of whoever is reacting, plus a cookie to set if new. */
+async function reactor(): Promise<{ key: string; setCookie: string | null }> {
+  const session = await getServerSession(authOptions);
+  const email = session?.user?.email?.trim().toLowerCase();
+  if (email) return { key: `u:${email}`, setCookie: null };
+
+  const jar = await cookies();
+  const existing = jar.get(VISITOR_COOKIE)?.value;
+  if (existing) return { key: `a:${existing}`, setCookie: null };
+
+  const fresh = randomUUID();
+  return { key: `a:${fresh}`, setCookie: fresh };
+}
+
+function withCookie(res: NextResponse, value: string | null): NextResponse {
+  if (value) {
+    res.cookies.set(VISITOR_COOKIE, value, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 365,
+    });
+  }
+  return res;
+}
+
+async function isAllowed(id: string): Promise<boolean> {
+  if (CURATED.has(id)) return true;
+  return (await publishedSlugs()).has(id);
+}
 
 export async function GET() {
+  const { key, setCookie } = await reactor();
+
   try {
     const supabase = createAdminClient();
-    const { data, error } = await supabase
-      .from("design_reactions")
-      .select("design_id, fire_count");
+    const [{ data: counts, error: countsErr }, { data: mine, error: mineErr }] = await Promise.all([
+      supabase.rpc("design_fire_counts"),
+      supabase.from("design_fires").select("design_id").eq("reactor_key", key),
+    ]);
 
-    if (error) {
-      console.error("[reactions] read failed", { error: error.message });
-      return NextResponse.json({ ok: false, counts: {} });
+    if (countsErr) {
+      console.error("[reactions] counts failed", { error: countsErr.message });
+      return withCookie(NextResponse.json({ ok: false, counts: {}, mine: [] }), setCookie);
     }
 
-    const counts: Record<string, number> = {};
-    for (const row of data ?? []) {
-      // Drop rows for designs that have since left the curated library.
-      if (ALLOWED.has(row.design_id)) counts[row.design_id] = row.fire_count;
+    const out: Record<string, number> = {};
+    for (const row of (counts ?? []) as { design_id: string; fire_count: number }[]) {
+      out[row.design_id] = row.fire_count;
     }
-    return NextResponse.json({ ok: true, counts });
+    const mineIds = mineErr ? [] : ((mine ?? []) as { design_id: string }[]).map((r) => r.design_id);
+
+    return withCookie(NextResponse.json({ ok: true, counts: out, mine: mineIds }), setCookie);
   } catch (err) {
     console.error("[reactions] read threw", { err });
-    return NextResponse.json({ ok: false, counts: {} });
+    return withCookie(NextResponse.json({ ok: false, counts: {}, mine: [] }), setCookie);
   }
 }
 
 export async function POST(req: Request) {
-  let body: { id?: unknown; delta?: unknown };
+  let body: { id?: unknown; on?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -56,26 +112,32 @@ export async function POST(req: Request) {
   }
 
   const id = typeof body.id === "string" ? body.id : "";
-  if (!ALLOWED.has(id)) {
+  if (!id || !(await isAllowed(id))) {
     return NextResponse.json({ ok: false, error: "unknown_design" }, { status: 400 });
   }
-  // Only ±1 — the client toggles, it never submits a magnitude.
-  const delta = body.delta === -1 ? -1 : 1;
+  // A state, not a delta: "I am on/off for this design".
+  const on = body.on === true;
+
+  const { key, setCookie } = await reactor();
 
   try {
     const supabase = createAdminClient();
-    const { data, error } = await supabase.rpc("bump_design_fire", {
+    const { data, error } = await supabase.rpc("set_design_fire", {
       p_design_id: id,
-      p_delta: delta,
+      p_reactor_key: key,
+      p_on: on,
     });
 
     if (error) {
-      console.error("[reactions] bump failed", { id, delta, error: error.message });
-      return NextResponse.json({ ok: false, error: "bump_failed" }, { status: 500 });
+      console.error("[reactions] set failed", { id, on, error: error.message });
+      return NextResponse.json({ ok: false, error: "set_failed" }, { status: 500 });
     }
-    return NextResponse.json({ ok: true, count: typeof data === "number" ? data : 0 });
+    return withCookie(
+      NextResponse.json({ ok: true, on, count: typeof data === "number" ? data : 0 }),
+      setCookie,
+    );
   } catch (err) {
-    console.error("[reactions] bump threw", { id, delta, err });
-    return NextResponse.json({ ok: false, error: "bump_failed" }, { status: 500 });
+    console.error("[reactions] set threw", { id, on, err });
+    return NextResponse.json({ ok: false, error: "set_failed" }, { status: 500 });
   }
 }

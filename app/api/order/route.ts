@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { sendOrderConfirmationEmail } from "@/lib/email";
+import { PAYMENTS_ENABLED } from "@/lib/comgate/config";
+import {
+  BANK_TRANSFER_ACCOUNT_NUMBER,
+  BANK_TRANSFER_BANK_NAME,
+  BANK_TRANSFER_DUE_DAYS,
+  variableSymbolFromOrderNo,
+} from "@/lib/bankTransfer";
 import type { Design } from "@/lib/model";
 import { validateConfiguratorDesign } from "@/lib/rules-engine/configurator";
 
@@ -38,13 +45,16 @@ export interface ConsentRecord {
   customSpecification?: Record<string, unknown>;
 }
 
-export interface OrderAcknowledgement {
+/** A severity-3 recommendation the customer was shown at checkout. Checkout
+ *  presents these as read-only tips, so this records what was displayed — it is
+ *  not a consent record and must not be read as one. */
+export interface OrderRecommendationShown {
   rule_id: string;
   catalogue_version: string;
   message: string;
   inputs_hash: string;
   design_hash: string;
-  acknowledged_at: string;
+  shown_at: string;
 }
 
 export interface OrderRulesRecord {
@@ -52,7 +62,7 @@ export interface OrderRulesRecord {
   engine_version: string;
   health: string;
   design_hash: string;
-  acknowledgements: OrderAcknowledgement[];
+  recommendationsShown: OrderRecommendationShown[];
 }
 
 export interface OrderPayload {
@@ -148,13 +158,17 @@ export async function POST(req: Request) {
       acknowledged_custom_withdrawal_exclusion: consent.acknowledgedCustomWithdrawalExclusion,
       custom_specification: consent.customSpecification ?? null,
 
-      // Sales-first rules record (server-authoritative report + client acks).
+      // Sales-first rules record (server-authoritative report + the tips the
+      // customer was shown). The `rules_acknowledgements` column predates the
+      // read-only recommendations and is kept as-is to avoid a migration; it
+      // now holds "shown" records, each with `shown_at` rather than a consent
+      // timestamp. Rows written before 2026-08-17 carry `acknowledged_at`.
       rules_catalogue_version: serverRules?.catalogue_version ?? clientRules?.catalogue_version ?? null,
       rules_engine_version: serverRules?.engine_version ?? clientRules?.engine_version ?? null,
       rules_health: serverRules?.health ?? clientRules?.health ?? null,
       rules_design_hash: serverRules?.design_hash ?? clientRules?.design_hash ?? null,
       rules_report: serverRules?.report ?? null,
-      rules_acknowledgements: clientRules?.acknowledgements ?? [],
+      rules_acknowledgements: clientRules?.recommendationsShown ?? [],
       rules_server_revalidated: serverRules?.revalidated ?? false,
 
       ip,
@@ -171,7 +185,24 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "persist_failed" }, { status: 500 });
   }
 
-  const emailResult = await sendOrderConfirmationEmail({ orderNo, customer, consent, summary });
+  const emailResult = await sendOrderConfirmationEmail({
+    orderNo,
+    customer,
+    consent,
+    summary,
+    // Only while Comgate is off: once payments are live the customer has already
+    // paid by the time this e-mail goes out, so no transfer details belong in it.
+    paymentInstructions:
+      !PAYMENTS_ENABLED && typeof summary?.total_price_czk === "number"
+        ? {
+            accountNumber: BANK_TRANSFER_ACCOUNT_NUMBER,
+            bankName: BANK_TRANSFER_BANK_NAME,
+            variableSymbol: variableSymbolFromOrderNo(orderNo),
+            amountCzk: summary.total_price_czk,
+            dueDays: BANK_TRANSFER_DUE_DAYS,
+          }
+        : null,
+  });
   if (!emailResult.sent) {
     console.warn("[order] confirmation email not sent", { orderNo, reason: emailResult.reason });
   }

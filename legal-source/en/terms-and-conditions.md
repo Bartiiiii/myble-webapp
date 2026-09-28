@@ -1,6 +1,6 @@
 # TERMS & CONDITIONS — Myble (my-ble.eu)
 
-**Version 1.3 (MVP) — Effective date: 17 August 2026**
+**Version 1.4 (MVP) — Effective date: 18 August 2026**
 
 ## 1. Introduction
 1.1. These Terms & Conditions ("**Terms**") govern purchases made via the online store at **my-ble.eu** ("**E-shop**").
@@ -35,6 +35,7 @@
 ## 6. Delivery, shipping, split shipments
 6.1. At MVP stage the Seller **delivers only within the Czech Republic.** Orders with a delivery address outside the Czech Republic cannot be accepted.
 6.2. Estimated production and delivery times are shown in the E-shop and may vary depending on complexity.
+6.2a. In any event, the Seller will deliver the Goods no later than **28 days** from the moment production begins (i.e. from receipt of payment, per Article 5.5), save where a longer period has been separately agreed with the Customer in writing.
 6.3. Delivery may be performed by the Seller and/or the Seller's manufacturing/fulfilment partners using courier services (e.g. **Zásilkovna** for smaller parts). A specific courier may not be fixed in advance.
 6.4. The Customer acknowledges that an order may be **delivered in multiple shipments**, for example: (i) panels/material parts shipped by a manufacturing/material partner, and (ii) additional parts (screws, glue, small accessories) shipped separately by the Seller.
 6.5. **Risk of damage** passes to the consumer upon **receipt** of the Goods. Where there are multiple shipments, risk passes for each part on its receipt.
@@ -71,4 +72,4 @@
 ## 12. Final provisions
 12.1. These Terms are governed by the laws of the Czech Republic. This choice of law does not deprive a consumer of the protection of mandatory provisions that would otherwise apply.
 12.2. If any provision is invalid, the remaining provisions remain in effect.
-12.3. **Version 1.3 — Effective date: 17 August 2026.**
+12.3. **Version 1.4 — Effective date: 18 August 2026.**

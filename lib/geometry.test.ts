@@ -21,7 +21,6 @@ import { partBox, thicknessCm } from "./model";
 const base = (parts: Part[], outer = { w: 40, h: 40, d: 30 }): Design => ({
   colour: "white",
   thickness: 18,
-  bandBack: true,
   outerCm: outer,
   parts,
 });
@@ -106,20 +105,19 @@ describe("exposed edges + joints (L-corner)", () => {
     expect(ex.top).toBe(true);
     expect(ex.bottom).toBe(true);
 
+    // Banding no longer follows exposure: Myble bands the buried edge too, so
+    // meble will drill the part and the CSV can express it.
     const banded = bandedEdges(shelf, d);
-    expect(banded.right).toBe(false);
+    expect(banded.right).toBe(true);
     expect(banded.left).toBe(true);
   });
 
-  it("'don't band the back' drops the rear edges only", () => {
+  it("bands all four edges of every board, buried or not", () => {
     const lone: Part = { id: "s", role: "shelf", axis: "y", aCm: 40, bCm: 30, pos: { x: 0, y: 0, z: 0 } };
-    const banded = bandedEdges(lone, { ...base([lone]), bandBack: false });
-    // For an axis-y shelf, top/bottom run along x (the front/back depth edges):
-    // the rear one (−z) is dropped, the others stay.
-    expect(banded.bottom).toBe(false); // −z rear edge
-    expect(banded.top).toBe(true); // +z front edge
-    expect(banded.left).toBe(true);
-    expect(banded.right).toBe(true);
+    for (const part of [lone, shelf, ...d.parts]) {
+      const banded = bandedEdges(part, part === lone ? base([lone]) : d);
+      expect(banded).toEqual({ top: true, bottom: true, left: true, right: true });
+    }
   });
 });
 
@@ -236,5 +234,31 @@ describe("box walls", () => {
     const d = base(boxWalls({ w: 60, h: 100, d: 30 }), { w: 60, h: 100, d: 30 });
     expect(d.parts).toHaveLength(4);
     expect(contactGraph(d).components).toBe(1);
+  });
+});
+
+describe("contact survives the 0.1 cm position rounding", () => {
+  // Moves round a board's centre to 0.1 cm. A board whose length ends in an odd
+  // tenth (45.5 → half 22.75) that slides left into a wall lands on a centre
+  // ending in .x5, and rounding that walks it 0.05 cm off the face: visibly
+  // touching, but it used to read as floating.
+  it("a shelf slid left against a wall and rounded is still connected", () => {
+    const wall: Part = { id: "wall", role: "wall", axis: "x", aCm: 60, bCm: 30, pos: { x: -39.1, y: 0, z: 0 } };
+    // Every one of these lengths used to strand the shelf 0.05 cm off the wall.
+    for (const len of [20.5, 21.5, 22.5, 45.5]) {
+      const shelf: Part = { id: "s", role: "shelf", axis: "y", aCm: len, bCm: 25, pos: { x: 10, y: -10, z: 0 } };
+      const d = base([wall, shelf], { w: 80, h: 60, d: 30 });
+      const slid = slide(shelf, { ...shelf.pos, x: -40 }, [wall], thicknessCm(d)).pos;
+      const landed: Part = { ...shelf, pos: { ...shelf.pos, x: Math.round(slid.x * 10) / 10 } };
+      expect(validate({ ...d, parts: [wall, landed] }).floatingIds).toEqual([]);
+    }
+  });
+
+  it("a real gap (a few millimetres) still floats", () => {
+    const wall: Part = { id: "wall", role: "wall", axis: "x", aCm: 60, bCm: 30, pos: { x: -39.1, y: 0, z: 0 } };
+    const shelf: Part = { id: "s", role: "shelf", axis: "y", aCm: 40, bCm: 25, pos: { x: -38.2 + 20 + 0.5, y: 0, z: 0 } };
+    const other: Part = { id: "o", role: "shelf", axis: "y", aCm: 20, bCm: 25, pos: { x: -28.2, y: 20, z: 0 } };
+    const v = validate(base([wall, other, shelf], { w: 80, h: 60, d: 30 }));
+    expect(v.floatingIds).toEqual(["s"]);
   });
 });

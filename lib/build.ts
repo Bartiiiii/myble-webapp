@@ -1,5 +1,6 @@
 // Builders: box carcass, preset templates, and the legacy planks→parts migration.
 import {
+  MAX_PART_CM,
   type Colour,
   type Design,
   type Part,
@@ -28,11 +29,14 @@ export function boxWalls(
 ): Part[] {
   const { w, h, d } = outer;
   const inner = Math.max(0, w - 2 * tCm); // top/bottom span the gap between sides
+  // Boards are capped independently of the envelope: a carcass wider or taller
+  // than one board is built from several, not from one impossible panel.
+  const cut = (n: number) => Math.min(n, MAX_PART_CM);
   return [
-    { id: makeId(), role: "wall", axis: "x", aCm: h, bCm: d, pos: { x: -w / 2 + tCm / 2, y: 0, z: 0 } },
-    { id: makeId(), role: "wall", axis: "x", aCm: h, bCm: d, pos: { x: w / 2 - tCm / 2, y: 0, z: 0 } },
-    { id: makeId(), role: "wall", axis: "y", aCm: inner, bCm: d, pos: { x: 0, y: -h / 2 + tCm / 2, z: 0 } },
-    { id: makeId(), role: "wall", axis: "y", aCm: inner, bCm: d, pos: { x: 0, y: h / 2 - tCm / 2, z: 0 } },
+    { id: makeId(), role: "wall", axis: "x", aCm: cut(h), bCm: cut(d), pos: { x: -w / 2 + tCm / 2, y: 0, z: 0 } },
+    { id: makeId(), role: "wall", axis: "x", aCm: cut(h), bCm: cut(d), pos: { x: w / 2 - tCm / 2, y: 0, z: 0 } },
+    { id: makeId(), role: "wall", axis: "y", aCm: cut(inner), bCm: cut(d), pos: { x: 0, y: -h / 2 + tCm / 2, z: 0 } },
+    { id: makeId(), role: "wall", axis: "y", aCm: cut(inner), bCm: cut(d), pos: { x: 0, y: h / 2 - tCm / 2, z: 0 } },
   ];
 }
 
@@ -105,6 +109,23 @@ function skrinkaPlanks(widthCm: number, heightCm: number): LegacyPlank[] {
   return [...shelves, ...dividers];
 }
 
+/**
+ * Coerce a stored design — a v3 `parts` design, or any legacy plank shape —
+ * into a Design. Orders keep their design JSON for the life of the order, so
+ * production tooling has to read rows written by older configurators.
+ */
+export function coerceDesign(value: unknown): Design | null {
+  if (!value || typeof value !== "object") return null;
+  const v = value as Partial<Design> & Partial<LegacyDesign>;
+  if (Array.isArray(v.parts) && v.outerCm && typeof v.outerCm === "object") {
+    return value as Design;
+  }
+  if (typeof v.widthCm === "number" && typeof v.heightCm === "number") {
+    return legacyToDesign(value as LegacyDesign);
+  }
+  return null;
+}
+
 /** Migrate any legacy design (carcass + planks, or {shelves:N}) → parts model. */
 export function legacyToDesign(legacy: LegacyDesign, thickness: Thickness = 18): Design {
   const w = legacy.widthCm;
@@ -116,7 +137,6 @@ export function legacyToDesign(legacy: LegacyDesign, thickness: Thickness = 18):
   return {
     colour: colourFromDecor(legacy.decor),
     thickness,
-    bandBack: true,
     outerCm: { w, h, d },
     parts: [...boxWalls({ w, h, d }), ...planks.map((pl) => plankToPart(pl, w, h, d))],
   };
@@ -168,7 +188,6 @@ export function emptyDesign(base?: Partial<Pick<Design, "colour" | "thickness" |
   return {
     colour: base?.colour ?? "white",
     thickness: base?.thickness ?? 18,
-    bandBack: true,
     outerCm: { ...outer },
     parts: boxWalls(outer),
   };

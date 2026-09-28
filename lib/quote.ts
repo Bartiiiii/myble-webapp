@@ -32,8 +32,9 @@ import {
   VAT_REGISTERED,
   WTP_CEILING_CZK,
 } from "./pricingConfig";
-import { type Design, DELIVERY_CZK, materialId } from "./model";
-import { bandedEdges, contactGraph } from "./geometry";
+import { type Design, DELIVERY_CZK, IN_ROOM_DELIVERY_SURCHARGE_CZK, materialId } from "./model";
+import { bandedEdges } from "./geometry";
+import { drillingPlan, drillSignature } from "./drilling";
 import { PRESETS, presetDesign } from "./build";
 
 export interface Quote {
@@ -73,18 +74,23 @@ export const ceilTo90 = (n: number) => Math.ceil(n / 90) * 90;
 /**
  * Expand a Design into meble cut parts (mm). Edge banding is derived from the
  * geometry (exposed → banded, buried → raw) honouring "don't band the back";
- * parts that sit in a joint are drilled. Identical parts are grouped → quantity.
+ * parts that sit in a joint are drilled for dowels. Identical parts are grouped
+ * → quantity.
+ *
+ * Two boards may only share a group when their DRILLING matches as well as
+ * their size and banding — meble drills a group to one template, so merging the
+ * two side walls of a box (mirror-image hole patterns) would send one of them
+ * back with its holes on the wrong face. `id` carries the design part ids in the
+ * group, so the meble export can find the group's drill rows again.
  */
 export function designToCutParts(design: Design): CutPart[] {
   const parts = design.parts;
   if (parts.length === 0) return [];
 
-  // A part is drilled if it joins anything (in a box, that's all of them).
-  const g = contactGraph(design);
-  const drilledById = new Map<string, boolean>();
-  parts.forEach((p, i) => drilledById.set(p.id, parts.length > 1 && g.adjacency[i].length > 0));
+  const plan = drillingPlan(design);
 
   const groups = new Map<string, CutPart>();
+  const members = new Map<string, string[]>();
   for (const p of parts) {
     const widthMm = Math.round(p.aCm * 10);
     const heightMm = Math.round(p.bCm * 10);
@@ -95,15 +101,18 @@ export function designToCutParts(design: Design): CutPart[] {
       left: banded.left,
       right: banded.right,
     };
-    const drilled = drilledById.get(p.id) ?? false;
-    const key = `${widthMm}x${heightMm}|${banded.top}${banded.bottom}${banded.left}${banded.right}|${drilled}`;
+    const drills = plan.byPart.get(p.id);
+    const drilled = !!drills?.length;
+    const key = `${widthMm}x${heightMm}|${banded.top}${banded.bottom}${banded.left}${banded.right}|${drillSignature(drills)}`;
+    members.set(key, [...(members.get(key) ?? []), p.id]);
     const existing = groups.get(key);
     if (existing) {
       existing.quantity = (existing.quantity ?? 1) + 1;
+      existing.id = members.get(key)!.join(",");
     } else {
       // `name` carries the role enum (wall|shelf|divider); the cut list maps it to
       // a localized label for display and an English label for the export file.
-      groups.set(key, { name: p.role, widthMm, heightMm, quantity: 1, edgeBanding, drilled });
+      groups.set(key, { id: p.id, name: p.role, widthMm, heightMm, quantity: 1, edgeBanding, drilled });
     }
   }
   return [...groups.values()];
@@ -115,6 +124,12 @@ export interface PriceOptions {
   vatRegistered?: boolean;
   /** WTP ceiling to compare the sticker against (admin guardrail). */
   wtpCeilingCZK?: number | null;
+  /** "in-room" adds IN_ROOM_DELIVERY_SURCHARGE_CZK on top of the base delivery fee.
+   *  Omitted/"curbside" = no surcharge. Applied even when base delivery is free
+   *  (order qualifies for FREE_SHIP_CZK) — it's a service fee, not transport cost.
+   *  FLAG FOR BARTI: confirm this free-shipping interaction is the intended
+   *  business rule before shipping — see note in priceFromMeble below. */
+  deliveryMethod?: "curbside" | "in-room";
 }
 
 export interface CzkPrice {
@@ -139,7 +154,11 @@ export function priceFromMeble(mebleCostPLN: number, opts: PriceOptions = {}): C
   const base = (landedCZK * MARKUP) / (1 - PAYMENT_FEE_PCT);
   const price = Math.max(PRICE_FLOOR_CZK, ceilTo90(base));
   const sticker = vat ? round0(price * (1 + CZ_VAT)) : price;
-  const deliveryCZK = price >= FREE_SHIP_CZK ? 0 : DELIVERY_CZK;
+  // In-room is a service surcharge, not the base transport fee — it applies even
+  // when the order qualifies for free curbside shipping (FREE_SHIP_CZK).
+  const baseDeliveryCZK = price >= FREE_SHIP_CZK ? 0 : DELIVERY_CZK;
+  const inRoomSurchargeCZK = opts.deliveryMethod === "in-room" ? IN_ROOM_DELIVERY_SURCHARGE_CZK : 0;
+  const deliveryCZK = baseDeliveryCZK + inRoomSurchargeCZK;
   const marginPct = price > 0 ? (price - landedCZK) / price : 0;
   const wtpCeilingCZK = opts.wtpCeilingCZK ?? null;
   const exceedsWTP = wtpCeilingCZK != null && sticker > wtpCeilingCZK;
@@ -156,13 +175,15 @@ export function quoteDesign(design: Design, opts: PriceOptions = {}): Quote {
   const parts = designToCutParts(design);
   // Empty designs have no cost; surface a zero quote rather than throwing.
   if (parts.length === 0) {
+    const emptyDeliveryCZK =
+      DELIVERY_CZK + (opts.deliveryMethod === "in-room" ? IN_ROOM_DELIVERY_SURCHARGE_CZK : 0);
     return {
-      customerCZK: DELIVERY_CZK,
+      customerCZK: emptyDeliveryCZK,
       kitCZK: 0,
       sticker: 0,
-      total: DELIVERY_CZK,
+      total: emptyDeliveryCZK,
       price: 0,
-      deliveryCZK: DELIVERY_CZK,
+      deliveryCZK: emptyDeliveryCZK,
       landedCZK: 0,
       mebleCostPLN: 0,
       marginPct: 0,

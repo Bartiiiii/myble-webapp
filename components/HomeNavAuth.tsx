@@ -9,6 +9,16 @@ export function HomeNavAuth() {
   const { data: session, status } = useSession();
   const [menuOpen, setMenuOpen] = React.useState(false);
   const wrapRef = React.useRef<HTMLDivElement>(null);
+  // Signing in must give the page back, not the homepage: somebody half way
+  // through a design in the configurator loses it otherwise. Read after mount
+  // so the server-rendered link (plain /login) and the first client render
+  // agree, then upgrade it to carry the current URL.
+  const [loginHref, setLoginHref] = React.useState("/login");
+
+  React.useEffect(() => {
+    const here = window.location.pathname + window.location.search;
+    setLoginHref(here === "/" ? "/login" : `/login?callbackUrl=${encodeURIComponent(here)}`);
+  }, []);
 
   React.useEffect(() => {
     function onDocClick(e: MouseEvent) {
@@ -22,7 +32,7 @@ export function HomeNavAuth() {
   if (status !== "authenticated") {
     return (
       <a
-        href="/login"
+        href={loginHref}
         className="inline-flex rounded-xl px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
       >
         {t("auth.login")}

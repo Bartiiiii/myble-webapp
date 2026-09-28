@@ -1,3 +1,4 @@
+import type { DeliveryDeadline } from "@/lib/deliveryDeadline";
 import React from "react";
 
 // Server-safe backstage primitives: badges, KPI cards, tables, charts.
@@ -42,6 +43,37 @@ export function StatusBadge({ status }: { status: string }) {
   );
 }
 
+/**
+ * Days left against the T&C §6.2a 28-day delivery deadline. Silent for orders
+ * the clock does not apply to (unpaid, or already shipped/cancelled), so the
+ * column only draws the eye when something actually needs doing.
+ */
+export function DeadlineBadge({ deadline }: { deadline: DeliveryDeadline }) {
+  if (!deadline.tracked) return <span className="text-zinc-400">—</span>;
+
+  if (deadline.level === "ok") {
+    return <span className="tabular-nums text-zinc-500">{deadline.daysLeft} d left</span>;
+  }
+
+  const style =
+    deadline.level === "overdue"
+      ? "bg-rose-50 text-rose-700 ring-rose-600/20"
+      : "bg-amber-50 text-amber-700 ring-amber-600/20";
+  const label =
+    deadline.level === "overdue"
+      ? `${Math.abs(deadline.daysLeft)} d overdue`
+      : `${deadline.daysLeft} d left`;
+
+  return (
+    <span
+      title={`Paid ${deadline.daysElapsed} days ago · must be delivered by ${formatDate(deadline.dueAt, false)} (T&C §6.2a)`}
+      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium tabular-nums ring-1 ring-inset ${style}`}
+    >
+      {label}
+    </span>
+  );
+}
+
 export function Kpi({
   label,
   value,
@@ -63,19 +95,23 @@ export function Kpi({
 export function Section({
   title,
   action,
+  fill = false,
   children,
 }: {
   title: string;
   action?: React.ReactNode;
+  /** Stretch to the height of the grid row and let the body fill what's left —
+   *  how two side-by-side sections end up the same height. */
+  fill?: boolean;
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-2xl bg-white ring-1 ring-zinc-200">
+    <section className={`rounded-2xl bg-white ring-1 ring-zinc-200${fill ? " flex h-full flex-col" : ""}`}>
       <header className="flex items-center justify-between gap-3 border-b border-zinc-100 px-5 py-4">
         <h2 className="text-sm font-semibold text-zinc-900">{title}</h2>
         {action}
       </header>
-      <div className="p-5">{children}</div>
+      <div className={fill ? "flex min-h-0 flex-1 flex-col p-5" : "p-5"}>{children}</div>
     </section>
   );
 }

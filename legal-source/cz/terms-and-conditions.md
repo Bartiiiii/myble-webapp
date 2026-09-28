@@ -1,6 +1,6 @@
 # OBCHODNÍ PODMÍNKY — Myble (my-ble.eu)
 
-**Verze 1.3 (MVP) — Účinnost od: 17. srpna 2026**
+**Verze 1.4 (MVP) — Účinnost od: 18. srpna 2026**
 
 ## 1. Úvodní ustanovení
 1.1. Tyto obchodní podmínky ("**Podmínky**") upravují nákupy uskutečněné prostřednictvím internetového obchodu na adrese **my-ble.eu** ("**E-shop**").
@@ -35,6 +35,7 @@
 ## 6. Dodání, doprava, dílčí zásilky
 6.1. Ve fázi MVP Prodávající **dodává pouze na území České republiky.** Objednávky s dodací adresou mimo Českou republiku nelze přijmout.
 6.2. Předpokládané doby výroby a dodání jsou uvedeny v E-shopu a mohou se lišit podle složitosti.
+6.2a. V každém případě Prodávající dodá Zboží nejpozději do **28 dnů** od okamžiku zahájení výroby (tj. od přijetí platby dle článku 5.5), pokud se se Zákazníkem písemně nedohodne na delší lhůtě.
 6.3. Dodání může zajišťovat Prodávající a/nebo jeho výrobní/dodavatelští partneři prostřednictvím kurýrních služeb (např. **Zásilkovna** pro menší díly). Konkrétní dopravce nemusí být předem stanoven.
 6.4. Zákazník bere na vědomí, že objednávka může být **dodána ve více zásilkách**, například: (i) panely/materiálové díly odeslané výrobním/materiálovým partnerem a (ii) doplňkové díly (šrouby, lepidlo, drobné příslušenství) odeslané samostatně Prodávajícím.
 6.5. **Nebezpečí škody** přechází na spotřebitele **převzetím** Zboží. V případě více zásilek přechází nebezpečí u každé části jejím převzetím.
@@ -71,4 +72,4 @@
 ## 12. Závěrečná ustanovení
 12.1. Tyto Podmínky se řídí právem České republiky. Touto volbou práva není spotřebitel zbaven ochrany, kterou mu poskytují kogentní ustanovení jinak použitelného práva.
 12.2. Je-li některé ustanovení neplatné, ostatní ustanovení zůstávají v platnosti.
-12.3. **Verze 1.3 — Účinnost od: 17. srpna 2026.**
+12.3. **Verze 1.4 — Účinnost od: 18. srpna 2026.**

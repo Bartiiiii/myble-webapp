@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 const SITE_URL = "https://my-ble.eu";
-const TITLE = "Myble — made-to-measure furniture, exact to the centimetre";
+const TITLE = "Myble | made-to-measure furniture, exact to the centimetre";
 const DESCRIPTION =
   "Custom shelves, cabinets and tables for any alcove. See the price instantly, design in 5 minutes, assemble in 30. Delivery across Czechia.";
 
