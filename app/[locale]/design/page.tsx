@@ -39,7 +39,7 @@ import {
   saveDesign,
   loadDesign,
 } from "../../../lib/design";
-import { quoteDesign, breakdownCZK } from "../../../lib/quote";
+import { quoteDesign } from "../../../lib/quote";
 import { PRICING_DEBUG } from "../../../lib/pricingConfig";
 import { LIBRARY, type LibraryItem } from "../../../lib/library";
 import { useI18n, useT, type TFn } from "../../../lib/i18n";
@@ -298,7 +298,6 @@ export default function DesignPage() {
 
   const quote = useMemo(() => quoteDesign(design), [design]);
   const v = useMemo(() => validate(design), [design]);
-  const breakdown = useMemo(() => breakdownCZK(quote), [quote]);
 
   // The rules engine's advisory recommendations no longer live here. A panel of
   // expert caveats beside a piece you are still shaping reads as "something is
@@ -693,16 +692,9 @@ export default function DesignPage() {
               )}
             </div>
 
-            {/* Collapsible price + order (desktop) */}
+            {/* Price + order (desktop) */}
             <div className="hidden lg:block">
-              <PricePanel
-                quote={quote}
-                breakdown={breakdown}
-                open={priceOpen}
-                onToggle={() => setPriceOpen((o) => !o)}
-                canOrder={v.ok}
-                onOrder={goToOrder}
-              />
+              <PricePanel quote={quote} canOrder={v.ok} onOrder={goToOrder} />
             </div>
           </aside>
 
@@ -731,11 +723,12 @@ export default function DesignPage() {
         onShared={(slug) => setCurrentSlug(slug)}
       />
 
-      {/* Sticky price bar (mobile) — collapsed by default, expandable to breakdown */}
+      {/* Sticky price bar (mobile) — shows the kit price; expands to kit/delivery/total,
+          which the bar has no room for. */}
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-zinc-200 bg-white/95 backdrop-blur lg:hidden">
         {priceOpen && (
           <div className="mx-auto w-full max-w-7xl px-5 pt-4">
-            <Breakdown quote={quote} breakdown={breakdown} />
+            <PriceSummary quote={quote} />
           </div>
         )}
         <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-3 px-5 py-3">
@@ -1229,37 +1222,20 @@ function SizeControl({
 
 function PricePanel({
   quote,
-  breakdown,
-  open,
-  onToggle,
   canOrder,
   onOrder,
 }: {
   quote: ReturnType<typeof quoteDesign>;
-  breakdown: ReturnType<typeof breakdownCZK>;
-  open: boolean;
-  onToggle: () => void;
   canOrder: boolean;
   onOrder: () => void;
 }) {
-  const { t, fmt } = useI18n();
+  const { t } = useI18n();
   return (
     <div className="rounded-3xl bg-white p-5 ring-1 ring-zinc-200">
-      <button onClick={onToggle} className="flex w-full items-center justify-between text-left">
-        <span className="text-sm text-zinc-600">{t("design.priceLabel")}</span>
-        <span className="flex items-center gap-2">
-          <span className="text-2xl font-semibold">{fmt(quote.kitCZK)}</span>
-          <span className="text-zinc-400">{open ? "⌃" : "⌄"}</span>
-        </span>
-      </button>
-
-      {open && (
-        <div className="mt-4">
-          <Breakdown quote={quote} breakdown={breakdown} />
-        </div>
-      )}
-
-      {!open && <p className="mt-1 text-xs text-zinc-500">{t("design.plusDelivery", { price: fmt(quote.deliveryCZK) })}</p>}
+      <p className="text-sm text-zinc-600">{t("design.priceLabel")}</p>
+      <div className="mt-3">
+        <PriceSummary quote={quote} />
+      </div>
 
       <button
         onClick={onOrder}
@@ -1272,26 +1248,12 @@ function PricePanel({
   );
 }
 
-function Breakdown({
-  quote,
-  breakdown,
-}: {
-  quote: ReturnType<typeof quoteDesign>;
-  breakdown: ReturnType<typeof breakdownCZK>;
-}) {
+/** Kit price, delivery, total. Cost components are deliberately not itemised. */
+function PriceSummary({ quote }: { quote: ReturnType<typeof quoteDesign> }) {
   const { t, fmt } = useI18n();
   return (
     <div className="space-y-2 rounded-2xl bg-zinc-50 p-4 text-sm">
-      {breakdown.map((l) => (
-        <div key={l.key} className="flex items-center justify-between gap-4">
-          <span className="text-zinc-600">
-            {t(`breakdown.${l.key}`)}
-            {l.estimate && <span className="ml-1 text-xs text-zinc-400">({t("breakdown.estimate")})</span>}
-          </span>
-          <span className="tabular-nums text-zinc-800">{fmt(l.czk)}</span>
-        </div>
-      ))}
-      <div className="flex items-center justify-between gap-4 border-t border-zinc-200 pt-2">
+      <div className="flex items-center justify-between gap-4">
         <span className="text-zinc-600">{t("design.bdKit")}</span>
         <span className="font-semibold tabular-nums">{fmt(quote.kitCZK)}</span>
       </div>

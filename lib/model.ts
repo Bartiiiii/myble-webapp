@@ -62,7 +62,8 @@ export const SHEET_MAX_CM = { long: 274, short: 201 } as const;
 export const PARCEL_MAX_SIDE_CM = 200;
 /** The real ceiling on a single board's cut dimensions: the lower of the two. */
 export const MAX_PART_CM = Math.min(SHEET_MAX_CM.long, PARCEL_MAX_SIDE_CM);
-export const DELIVERY_CZK = 199;
+/** Customer delivery fee; owned by pricingConfig.ts (freight pass-through, §2). */
+export { DELIVERY_CZK } from "./pricingConfig";
 /** Extra charged for in-room (vs. curbside) delivery. Added on top of DELIVERY_CZK. */
 export const IN_ROOM_DELIVERY_SURCHARGE_CZK = 100;
 

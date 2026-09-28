@@ -4,9 +4,11 @@
 // Design (parts, cm)  →  meble CutParts (mm, geometry-derived edge banding)
 //   →  calculatePrice()  →  mebleCostPLN  →  landed CZK  →  × MARKUP  →  sticker.
 //
-// The markup is applied to LANDED COGS (meble + accessories + packaging + inbound),
-// NOT to meble cost — so the margin covers every real cost and scales with the
-// design. `lib/pricing.ts` is the verified meble cost engine (unchanged); this
+// The markup is applied to LANDED COGS (meble + accessories + packaging), NOT to
+// meble cost — so the margin covers every real cost and scales with the design.
+// Freight is pass-through (§2, rev. 28 Sep 2026): the customer pays DELIVERY_CZK
+// as its own line, and the FREIGHT_COST_CZK − DELIVERY_CZK shortfall is added
+// flat to the kit price. Neither is ever marked up. `lib/pricing.ts` is the verified meble cost engine (unchanged); this
 // module is the thin Myble layer. All knobs live in lib/pricingConfig.ts.
 
 import {
@@ -18,9 +20,10 @@ import {
 import {
   ACCESSORIES_CZK,
   CZ_VAT,
+  DELIVERY_CZK,
   FREE_SHIP_CZK,
+  FREIGHT_COST_CZK,
   FX_PLN_CZK,
-  INBOUND_ALLOC_CZK,
   MARKUP,
   MEBLE_TIER,
   MEBLE_VAT,
@@ -32,7 +35,7 @@ import {
   VAT_REGISTERED,
   WTP_CEILING_CZK,
 } from "./pricingConfig";
-import { type Design, DELIVERY_CZK, IN_ROOM_DELIVERY_SURCHARGE_CZK, materialId } from "./model";
+import { type Design, IN_ROOM_DELIVERY_SURCHARGE_CZK, materialId } from "./model";
 import { bandedEdges } from "./geometry";
 import { drillingPlan, drillSignature } from "./drilling";
 import { PRESETS, presetDesign } from "./build";
@@ -49,9 +52,9 @@ export interface Quote {
   /** Ex-VAT, post-markup, floored & rounded price. Drives delivery + the WTP check.
    *  Equals `sticker` in Stage 1; `sticker` = price × (1 + CZ_VAT) in Stage 2. */
   price: number;
-  /** Delivery, in CZK (free at/above FREE_SHIP_CZK). */
+  /** Delivery, in CZK (DELIVERY_CZK, never marked up; + in-room surcharge). */
   deliveryCZK: number;
-  /** Landed COGS in CZK (mebleCZK + accessories + packaging + inbound). */
+  /** Landed COGS in CZK (mebleCZK + accessories + packaging). Excludes freight. */
   landedCZK: number;
   /** meble.pl cost only (board + edge + cutting + gluing + drilling), gross PLN. */
   mebleCostPLN: number;
@@ -63,13 +66,14 @@ export interface Quote {
   wtpCeilingCZK: number | null;
   /** True when the sticker exceeds the WTP ceiling (admin/debug guardrail). */
   exceedsWTP: boolean;
-  /** The full verified meble breakdown, for the expandable price panel. */
+  /** The full verified meble breakdown (admin/export; not shown to customers). */
   pricing: PricingResult;
 }
 
 const round0 = (n: number) => Math.round(n);
-/** Round up to the nearest 90 (…x90 psychological pricing + margin cushion). */
-export const ceilTo90 = (n: number) => Math.ceil(n / 90) * 90;
+/** Round up to the next price ending in 90 (…x90 psychological pricing):
+ *  1780.3 → 1790, 1790 → 1790, 1790.01 → 1890. */
+export const ceilTo90 = (n: number) => Math.ceil((n - 90) / 100) * 100 + 90;
 
 /**
  * Expand a Design into meble cut parts (mm). Edge banding is derived from the
@@ -126,9 +130,8 @@ export interface PriceOptions {
   wtpCeilingCZK?: number | null;
   /** "in-room" adds IN_ROOM_DELIVERY_SURCHARGE_CZK on top of the base delivery fee.
    *  Omitted/"curbside" = no surcharge. Applied even when base delivery is free
-   *  (order qualifies for FREE_SHIP_CZK) — it's a service fee, not transport cost.
-   *  FLAG FOR BARTI: confirm this free-shipping interaction is the intended
-   *  business rule before shipping — see note in priceFromMeble below. */
+   *  (only possible if FREE_SHIP_CZK is re-enabled) — it's a service fee, not
+   *  transport cost. */
   deliveryMethod?: "curbside" | "in-room";
 }
 
@@ -144,22 +147,28 @@ export interface CzkPrice {
 }
 
 /**
- * The core §6 formula: gross meble cost (PLN) → landed CZK → markup → sticker.
- * Pure and server-reproducible; every rate comes from pricingConfig.ts.
+ * The core §6 formula: gross meble cost (PLN) → landed CZK → markup → + freight
+ * shortfall → sticker. Delivery is added after, never marked up. Pure and
+ * server-reproducible; every rate comes from pricingConfig.ts.
  */
 export function priceFromMeble(mebleCostPLN: number, opts: PriceOptions = {}): CzkPrice {
   const vat = opts.vatRegistered ?? VAT_REGISTERED;
   const mebleCZK = mebleCostPLN * FX_PLN_CZK * (vat ? 1 / (1 + MEBLE_VAT) : 1);
-  const landedCZK = mebleCZK + ACCESSORIES_CZK + PACKAGING_CZK + INBOUND_ALLOC_CZK;
-  const base = (landedCZK * MARKUP) / (1 - PAYMENT_FEE_PCT);
+  const landedCZK = mebleCZK + ACCESSORIES_CZK + PACKAGING_CZK;
+  // Freight the customer's delivery fee doesn't cover is recovered flat in the
+  // kit price: after markup and the fee gross-up, so it is never marked up.
+  const freightShortfallCZK = FREIGHT_COST_CZK - DELIVERY_CZK;
+  const base = (landedCZK * MARKUP) / (1 - PAYMENT_FEE_PCT) + freightShortfallCZK;
   const price = Math.max(PRICE_FLOOR_CZK, ceilTo90(base));
   const sticker = vat ? round0(price * (1 + CZ_VAT)) : price;
-  // In-room is a service surcharge, not the base transport fee — it applies even
-  // when the order qualifies for free curbside shipping (FREE_SHIP_CZK).
-  const baseDeliveryCZK = price >= FREE_SHIP_CZK ? 0 : DELIVERY_CZK;
+  // FREE_SHIP_CZK = 0 disables free shipping. In-room is a service surcharge, not
+  // the base transport fee — it would apply even if free shipping were on.
+  const freeShip = FREE_SHIP_CZK > 0 && price >= FREE_SHIP_CZK;
+  const baseDeliveryCZK = freeShip ? 0 : DELIVERY_CZK;
   const inRoomSurchargeCZK = opts.deliveryMethod === "in-room" ? IN_ROOM_DELIVERY_SURCHARGE_CZK : 0;
   const deliveryCZK = baseDeliveryCZK + inRoomSurchargeCZK;
-  const marginPct = price > 0 ? (price - landedCZK) / price : 0;
+  // Margin vs landed COGS plus the freight the kit price carries.
+  const marginPct = price > 0 ? (price - landedCZK - freightShortfallCZK) / price : 0;
   const wtpCeilingCZK = opts.wtpCeilingCZK ?? null;
   const exceedsWTP = wtpCeilingCZK != null && sticker > wtpCeilingCZK;
   return { price, sticker, deliveryCZK, landedCZK, marginPct, vatRegistered: vat, wtpCeilingCZK, exceedsWTP };
@@ -258,56 +267,6 @@ function emptyPricing(design: Design): PricingResult {
     },
     assumptions: [],
   };
-}
-
-export interface BreakdownLine {
-  /** i18n key under `breakdown.*`. */
-  key: string;
-  czk: number;
-  estimate?: boolean;
-}
-
-// meble line label → i18n key. Lines not listed are hidden (accessories are added
-// separately below as a CZK adder, so the meble "accessories" line is dropped).
-const LINE_KEYS: Record<string, string> = {
-  "Board material": "board",
-  "Edge banding material": "edge",
-  Cutting: "cutting",
-  "Edge gluing": "gluing",
-  Drilling: "drilling",
-};
-
-/**
- * The price broken into CZK components for the expandable panel, reading top to
- * bottom as: meble breakdown → landed adders (accessories/packaging/inbound) →
- * margin & fees → kit sticker. Every meble line is converted at the same
- * meble→CZK factor (net in Stage 2); the margin line absorbs markup, the payment
- * fee, rounding and any Stage-2 VAT uplift, so the components sum EXACTLY to the
- * kit sticker.
- */
-export function breakdownCZK(q: Quote): BreakdownLine[] {
-  if (q.mebleCostPLN <= 0) return [];
-  // meble net-or-gross CZK = landed minus the three fixed CZK adders.
-  const mebleCZK = q.landedCZK - ACCESSORIES_CZK - PACKAGING_CZK - INBOUND_ALLOC_CZK;
-  const factor = q.mebleCostPLN > 0 ? mebleCZK / q.mebleCostPLN : 0;
-
-  const lines: BreakdownLine[] = q.pricing.lines
-    .filter((l) => LINE_KEYS[l.label] !== undefined)
-    .map((l) => ({
-      key: LINE_KEYS[l.label],
-      czk: Math.round(l.totalPLN * factor),
-      estimate: l.label === "Cutting" && q.pricing.detail.cuttingEstimated,
-    }));
-
-  lines.push({ key: "accessories", czk: ACCESSORIES_CZK });
-  lines.push({ key: "packaging", czk: PACKAGING_CZK });
-  lines.push({ key: "inbound", czk: INBOUND_ALLOC_CZK });
-
-  // Margin & fees closes the gap to the sticker so the panel always foots exactly.
-  const sumSoFar = lines.reduce((n, l) => n + l.czk, 0);
-  lines.push({ key: "margin", czk: q.sticker - sumSoFar });
-
-  return lines;
 }
 
 /** Convenience: the kit sticker (CZK, excl. delivery) — replaces `computePrice`. */

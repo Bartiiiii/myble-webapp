@@ -4,15 +4,16 @@
 // `lib/pricing.ts` is the *verified meble.pl cost engine* (do not touch its logic).
 // This file holds the Myble business knobs layered on top of that cost, per
 // Business/Finance/PRICING_STRATEGY_AND_SYSTEM.md §6 — the landed-cost + markup
-// model. Change a number HERE and every price across the app updates.
+// model, with freight as pass-through per §2 (revised 28 Sep 2026). Change a
+// number HERE and every price across the app updates.
 //
 // The pipeline (see lib/quote.ts):
 //   mebleCZK = mebleCostPLN × FX × (VAT_REGISTERED ? 1/(1+MEBLE_VAT) : 1)
-//   landed   = mebleCZK + ACCESSORIES_CZK + PACKAGING_CZK + INBOUND_ALLOC_CZK
-//   base     = landed × MARKUP / (1 − PAYMENT_FEE_PCT)
-//   price    = max(PRICE_FLOOR_CZK, ceilTo90(base))
+//   landed   = mebleCZK + ACCESSORIES_CZK + PACKAGING_CZK
+//   base     = landed × MARKUP / (1 − PAYMENT_FEE_PCT) + (FREIGHT_COST_CZK − DELIVERY_CZK)
+//   price    = max(PRICE_FLOOR_CZK, ceilTo90(base))       (ceilTo90: up to the next …90)
 //   sticker  = VAT_REGISTERED ? round(price × (1 + CZ_VAT)) : price
-//   delivery = price ≥ FREE_SHIP_CZK ? 0 : DELIVERY_CZK   (DELIVERY_CZK lives in model.ts)
+//   delivery = DELIVERY_CZK, never marked up (free only if FREE_SHIP_CZK > 0 and price ≥ it)
 
 import type { ServiceTier } from "./pricing";
 
@@ -30,17 +31,39 @@ export const FX_PLN_CZK = 5.7;
  */
 export const MARKUP = 2.0;
 
-/** Hardware kit per order (dowels, glue, connectors), CZK. Plan 20–50. §2. */
+/**
+ * Hardware kit per order, CZK. Verified ~34: 20 dowels 11.3, 30 g D3 glue 9.5,
+ * applicator 6, guide/filler/label 7. §2.
+ */
 export const ACCESSORIES_CZK = 35;
 
-/** Consumer packaging per order (5-layer carton + corner protectors), CZK. §2. */
-export const PACKAGING_CZK = 110;
+/**
+ * Hardware carton only, CZK. Under drop-ship meble.pl packs the panels, so we
+ * only box the hardware kit: klopová krabice 3VVL 200×150×100, 4.96 Kč/ks ex VAT
+ * from 25 pcs = 6.00 incl. VAT. §2.
+ */
+export const PACKAGING_CZK = 6;
 
 /**
- * PL→CZ inbound freight, batched and allocated per unit, CZK. Batching is a
- * margin REQUIREMENT — single-parcel inbound (~335 CZK) roughly halves margin. §7.
+ * @deprecated Drop-ship means there is no inbound leg into a Myble hub: panels
+ * go PL→CZ straight to the customer, and that cost lives in FREIGHT_COST_CZK.
+ * Kept at 0 so nothing adds a phantom inbound cost. §2.
  */
-export const INBOUND_ALLOC_CZK = 130;
+export const INBOUND_ALLOC_CZK = 0;
+
+/**
+ * True freight per order, CZK. Pass-through: NEVER marked up. §2.
+ *   570  panels PL→CZ direct to customer (meble.pl, 100 PLN GLS × FX 5.7)
+ * + 105  hardware parcel (Balíkovna to address, registered)
+ */
+export const FREIGHT_COST_CZK = 675;
+
+/**
+ * Delivery charged to the customer, CZK, shown as its own line and never marked
+ * up. The FREIGHT_COST_CZK − DELIVERY_CZK shortfall (176) is recovered flat in
+ * the kit price, not absorbed. §2.
+ */
+export const DELIVERY_CZK = 499;
 
 /** Payment-processor fee as a fraction of price (Comgate EU cards). §2. */
 export const PAYMENT_FEE_PCT = 0.018;
@@ -48,8 +71,9 @@ export const PAYMENT_FEE_PCT = 0.018;
 /** Minimum sellable kit price, CZK — keeps tiny designs above break-even. §4. */
 export const PRICE_FLOOR_CZK = 1490;
 
-/** Free delivery at/above this ex-VAT price, CZK — nudges basket size. §4. */
-export const FREE_SHIP_CZK = 3000;
+/** Free delivery at/above this ex-VAT price, CZK. 0 = free shipping disabled
+ *  (current policy: freight is pass-through, so delivery is always charged). §2. */
+export const FREE_SHIP_CZK = 0;
 
 // --- VAT staging (§5) --------------------------------------------------------
 /**

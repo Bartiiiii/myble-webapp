@@ -1,10 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { quoteDesign, designToCutParts, breakdownCZK, priceFromMeble, ceilTo90, FROM_PRICE } from "./quote";
+import { quoteDesign, designToCutParts, priceFromMeble, ceilTo90, FROM_PRICE } from "./quote";
 import { calculatePrice } from "./pricing";
 import { DEFAULT_DESIGN, presetDesign } from "./build";
 import { type Design, type Part } from "./model";
 import { DELIVERY_CZK, IN_ROOM_DELIVERY_SURCHARGE_CZK } from "./model";
-import { FREE_SHIP_CZK, PRICE_FLOOR_CZK } from "./pricingConfig";
+import { FREE_SHIP_CZK, FREIGHT_COST_CZK, PRICE_FLOOR_CZK } from "./pricingConfig";
 
 describe("designToCutParts", () => {
   it("emits a cut part per board (grouped), drilled, in mm", () => {
@@ -30,19 +30,38 @@ describe("designToCutParts", () => {
 });
 
 describe("ceilTo90", () => {
-  it("rounds up to the next multiple of 90", () => {
-    expect(ceilTo90(3346.2)).toBe(3420);
-    expect(ceilTo90(2790)).toBe(2790); // already a multiple
-    expect(ceilTo90(2790.01)).toBe(2880);
+  it("rounds up to the next price ending in 90", () => {
+    expect(ceilTo90(1780.3)).toBe(1790);
+    expect(ceilTo90(3045.7)).toBe(3090);
+    expect(ceilTo90(2790)).toBe(2790); // already ends in 90
+    expect(ceilTo90(2790.01)).toBe(2890);
+    expect(ceilTo90(1791)).toBe(1890);
   });
 });
 
 describe("priceFromMeble — the §6 landed-cost + markup formula", () => {
-  // §3 unit-economics: the doc's flagship meble cost is ~240 PLN gross. Feeding
-  // exactly that reproduces the doc's published prices to the koruna.
-  it("reproduces the §3 flagship price from the doc's 240 PLN meble cost", () => {
-    expect(priceFromMeble(240, { vatRegistered: false }).price).toBe(3420); // §3 gross
-    expect(priceFromMeble(240, { vatRegistered: true }).price).toBe(2880); // §3 net
+  // §2 reference designs (rev. 28 Sep 2026): freight pass-through, delivery 499.
+  it("prices the 131 PLN reference design at 1,790 + 499 = 2,289", () => {
+    const cz = priceFromMeble(131, { vatRegistered: false });
+    expect(cz.sticker).toBe(1790);
+    expect(cz.deliveryCZK).toBe(499);
+    expect(cz.sticker + cz.deliveryCZK).toBe(2289);
+  });
+
+  it("prices the 240 PLN white flagship at 3,090 + 499 = 3,589", () => {
+    const cz = priceFromMeble(240, { vatRegistered: false });
+    expect(cz.sticker).toBe(3090);
+    expect(cz.deliveryCZK).toBe(499);
+    expect(cz.sticker + cz.deliveryCZK).toBe(3589);
+  });
+
+  it("delivery + the flat shortfall in the kit price cover true freight, unmarked-up", () => {
+    // The shortfall rides on top of the marked-up base: 131 PLN → base 1604.3,
+    // + 176 = 1780.3 → 1790. Marking freight up would land well above that.
+    const cz = priceFromMeble(131, { vatRegistered: false });
+    expect(DELIVERY_CZK).toBe(499);
+    expect(FREIGHT_COST_CZK - DELIVERY_CZK).toBe(176);
+    expect(cz.sticker).toBeLessThan(1890);
   });
 
   it("markup ×2 yields ~50% gross margin by construction", () => {
@@ -58,7 +77,7 @@ describe("priceFromMeble — the §6 landed-cost + markup formula", () => {
   });
 
   it("flags a design that exceeds its WTP ceiling", () => {
-    const cheap = priceFromMeble(240, { vatRegistered: false, wtpCeilingCZK: 3490 });
+    const cheap = priceFromMeble(240, { vatRegistered: false, wtpCeilingCZK: 3490 }); // 3090
     expect(cheap.exceedsWTP).toBe(false);
     const dear = priceFromMeble(600, { vatRegistered: false, wtpCeilingCZK: 3490 });
     expect(dear.exceedsWTP).toBe(true);
@@ -67,23 +86,23 @@ describe("priceFromMeble — the §6 landed-cost + markup formula", () => {
 
 describe("quoteDesign — flagship shelf (73×118×30, 3 shelves)", () => {
   // The doc's flagship = front-edge banding, all drilled. Built explicitly so the
-  // banding matches §3; geometry lands within a rounding bucket of 3,420 / 2,880.
+  // banding matches §3; geometry lands near the 240 PLN reference (3,090).
   const flagship = [
     { name: "side", widthMm: 1180, heightMm: 300, quantity: 2, drilled: true, edgeBanding: { left: true } },
     { name: "horiz", widthMm: 694, heightMm: 300, quantity: 5, drilled: true, edgeBanding: { top: true } },
   ];
   const meble = calculatePrice({ materialId: "white_18", parts: flagship, tier: "premium" }).mebleCostPLN;
 
-  it("lands ~CZK 3,420 at MARKUP 2.0 / VAT_REGISTERED false", () => {
+  it("lands ~CZK 3,090 at MARKUP 2.0 / VAT_REGISTERED false", () => {
     const price = priceFromMeble(meble, { vatRegistered: false }).price;
-    expect(price).toBeGreaterThanOrEqual(3200);
-    expect(price).toBeLessThanOrEqual(3600);
+    expect(price).toBeGreaterThanOrEqual(2890);
+    expect(price).toBeLessThanOrEqual(3290);
   });
 
-  it("lands ~CZK 2,880 when VAT_REGISTERED true", () => {
+  it("lands lower ex-VAT when VAT_REGISTERED true", () => {
     const price = priceFromMeble(meble, { vatRegistered: true }).price;
-    expect(price).toBeGreaterThanOrEqual(2650);
-    expect(price).toBeLessThanOrEqual(3050);
+    expect(price).toBeGreaterThanOrEqual(2390);
+    expect(price).toBeLessThanOrEqual(2790);
   });
 
   it("the shipped police preset is the flagship and quotes sanely", () => {
@@ -126,15 +145,10 @@ describe("quoteDesign — behaviour", () => {
     expect(q.pricing.detail.edgeActualMetres).toBeCloseTo(perimeterM, 3);
   });
 
-  it("the CZK breakdown components sum EXACTLY to the kit sticker", () => {
-    const q = quoteDesign(presetDesign("police"));
-    const lines = breakdownCZK(q);
-    expect(lines.length).toBeGreaterThan(3);
-    const sum = lines.reduce((n, l) => n + l.czk, 0);
-    expect(sum).toBe(q.sticker); // margin line closes the gap → exact
-    expect(lines.some((l) => l.estimate)).toBe(true); // cutting flagged estimated
-    expect(lines.some((l) => l.key === "board")).toBe(true);
-    expect(lines.some((l) => l.key === "margin")).toBe(true);
+  it("every kit price ends in 90", () => {
+    for (const id of ["police", "stolek", "skrinka"] as const) {
+      expect(quoteDesign(presetDesign(id)).kitCZK % 100).toBe(90);
+    }
   });
 
   it("prices every preset in a sane band; bigger pieces cost more", () => {
@@ -162,23 +176,22 @@ describe("quoteDesign — floor & delivery", () => {
     expect(q.price).toBe(PRICE_FLOOR_CZK);
   });
 
-  it("charges delivery below the free-ship threshold", () => {
-    const q = quoteDesign(tiny);
-    expect(q.price).toBeLessThan(FREE_SHIP_CZK);
-    expect(q.deliveryCZK).toBe(DELIVERY_CZK);
+  it("charges delivery on a floor-priced design", () => {
+    expect(quoteDesign(tiny).deliveryCZK).toBe(DELIVERY_CZK);
   });
 
-  it("delivery is free at/above FREE_SHIP_CZK", () => {
-    const q = quoteDesign(presetDesign("police")); // ≥ 3000
-    expect(q.price).toBeGreaterThanOrEqual(FREE_SHIP_CZK);
-    expect(q.deliveryCZK).toBe(0);
+  it("free shipping is disabled: even the dearest preset pays delivery", () => {
+    expect(FREE_SHIP_CZK).toBe(0);
+    const q = quoteDesign(presetDesign("skrinka"));
+    expect(q.deliveryCZK).toBe(DELIVERY_CZK);
+    expect(q.customerCZK).toBe(q.kitCZK + DELIVERY_CZK);
   });
 });
 
 // The in-room surcharge is the one number the customer picks that the server has
 // to reproduce exactly: assertPriceMatches() in lib/payments.ts is zero-tolerance,
 // so a client/server disagreement here is a hard checkout failure, not a rounding
-// nit. These lock the arithmetic down on both sides of the free-ship threshold.
+// nit. These lock the arithmetic down.
 describe("quoteDesign — in-room delivery surcharge", () => {
   const tiny: Design = {
     colour: "white",
@@ -193,18 +206,13 @@ describe("quoteDesign — in-room delivery surcharge", () => {
     expect(quoteDesign(tiny).deliveryCZK).toBe(DELIVERY_CZK);
   });
 
-  it("adds the surcharge on top of a charged base fee", () => {
-    const q = quoteDesign(tiny, { deliveryMethod: "in-room" });
-    expect(q.price).toBeLessThan(FREE_SHIP_CZK);
-    expect(q.deliveryCZK).toBe(DELIVERY_CZK + IN_ROOM_DELIVERY_SURCHARGE_CZK);
-  });
-
-  // Business rule per the in-room fix: the surcharge is a service fee, so free
-  // curbside shipping does not make in-room free too.
-  it("still applies when base delivery is free", () => {
-    const q = quoteDesign(presetDesign("police"), { deliveryMethod: "in-room" });
-    expect(q.price).toBeGreaterThanOrEqual(FREE_SHIP_CZK);
-    expect(q.deliveryCZK).toBe(IN_ROOM_DELIVERY_SURCHARGE_CZK);
+  it("adds the surcharge on top of the base fee", () => {
+    expect(quoteDesign(tiny, { deliveryMethod: "in-room" }).deliveryCZK).toBe(
+      DELIVERY_CZK + IN_ROOM_DELIVERY_SURCHARGE_CZK,
+    );
+    expect(quoteDesign(presetDesign("police"), { deliveryMethod: "in-room" }).deliveryCZK).toBe(
+      DELIVERY_CZK + IN_ROOM_DELIVERY_SURCHARGE_CZK,
+    );
   });
 
   it("flows into the customer total, not just the delivery line", () => {
