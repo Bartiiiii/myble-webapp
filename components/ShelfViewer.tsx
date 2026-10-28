@@ -1184,16 +1184,44 @@ export function ShelfViewer({
       ? (design.parts.find((p) => p.id === selectedIds[0]) ?? null)
       : null;
   const actions = partActions(design, { onChange, onSelect, onSnap: pulse });
+  const nudge = (dir: Nudge) => {
+    if (!selectedPart) return;
+    const step = nudgeStep(frame, dir, STEP);
+    actions.move(selectedPart, step.x, step.y, step.z);
+  };
+
+  // The keyboard's arrow keys do what the pad's arrows do, while one board is
+  // selected. A ref keeps the listener on the latest board and camera frame
+  // without re-binding it on every edit. Focus in a text field, slider or
+  // select keeps its own arrow keys, and modified presses are left alone.
+  const nudgeRef = useRef(nudge);
+  useEffect(() => {
+    nudgeRef.current = nudge;
+  });
+  const keyNudge = selectedPart !== null;
+  useEffect(() => {
+    if (!keyNudge) return;
+    const keys: Record<string, Nudge> = { ArrowUp: "up", ArrowDown: "down", ArrowLeft: "left", ArrowRight: "right" };
+    const onKey = (e: KeyboardEvent) => {
+      const dir = keys[e.key];
+      if (!dir || e.metaKey || e.ctrlKey || e.altKey) return;
+      const el = document.activeElement as HTMLElement | null;
+      const tag = el?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || el?.isContentEditable) return;
+      e.preventDefault(); // no page scroll while moving a board
+      nudgeRef.current(dir);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [keyNudge]);
+
   const renderPad = (docked: boolean) =>
     selectedPart && (
       <PartControls
         translate={translate}
         frame={frame}
         docked={docked}
-        onNudge={(dir) => {
-          const step = nudgeStep(frame, dir, STEP);
-          actions.move(selectedPart, step.x, step.y, step.z);
-        }}
+        onNudge={nudge}
         onDuplicate={() => actions.duplicate(selectedPart)}
         onFlip={() => actions.flip(selectedPart)}
         onDelete={() => actions.del(selectedPart)}
