@@ -34,13 +34,14 @@ export function usePrefersReducedMotion() {
  */
 export function LazyStage({
   design,
-  height = 380,
+  height = "100%",
   fit,
   reduced = false,
   room,
 }: {
   design: Design;
-  height?: number;
+  /** Canvas height; the default fills the card the stage sits in. */
+  height?: number | string;
   fit?: number;
   reduced?: boolean;
   /** Show the piece standing in this furnished room. */

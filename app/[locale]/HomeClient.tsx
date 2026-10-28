@@ -425,7 +425,7 @@ function HighlightCard({
             <ShelfViewer
               design={item.design}
               background={WALL}
-              height={260}
+              height="100%"
               interactive={false}
               autoRotate={!reduced}
               lite
