@@ -1,5 +1,20 @@
 @import "tailwindcss";
 
+/* The configurator's "desktop" layout: lg screens, or a landscape phone. */
+@custom-variant wide {
+  @media (min-width: 64rem) {
+    @slot;
+  }
+  @media (orientation: landscape) and (max-height: 520px) {
+    @slot;
+  }
+}
+
+/* A phone turned on its side: wide but short. It gets the side-by-side layout
+   above, tuned for the small screen. Declared after `wide` so its classes win
+   where both set the same property. */
+@custom-variant phone-land (@media (orientation: landscape) and (max-height: 520px) and (max-width: 1023px));
+
 @theme inline {
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);

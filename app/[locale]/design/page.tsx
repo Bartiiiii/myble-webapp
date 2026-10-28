@@ -507,7 +507,7 @@ export default function DesignPage() {
   const tinyParts = design.thickness === 36 && design.parts.some((p) => Math.min(p.aCm, p.bCm) < 30);
 
   return (
-    <main className="no-text-select min-h-screen bg-zinc-50 pb-40 text-zinc-900 lg:pb-0">
+    <main className="no-text-select min-h-screen bg-zinc-50 pb-40 text-zinc-900 wide:pb-0">
       <SiteHeader variant="app" promo={false} />
 
       <div className="mx-auto w-full max-w-7xl px-5 py-6">
@@ -543,14 +543,21 @@ export default function DesignPage() {
           <p className="mt-1.5 max-w-2xl text-sm text-zinc-600">{t("design.subtitle")}</p>
         </div>
 
-        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
+        {/* grid-cols-1 (a column that may shrink below its content), not the
+            implicit auto column: the canvas sizes itself to its box, so after a
+            phone turned back from landscape an auto column kept the wide canvas
+            and pushed the whole page sideways. */}
+        <div className="grid grid-cols-1 items-start gap-6 wide:grid-cols-[minmax(0,1fr)_380px] phone-land:grid-cols-[minmax(0,1fr)_300px] phone-land:gap-4">
           {/* Left column: the 3D view, then inspiration below it — sized to its
               own content (items-start on the grid) instead of stretching to
               match the taller controls column. */}
-          <div className="flex flex-col gap-6">
-            {/* Full-width 3D view with floating add controls on the canvas */}
+          <div className="flex min-w-0 flex-col gap-6">
+            {/* Full-width 3D view with floating add controls on the canvas.
+                --viewer-h: a short stage on a phone held upright, so the
+                controls below are in reach; nearly the screen's height on a
+                phone on its side; the full 560 px on desktop. */}
             <section
-              className="relative overflow-hidden rounded-3xl bg-white ring-1 ring-zinc-200"
+              className="relative overflow-hidden rounded-3xl bg-white ring-1 ring-zinc-200 [--viewer-h:336px] lg:[--viewer-h:560px] phone-land:[--viewer-h:calc(100svh-24px)]"
               onContextMenu={(e) => {
                 // Only take over the browser's menu when we have something to
                 // put in its place.
@@ -611,7 +618,7 @@ export default function DesignPage() {
               </div>
               <ShelfViewer
                 design={design}
-                height={560}
+                height="var(--viewer-h)"
                 interactive
                 editable
                 autoRotate={false}
@@ -647,14 +654,14 @@ export default function DesignPage() {
                 /* Desktop: overlaid on the bottom of the canvas, where nothing
                    else docks. On a phone it sits under the canvas instead (next
                    block), so it never covers the board pad or the piece. */
-                <div className="pointer-events-none absolute inset-x-3 bottom-3 z-10 hidden rounded-2xl bg-amber-500/95 px-4 py-2.5 text-sm font-medium text-white shadow-lg backdrop-blur lg:block">
+                <div className="pointer-events-none absolute inset-x-3 bottom-3 z-10 hidden rounded-2xl bg-amber-500/95 px-4 py-2.5 text-sm font-medium text-white shadow-lg backdrop-blur wide:block">
                   {t("design.floating")}
                 </div>
               )}
             </section>
 
             {v.floatingIds.length > 0 && (
-              <div role="status" className="rounded-2xl bg-amber-500 px-4 py-3 text-sm font-medium text-white shadow-sm lg:hidden">
+              <div role="status" className="rounded-2xl bg-amber-500 px-4 py-3 text-sm font-medium text-white shadow-sm wide:hidden">
                 {t("design.floating")}
               </div>
             )}
@@ -665,7 +672,7 @@ export default function DesignPage() {
                 second instance below), so the size + material controls come
                 first on a phone. */}
             <Inspiration
-              className="hidden lg:block"
+              className="hidden wide:block"
               count={inspirationCount}
               onShowMore={() => setInspirationCount((n) => Math.min(LIBRARY.length, n + INSPIRATION_PAGE_SIZE))}
               onUse={applyLibraryItem}
@@ -798,7 +805,7 @@ export default function DesignPage() {
             </div>
 
             {/* Price + order (desktop) */}
-            <div className="hidden lg:block">
+            <div className="hidden wide:block">
               <PricePanel quote={quote} canOrder={v.ok} onOrder={goToOrder} />
             </div>
           </aside>
@@ -807,7 +814,7 @@ export default function DesignPage() {
               desktop (where the copy above the viewer carries it), so no second
               set of WebGL thumbnails is ever mounted. */}
           <Inspiration
-            className="lg:hidden"
+            className="wide:hidden"
             mobile
             count={inspirationCount}
             onShowMore={() => setInspirationCount((n) => Math.min(LIBRARY.length, n + INSPIRATION_PAGE_SIZE))}
@@ -830,7 +837,7 @@ export default function DesignPage() {
 
       {/* Sticky price bar (mobile) — shows the kit price; expands to kit/delivery/total,
           which the bar has no room for. */}
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-zinc-200 bg-white/95 backdrop-blur lg:hidden">
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-zinc-200 bg-white/95 backdrop-blur wide:hidden">
         {priceOpen && (
           <div className="mx-auto w-full max-w-7xl px-5 pt-4">
             <PriceSummary quote={quote} />
