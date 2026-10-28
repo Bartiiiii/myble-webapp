@@ -36,7 +36,7 @@ export function DesignDialog({
   onClose: () => void;
   from?: string;
 }) {
-  const { t, fmt } = useI18n();
+  const { t } = useI18n();
   const reduced = usePrefersReducedMotion();
   const router = useLocaleRouter();
   const tags = useMemo(() => (item ? itemTags(item) : null), [item]);
@@ -142,12 +142,6 @@ export function DesignDialog({
               </SpecRow>
               {tags?.assembly && (
                 <SpecRow label={t("library.assembly")}>{t(`library.filters.assembly.${tags.assembly}`)}</SpecRow>
-              )}
-              {tags?.priceCZK != null && (
-                <SpecRow label={t("library.price")}>
-                  <span className="font-mono">{fmt(tags.priceCZK)}</span>{" "}
-                  <span className="text-xs font-normal text-zinc-400">{t("library.priceNote")}</span>
-                </SpecRow>
               )}
             </dl>
 

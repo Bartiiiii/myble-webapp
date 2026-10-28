@@ -5,7 +5,8 @@
 // the configurator's storage and goes to /design, so inspiration is one click
 // from editing. Tapping a card opens the detail dialog; tapping the designer
 // goes to their profile. The filter bar narrows the grid by category, room,
-// size, colour, price and assembly (lib/libraryFilters.ts) and sorts it.
+// size, colour and assembly (lib/libraryFilters.ts) and sorts it. Prices are
+// not shown here; they appear once a design is opened in the configurator.
 
 import Link from "../../../lib/localeNav";
 import React, { useMemo, useState } from "react";
@@ -31,8 +32,7 @@ function LibraryBody() {
   const [sort, setSort] = useState<Sort>("hot");
   const [detail, setDetail] = useState<LibraryItem | null>(null);
 
-  // Tags (sizes, live price, assembly) once per pool, not once per render: the
-  // price is a full quote, about a millisecond a design.
+  // Tags once per pool, not once per render.
   const tagsOf = useMemo(() => {
     const byItem = new Map(pool.map((item) => [item, itemTags(item)]));
     return (item: LibraryItem) => byItem.get(item) ?? itemTags(item);
@@ -98,7 +98,7 @@ function LibraryBody() {
         ) : (
           <div className="grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-3">
             {items.map((item, i) => (
-              <DesignCard key={item.id} item={item} tags={tagsOf(item)} index={i} onDetails={setDetail} from="library" />
+              <DesignCard key={item.id} item={item} index={i} onDetails={setDetail} from="library" />
             ))}
           </div>
         )}

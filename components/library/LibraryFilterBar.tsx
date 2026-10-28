@@ -18,7 +18,7 @@ import { useI18n } from "../../lib/i18n";
 
 /**
  * The library's filter bar: the category pills, then one chip per filter
- * (room, width, height, colour, price, assembly) and the sort.
+ * (room, width, height, colour, assembly) and the sort.
  *
  * Every chip is a native <select> laid invisibly over a pill: keyboard and
  * screen-reader behaviour for free, the phone's own picker on mobile, and no

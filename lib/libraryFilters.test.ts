@@ -9,14 +9,12 @@ import {
   FILTER_KEYS,
   FILTER_OPTIONS,
   HEIGHT_BANDS,
-  PRICE_BANDS,
   SORTS,
   USE_ROOMS,
   browse,
   heightBand,
   itemTags,
   optionCounts,
-  priceBand,
   widthBand,
 } from "./libraryFilters";
 import { tList } from "./i18n";
@@ -26,31 +24,23 @@ const tagsOf = (item: LibraryItem) => tags.get(item.id) ?? itemTags(item);
 const curated = (id: string) => LIBRARY.find((i) => i.id === id)!;
 
 describe("library filter tags", () => {
-  it("puts every curated piece in exactly one price band", () => {
-    for (const item of LIBRARY) expect(PRICE_BANDS).toContain(tagsOf(item).price);
-  });
-
-  it("bands sizes and prices at the stated edges", () => {
+  it("bands sizes at the stated edges", () => {
     expect([59.9, 60, 120, 120.1].map(widthBand)).toEqual(["narrow", "medium", "medium", "wide"]);
     expect([60, 60.1, 100, 100.1].map(heightBand)).toEqual(["low", "mid", "mid", "tall"]);
-    expect([3999, 4000, 9999, 10000].map(priceBand)).toEqual(["under4k", "4to7k", "7to10k", "over10k"]);
   });
 
   it("calls a curated piece tall exactly when the engine wants it fixed to the wall", () => {
     for (const item of LIBRARY) expect([item.id, tagsOf(item).height === "tall"]).toEqual([item.id, !!item.wallAnchor]);
   });
 
-  it("gives every curated piece hand-picked rooms, a live price and the engine's assembly answer", () => {
+  it("gives every curated piece hand-picked rooms and the engine's assembly answer", () => {
     for (const item of LIBRARY) {
       expect(CURATED_USE_ROOMS[item.id], item.id).toBeDefined();
       const t = tagsOf(item);
-      expect(t.priceCZK, item.id).toBeGreaterThan(0);
       expect(t.assembly).toBe(item.twoPeople ? "two" : "one");
     }
   });
 
-  // Price bands are left out on purpose: they move with the price list, not with the designs, and the
-  // filter bar disables an option that would come up empty.
   it("never offers a room, height, colour or assembly choice with fewer than three curated pieces", () => {
     const options = { room: USE_ROOMS, height: HEIGHT_BANDS, colour: COLOURS, assembly: ASSEMBLY };
     for (const [key, values] of Object.entries(options) as [keyof typeof options, readonly string[]][]) {
@@ -64,17 +54,12 @@ describe("browsing the library", () => {
   it("narrows by category and every filter at once", () => {
     const kidsTall = browse(LIBRARY, tagsOf, { category: "storage", filters: { room: "kids", height: "tall" } });
     expect(kidsTall.map((i) => i.id).sort()).toEqual(["den", "steps"]);
-    const cheapBlack = browse(LIBRARY, tagsOf, { filters: { colour: "black", price: "under4k" } });
-    expect(cheapBlack.length).toBeGreaterThan(0);
-    for (const item of cheapBlack) {
+    const blackLow = browse(LIBRARY, tagsOf, { filters: { colour: "black", height: "low" } });
+    expect(blackLow.length).toBeGreaterThan(0);
+    for (const item of blackLow) {
       expect(item.design.colour).toBe("black");
-      expect(tagsOf(item).priceCZK!).toBeLessThan(4000);
+      expect(item.design.outerCm.h).toBeLessThanOrEqual(60);
     }
-  });
-
-  it("sorts by price, cheapest first", () => {
-    const prices = browse(LIBRARY, tagsOf, { sort: "price" }).map((i) => tagsOf(i).priceCZK!);
-    expect(prices).toEqual([...prices].sort((a, b) => a - b));
   });
 
   it("puts shared designs first by date when sorting by newest, then the latest curated batch", () => {
@@ -117,8 +102,6 @@ describe("filter labels", () => {
       "library.anchor",
       "library.anchorNote",
       "library.twoPeople",
-      "library.price",
-      "library.priceNote",
       "library.assembly",
       ...SORTS.map((s) => `library.filters.sorts.${s}`),
       ...FILTER_KEYS.flatMap((k) => [`library.filters.${k}.label`, ...FILTER_OPTIONS[k].map((o) => `library.filters.${k}.${o}`)]),

@@ -1,17 +1,18 @@
 // Filters and sorting for the Design Library: what a visitor can narrow the
-// grid by besides the category pills (room, width, height, colour, price,
-// assembly), and the order it comes in (hot, newest, price).
+// grid by besides the category pills (room, width, height, colour, assembly),
+// and the order it comes in (hot, newest).
+//
+// No price here on purpose: the library shows designs, and the price appears
+// only once a design is opened in the configurator.
 //
 // Every tag is derived from the item, so curated and community designs filter
 // the same way: size bands from the design's outer size, colour from its
-// board, price from the live quote (the same `quoteDesign` the configurator
-// shows), assembly and the wall anchor from the rules engine. Curated pieces
+// board, assembly and the wall anchor from the rules engine. Curated pieces
 // carry the engine's answer as card labels that CI keeps honest
 // (lib/library.test.ts); community pieces get it from /api/library.
 
 import type { ItemCategory, LibraryItem } from "./library";
 import type { Colour } from "./model";
-import { quoteDesign } from "./quote";
 
 /** Rooms a visitor shops for (not the 3D scene a card is drawn in — see lib/rooms.ts). */
 export const USE_ROOMS = ["living", "bedroom", "hallway", "office", "kids"] as const;
@@ -33,15 +34,10 @@ export const TALL_ABOVE_CM = 100;
 
 export const COLOURS = ["white", "black"] as const satisfies readonly Colour[];
 
-/** Kit price (CZK, excl. delivery): under 4 000, 4–7 000, 7–10 000, over 10 000. */
-export const PRICE_BANDS = ["under4k", "4to7k", "7to10k", "over10k"] as const;
-export type PriceBand = (typeof PRICE_BANDS)[number];
-const PRICE_EDGES_CZK = [4000, 7000, 10000];
-
 export const ASSEMBLY = ["one", "two"] as const;
 export type Assembly = (typeof ASSEMBLY)[number];
 
-export const SORTS = ["hot", "newest", "price"] as const;
+export const SORTS = ["hot", "newest"] as const;
 export type Sort = (typeof SORTS)[number];
 
 /** Hand-picked rooms for the curated pieces; a bookcase suits more than one. */
@@ -103,9 +99,6 @@ export interface ItemTags {
   width: WidthBand;
   height: HeightBand;
   colour: Colour;
-  /** Live kit price, CZK excl. delivery; null when the quote cannot price the design. */
-  priceCZK: number | null;
-  price: PriceBand | null;
   /** Null when nobody asked the engine (a community item from an older API response). */
   assembly: Assembly | null;
 }
@@ -118,27 +111,13 @@ export function heightBand(cm: number): HeightBand {
   return cm <= LOW_MAX_CM ? "low" : cm <= TALL_ABOVE_CM ? "mid" : "tall";
 }
 
-export function priceBand(czk: number): PriceBand {
-  const i = PRICE_EDGES_CZK.findIndex((edge) => czk < edge);
-  return PRICE_BANDS[i < 0 ? PRICE_BANDS.length - 1 : i];
-}
-
 export function itemTags(item: LibraryItem): ItemTags {
   const { w, h } = item.design.outerCm;
-  let priceCZK: number | null = null;
-  try {
-    priceCZK = quoteDesign(item.design).kitCZK;
-  } catch {
-    // A shared design the price list cannot cut (a part too big for a sheet):
-    // it stays in the grid, it just never matches a price band.
-  }
   return {
     rooms: (item.source === "curated" ? CURATED_USE_ROOMS[item.id] : undefined) ?? CATEGORY_USE_ROOMS[item.category],
     width: widthBand(w),
     height: heightBand(h),
     colour: item.design.colour,
-    priceCZK,
-    price: priceCZK == null ? null : priceBand(priceCZK),
     assembly: item.twoPeople == null ? null : item.twoPeople ? "two" : "one",
   };
 }
@@ -149,19 +128,17 @@ export interface LibraryFilters {
   width?: WidthBand;
   height?: HeightBand;
   colour?: Colour;
-  price?: PriceBand;
   assembly?: Assembly;
 }
 
 export type FilterKey = keyof LibraryFilters;
-export const FILTER_KEYS: readonly FilterKey[] = ["room", "width", "height", "colour", "price", "assembly"];
+export const FILTER_KEYS: readonly FilterKey[] = ["room", "width", "height", "colour", "assembly"];
 
 export const FILTER_OPTIONS: { [K in FilterKey]-?: readonly NonNullable<LibraryFilters[K]>[] } = {
   room: USE_ROOMS,
   width: WIDTH_BANDS,
   height: HEIGHT_BANDS,
   colour: COLOURS,
-  price: PRICE_BANDS,
   assembly: ASSEMBLY,
 };
 
@@ -170,7 +147,6 @@ export function matches(tags: ItemTags, filters: LibraryFilters): boolean {
   if (filters.width && tags.width !== filters.width) return false;
   if (filters.height && tags.height !== filters.height) return false;
   if (filters.colour && tags.colour !== filters.colour) return false;
-  if (filters.price && tags.price !== filters.price) return false;
   if (filters.assembly && tags.assembly !== filters.assembly) return false;
   return true;
 }
@@ -180,7 +156,6 @@ export function matches(tags: ItemTags, filters: LibraryFilters): boolean {
  *  • hot    — most 🔥 first; ties keep the pool order (curated first), as before.
  *  • newest — shared designs by date, newest first, then the curated pieces,
  *             latest batch first (they carry no date of their own).
- *  • price  — cheapest first; a design the quote cannot price goes last.
  */
 export function browse(
   pool: LibraryItem[],
@@ -193,10 +168,6 @@ export function browse(
   const items = pool.filter((i) => (category === "all" || i.category === category) && matches(tagsOf(i), filters));
   const byPool = (a: LibraryItem, b: LibraryItem) => pos(a) - pos(b);
   switch (sort) {
-    case "price": {
-      const price = (i: LibraryItem) => tagsOf(i).priceCZK ?? Infinity;
-      return items.sort((a, b) => price(a) - price(b) || byPool(a, b));
-    }
     case "newest": {
       const time = (i: LibraryItem) => (i.createdAt ? Date.parse(i.createdAt) : NaN);
       return items.sort((a, b) => {
