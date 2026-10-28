@@ -41,6 +41,15 @@ export const CURATED_ROOMS: Record<string, RoomId> = {
   toybox: "living",
   wardrobe: "bedroom",
   plantsteps: "loft",
+  podtable: "lounge",
+  traytable: "lounge",
+  arch: "living",
+  nest: "living",
+  utable: "reading",
+  lipstand: "bedroom",
+  talltable: "bedroom",
+  lowstand: "bedroom",
+  catclimber: "reading",
 };
 
 const BY_CATEGORY: Record<string, RoomId[]> = {

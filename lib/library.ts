@@ -120,6 +120,16 @@ export const LIBRARY: LibraryItem[] = [
   curated("toybox", "storage", D.toybox(), { kind: "storage" }),
   curated("wardrobe", "storage", D.wardrobe(), { kind: "wardrobe", wallAnchor: true, twoPeople: true }),
   curated("plantsteps", "pets", D.plantsteps(), { kind: "plant-stand" }),
+  // Batch 2: tables (36 mm), nightstands, the cat climber
+  curated("podtable", "tables", D.podtable(), { kind: "coffee-table", twoPeople: true }),
+  curated("traytable", "tables", D.traytable(), { kind: "coffee-table", twoPeople: true }),
+  curated("arch", "tables", D.arch(), { kind: "coffee-table" }),
+  curated("nest", "tables", D.nest(), { kind: "side-table", seat: true }),
+  curated("utable", "tables", D.utable(), { kind: "side-table" }),
+  curated("lipstand", "nightstands", D.lipstand(), { kind: "nightstand" }),
+  curated("talltable", "nightstands", D.talltable(), { kind: "nightstand" }),
+  curated("lowstand", "nightstands", D.lowstand(), { kind: "nightstand" }),
+  curated("catclimber", "pets", D.catclimber(), { kind: "pet", wallAnchor: true }),
 ];
 
 /** The curated ids, the only ones whose name/story come from the dictionary. */

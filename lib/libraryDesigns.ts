@@ -494,3 +494,200 @@ export function plantsteps(): Design {
     ],
   });
 }
+
+// ── Batch 2: tables (36 mm), nightstands, the cat climber ───────────────────
+
+/**
+ * Coffee table with a book pod (your picture 01): a 36 mm top over a long
+ * magazine shelf, and at one end a 26 cm pod with two bays. The top runs from
+ * wall to wall and rests on the pod's inner upright.
+ */
+export function podtable(): Design {
+  const w = 110;
+  const h = 42;
+  const k = kit(36, 55);
+  const { t } = k;
+  const p = 76.4; // pod's inner upright
+  const shelfY = t + (h - 3 * t) / 2;
+  return piece({
+    colour: "white",
+    thickness: 36,
+    boards: [
+      k.v("L", 0, 0, h),
+      k.v("R", w - t, 0, h),
+      k.h("T", t, w - t, h - t),
+      k.v("P", p, 0, h - t),
+      k.h("pB", p + t, w - t, 0),
+      k.h("pS", p + t, w - t, shelfY),
+      k.h("S", t, p, shelfY),
+    ],
+  });
+}
+
+/**
+ * Coffee table with a hideaway tray (your picture 02 without the lift): the
+ * top rests on two slabs; under it, a half-depth tray at the back keeps the
+ * remotes and the laptop out of sight; a floor shelf for baskets below.
+ * 96 × 58 keeps the 36 mm shelves under the engine's 90 cm span cap and the
+ * piece under the 60 cm depth where every joint needs a third cam.
+ */
+export function traytable(): Design {
+  const w = 96;
+  const h = 46;
+  const d = 58;
+  const k = kit(36, d);
+  const { t } = k;
+  const under = h - t;
+  return piece({
+    colour: "black",
+    thickness: 36,
+    boards: [
+      k.v("L", 0, 0, under),
+      k.v("R", w - t, 0, under),
+      k.h("T", 0, w, under),
+      k.h("tray", t, w - t, under - 12 - t, 0, 29),
+      k.h("S", t, w - t, 12.5),
+    ],
+  });
+}
+
+/**
+ * Nesting coffee table (your picture 05): two slabs and a top, with a
+ * stretcher low at the back to keep it square. The nesting stool table
+ * (`nest`) slides in under it: 82.8 cm wide, 40.4 high and 46.4 deep clear.
+ */
+export function arch(): Design {
+  const w = 90;
+  const h = 44;
+  const k = kit(36, 50);
+  const { t } = k;
+  return piece({
+    colour: "black",
+    thickness: 36,
+    boards: [k.v("L", 0, 0, h - t), k.v("R", w - t, 0, h - t), k.h("T", 0, w, h - t), k.b("stretcher", t, w - t, 0, 10)],
+  });
+}
+
+/** Nesting stool table: a closed 36 mm frame that lives under the nesting coffee table. */
+export function nest(): Design {
+  const w = 40;
+  const h = 38;
+  const k = kit(36, 44);
+  const { t } = k;
+  return piece({
+    colour: "black",
+    thickness: 36,
+    boards: [k.v("L", 0, 0, h), k.v("R", w - t, 0, h), k.h("T", t, w - t, h - t), k.h("B", t, w - t, 0)],
+  });
+}
+
+/**
+ * Slot side table (your picture 07): a 36 mm top resting on two slabs with a
+ * 2 cm overhang each side, and an open 12 cm slot where the drawer would be.
+ */
+export function utable(): Design {
+  const w = 46;
+  const h = 50;
+  const k = kit(36, 40);
+  const { t } = k;
+  const inset = 2;
+  const under = h - t;
+  return piece({
+    colour: "white",
+    thickness: 36,
+    boards: [
+      k.v("L", inset, 0, under),
+      k.v("R", w - inset - t, 0, under),
+      k.h("T", 0, w, under),
+      k.h("slot", inset + t, w - inset - t, under - 12 - t),
+    ],
+  });
+}
+
+/**
+ * Gallery nightstand (the raised top of your picture 06): the back panel and
+ * the sides rise 10 cm above the top, so nothing slides down behind the bed.
+ * The shelf stops 5 mm short of the back panel (no shelf-to-back joint).
+ */
+export function lipstand(): Design {
+  const w = 45;
+  const h = 64;
+  const d = 36;
+  const k = kit(18, d);
+  const { t } = k;
+  const topY = h - 10 - t;
+  return piece({
+    colour: "white",
+    thickness: 18,
+    boards: [
+      k.v("L", 0, 0, h),
+      k.v("R", w - t, 0, h),
+      k.h("B", t, w - t, 0),
+      k.b("back", t, w - t, t, h),
+      k.h("T", t, w - t, topY, t, d),
+      k.h("s1", t, w - t, t + 30, t + 0.5, d),
+    ],
+  });
+}
+
+/** Slim bedside: 32 cm for the gap between the bed and the wall, 70 cm tall, three tiers. */
+export function talltable(): Design {
+  const w = 32;
+  const h = 70;
+  const k = kit(18, 30);
+  const { t } = k;
+  return piece({
+    colour: "black",
+    thickness: 18,
+    boards: [...carcass(k, w, h), ...evenLevels(t, h - t, 2, t).map((y, i) => k.h(`s${i + 1}`, t, w - t, y)), ...rails(k, 0, w, h)],
+  });
+}
+
+/** Low bedside for platform beds: 46 cm, two small cubbies on one side, one tall bay on the other. */
+export function lowstand(): Design {
+  const w = 60;
+  const h = 46;
+  const k = kit(18, 35);
+  const { t } = k;
+  const [x] = evenBays(t, w - t, 1, t);
+  return piece({
+    colour: "white",
+    thickness: 18,
+    boards: [...carcass(k, w, h), k.v("d", x, t, h - t), k.h("s1", t, x, evenLevels(t, h - t, 1, t)[0])],
+  });
+}
+
+/**
+ * Cat climber: a 60 cm column beside a 112 cm one, so the cat goes floor, 60,
+ * 112. Six cubbies; the lower-left one is a hidden house behind a low front
+ * panel (the cat walks in under it). The divider runs the full height and
+ * stands forward of the plinth rail.
+ */
+export function catclimber(): Design {
+  const w = 78;
+  const low = 60;
+  const high = 112;
+  const d = 40;
+  const k = kit(18, d);
+  const { t } = k;
+  const cx = (w - t) / 2;
+  return piece({
+    colour: "white",
+    thickness: 18,
+    boards: [
+      k.v("L", 0, 0, low),
+      k.v("R", w - t, 0, high),
+      k.h("B", t, w - t, 0),
+      k.v("C", cx, t, high, t, d),
+      k.h("t1", t, cx, low - t),
+      k.h("t2", cx + t, w - t, high - t),
+      k.h("l1", t, cx, 30),
+      k.h("r1", cx + t, w - t, 30),
+      k.h("r2", cx + t, w - t, low - t),
+      k.h("r3", cx + t, w - t, 86),
+      k.b("house", t, cx, 19.5, 29.5, d - t),
+      k.b("rail-top", cx + t, w - t, high - t - 10, high - t),
+      k.b("rail-bottom", t, w - t, t, t + 10),
+    ],
+  });
+}

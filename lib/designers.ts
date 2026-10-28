@@ -70,6 +70,16 @@ export const CURATED_AUTHOR: Record<string, string> = {
   toybox: "petr",
   wardrobe: "tereza",
   plantsteps: "lucie",
+  // Batch 2
+  podtable: "anna",
+  traytable: "kuba",
+  arch: "martin",
+  nest: "martin",
+  utable: "tereza",
+  lipstand: "myble",
+  talltable: "petr",
+  lowstand: "anna",
+  catclimber: "lucie",
 };
 
 /** The author of a curated design, falling back to the studio. */
