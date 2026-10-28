@@ -14,6 +14,7 @@ import { AuthorChip } from "../../components/library/AuthorChip";
 import { DesignDialog } from "../../components/library/DesignDialog";
 import { LIBRARY, itemName, sortedByHeat, type CategoryId, type LibraryItem } from "../../lib/library";
 import { ReactionsProvider, useReactions } from "../../lib/reactions";
+import { roomFor } from "../../lib/rooms";
 import { useLibraryPool } from "../../lib/useLibraryPool";
 import { useIsNarrow } from "../../lib/useIsNarrow";
 import { useI18n, useT, tList, type Locale } from "../../lib/i18n";
@@ -429,6 +430,7 @@ function HighlightCard({
               autoRotate={!reduced}
               lite
               fit={narrow ? 0.78 : 1.1}
+              room={roomFor(item)}
             />
           )}
         </div>
