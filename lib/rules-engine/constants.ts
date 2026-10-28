@@ -49,4 +49,4 @@ export const DRAWER_LOAD_PRESET_KG_PER_L: Record<string, number> = {
 };
 
 /** Engine semver — bump on any behaviour change (audit records embed it). */
-export const ENGINE_VERSION = "1.0.0";
+export const ENGINE_VERSION = "1.1.0";

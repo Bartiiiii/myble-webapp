@@ -5,6 +5,24 @@ threshold changed against the previous bundled version, the section MUST carry
 a sign-off line (`validated_by: <owner>`) or CI blocks the release
 (`scripts/check-catalogue-changelog.mjs`).
 
+## Engine 1.1.0 — 2026-10-28 (catalogue unchanged, still 1.1.0)
+
+Behaviour changes in the engine and its configurator adapter; no catalogue
+threshold changed, so no `validated_by:` sign-off is needed.
+
+- `MAT-THK-001` accepts the 36 mm board (`ltd_36_p2`, added in catalogue 1.1.0
+  because the live product ships it) for every board role, and an LTD back or
+  rail besides 3 mm HDF. Before, every 36 mm design and every design with a
+  z-axis board was a severity-4 CANNOT_MANUFACTURE.
+- Adapter: z-axis boards are the piece's own LTD board (that is what
+  lib/quote.ts prices and lib/mebleExport.ts orders), not 3 mm HDF. A narrow
+  z-board (≤ 25 cm tall, at least twice as wide) is a `rail` and is emitted as
+  a brace (`top_rear` / `mid_rear` / `plinth`), so STRUCT-BACK-004 can see
+  bracing that is designed in. Every joint is the standard cam + dowel system.
+- Facade: findings whose rule has no catalogue message (MFG-EDGE-005 fires on
+  every design) get a fallback message from `locales/fallback.ts` instead of
+  an empty string.
+
 ## 1.1.0 — 2026-07-20
 
 Sales-first severity policy (`MYBLE-POLICY-2026-07-20`) + live-configurator

@@ -6,10 +6,16 @@
 //
 // Design decisions (documented because they are judgment calls):
 //  • Colour is décor, not structure → every board maps to ltd_18_p2 / ltd_36_p2
-//    by thickness; a z-axis panel maps to hdf_back_3.
+//    by thickness — z-axis panels included: Myble cuts its backs and rails
+//    from the piece's own sheet (lib/quote.ts prices them, lib/mebleExport.ts
+//    orders them that way), so modelling them as 3 mm HDF misjudged every
+//    design that had one.
 //  • Roles are derived from axis + position, not the cm model's cosmetic label:
 //    horizontal boards → top / bottom / shelf_fixed; vertical → side / divider;
-//    z-panel → back. Configurator shelves are butt-jointed, so they are FIXED.
+//    z-panel → back, or rail when it is a narrow strip (see isRail). Rails are
+//    emitted as braces (top_rear / mid_rear / plinth) so STRUCT-BACK-004 can
+//    see bracing that is designed in. Configurator shelves are butt-jointed,
+//    so they are FIXED.
 //  • Shelf span is the largest clear gap between the verticals actually under a
 //    shelf, so STRUCT-SHELF findings are meaningful (not just the cut width).
 //  • The configurator applies Myble's single standard connection system by
@@ -43,6 +49,17 @@ function inferCategory(hasBack: boolean): string {
 
 const cm = (v: number): number => v * 10; // cm → mm
 
+/**
+ * A z-axis board at most this tall (cm), and at least twice as wide as it is
+ * tall, is a bracing rail rather than a back panel: the top / mid / plinth
+ * rail STRUCT-BACK-004 asks open-backed units for.
+ */
+export const RAIL_MAX_HEIGHT_CM = 25;
+
+function isRail(p: CmPart): boolean {
+  return p.axis === "z" && p.bCm <= RAIL_MAX_HEIGHT_CM && p.aCm >= 2 * p.bCm;
+}
+
 interface Classified {
   cmPart: CmPart;
   role: PartRole;
@@ -66,7 +83,7 @@ function classify(design: Design, tCm: number): Classified[] {
   for (const { p, box } of boxes) {
     let role: PartRole;
     if (p.axis === "z") {
-      role = "back";
+      role = isRail(p) ? "rail" : "back";
     } else if (p.axis === "x") {
       // Outermost verticals are the sides; interior verticals are dividers.
       const atLeft = Math.abs(box.min.x - minX) < 1;
@@ -148,7 +165,6 @@ export function designToEngineModel(design: Design, options: AdapterOptions = {}
   const tCm = design.thickness / 10;
   const material_id = design.thickness === 36 ? "ltd_36_p2" : "ltd_18_p2";
   const classified = classify(design, tCm);
-  const byId = new Map(classified.map((c) => [c.cmPart.id, c]));
   const verticals = classified.filter((c) => c.cmPart.axis === "x");
 
   const hasBack = classified.some((c) => c.role === "back");
@@ -183,7 +199,7 @@ export function designToEngineModel(design: Design, options: AdapterOptions = {}
       length_mm: cm(Math.max(p0, p1)),
       width_mm: cm(Math.min(p0, p1)),
       thickness_mm: design.thickness,
-      material_id: role === "back" ? "hdf_back_3" : material_id,
+      material_id,
       edges: edgesFor(cmPart, design),
       holes: [],
       visibility: "visible",
@@ -203,8 +219,6 @@ export function designToEngineModel(design: Design, options: AdapterOptions = {}
     }));
 
   const joints: Joint[] = detectJoints(design).map((j, i) => {
-    const a = byId.get(j.aId);
-    const b = byId.get(j.bId);
     // Joint length ≈ shared seam length.
     const seamLen = Math.hypot(
       j.seam.b.x - j.seam.a.x,
@@ -212,14 +226,16 @@ export function designToEngineModel(design: Design, options: AdapterOptions = {}
       j.seam.b.z - j.seam.a.z,
     );
     const length_mm = Math.max(cm(seamLen), 1);
-    const touchesBack = a?.role === "back" || b?.role === "back";
+    // Backs and rails are the same board as the carcass and are dowelled like
+    // every other joint (lib/drilling.ts drills them all), so they take the
+    // standard system too.
     return {
       id: `j${i}`,
-      type: touchesBack ? "screw" : "cam_dowel",
+      type: "cam_dowel",
       part_a: j.aId,
       part_b: j.bId,
       length_mm,
-      connectors: touchesBack ? backConnectors(length_mm) : standardConnectors(length_mm),
+      connectors: standardConnectors(length_mm),
       visible: false,
     };
   });
@@ -233,7 +249,19 @@ export function designToEngineModel(design: Design, options: AdapterOptions = {}
       top_y_mm: cm(c.box.max.y - minY),
     }));
 
-  const braces: Brace[] = []; // open-panel shelving carries no rails in this model
+  // Rails are bracing, positioned by height: one tucked under (or flush with)
+  // the top is the top rail, one on (or level with) the bottom is the plinth
+  // rail, anything between is a mid rail.
+  const maxY = Math.max(...allBoxes.map((b) => b.max.y));
+  const nearEnd = 2 * tCm + 1;
+  const braces: Brace[] = classified
+    .filter((c) => c.role === "rail")
+    .map((c) => ({
+      part_id: c.cmPart.id,
+      position:
+        c.box.max.y >= maxY - nearEnd ? "top_rear" : c.box.min.y <= minY + nearEnd ? "plinth" : "mid_rear",
+      width_mm: cm(c.cmPart.bCm),
+    }));
 
   return {
     schema_version: 1,
@@ -258,16 +286,6 @@ export function designToEngineModel(design: Design, options: AdapterOptions = {}
     braces,
     wall_anchor: { present: options.wall_anchor_present ?? false },
   };
-}
-
-/** Back fixing: screws at ≤150 mm pitch along the joint. */
-function backConnectors(lengthMm: number): JointConnector[] {
-  const connectors: JointConnector[] = [];
-  for (let position_mm = 75; position_mm < lengthMm; position_mm += 150) {
-    connectors.push({ hardware_id: "back_nail_screw", position_mm });
-  }
-  if (connectors.length === 0) connectors.push({ hardware_id: "back_nail_screw", position_mm: lengthMm / 2 });
-  return connectors;
 }
 
 /** The two in-plane dimensions (cm) of a board, dropping its thickness axis. */

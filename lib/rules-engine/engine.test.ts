@@ -30,7 +30,7 @@ describe("determinism & audit", () => {
 
   it("stamps engine + catalogue versions and the design hash", () => {
     const report = engine.validate(makeValidBedside());
-    expect(report.engine_version).toBe("1.0.0");
+    expect(report.engine_version).toBe("1.1.0");
     expect(report.catalogue_version).toBe("1.1.0");
     expect(report.design_hash).toMatch(/^[0-9a-f]{64}$/);
     expect(report.evaluated_rule_ids.length).toBe(55);

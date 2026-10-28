@@ -156,3 +156,82 @@ describe("validateConfiguratorDesign (sales-first)", () => {
     expect(raised).toEqual([]);
   });
 });
+
+describe("boards the live product ships (36 mm, backs, rails)", () => {
+  // A 60 × 80 × 35 cm open box in the given board, plus whatever z-boards the
+  // case needs, drawn in centre-origin cm like the configurator stores it.
+  const box = (thickness: 18 | 36, extra: Design["parts"] = []): Design => {
+    const t = thickness / 10;
+    const w = 60;
+    const h = 80;
+    const d = 35;
+    return {
+      colour: "white",
+      thickness,
+      outerCm: { w, h, d },
+      parts: [
+        { id: "L", role: "wall", axis: "x", aCm: h, bCm: d, pos: { x: -w / 2 + t / 2, y: 0, z: 0 } },
+        { id: "R", role: "wall", axis: "x", aCm: h, bCm: d, pos: { x: w / 2 - t / 2, y: 0, z: 0 } },
+        { id: "B", role: "wall", axis: "y", aCm: w - 2 * t, bCm: d, pos: { x: 0, y: -h / 2 + t / 2, z: 0 } },
+        { id: "T", role: "wall", axis: "y", aCm: w - 2 * t, bCm: d, pos: { x: 0, y: h / 2 - t / 2, z: 0 } },
+        ...extra,
+      ],
+    };
+  };
+  const rail = (id: string, y: number, hCm = 10): Design["parts"][number] => ({
+    id,
+    role: "wall",
+    axis: "z",
+    aCm: 60 - 3.6,
+    bCm: hCm,
+    pos: { x: 0, y, z: -35 / 2 + 0.9 },
+  });
+
+  it("does not hold 36 mm board against the material rule", () => {
+    const ui = validateConfiguratorDesign(box(36));
+    expect(ui.findings.find((f) => f.rule_id === "MAT-THK-001")).toBeUndefined();
+    expect(designToEngineModel(box(36)).parts.every((p) => p.material_id === "ltd_36_p2")).toBe(true);
+  });
+
+  it("models a back panel as the carcass board, not 3 mm HDF", () => {
+    const back = { id: "back", role: "wall" as const, axis: "z" as const, aCm: 56.4, bCm: 76.4, pos: { x: 0, y: 0, z: -35 / 2 + 0.9 } };
+    const model = designToEngineModel(box(18, [back]));
+    const part = model.parts.find((p) => p.id === "back")!;
+    expect(part.role).toBe("back");
+    expect(part.material_id).toBe("ltd_18_p2");
+    expect(model.unit.has_back).toBe(true);
+    const ui = validateConfiguratorDesign(box(18, [back]));
+    expect(ui.findings.find((f) => f.rule_id === "MAT-THK-001")).toBeUndefined();
+    expect(ui.findings.find((f) => f.rule_id === "STRUCT-BACK-004")).toBeUndefined();
+  });
+
+  it("reads narrow z-boards as top and plinth rails, which satisfy STRUCT-BACK-004", () => {
+    const top = rail("rt", 40 - 1.8 - 5); // tucked under the top board
+    const plinth = rail("rb", -40 + 1.8 + 5); // standing on the bottom board
+    const model = designToEngineModel(box(18, [top, plinth]));
+    expect(model.unit.has_back).toBe(false);
+    expect(model.braces.map((b) => [b.part_id, b.position])).toEqual([
+      ["rt", "top_rear"],
+      ["rb", "plinth"],
+    ]);
+    expect(model.braces.every((b) => b.width_mm === 100)).toBe(true);
+    const ui = validateConfiguratorDesign(box(18, [top, plinth]));
+    expect(ui.findings.find((f) => f.rule_id === "STRUCT-BACK-004")).toBeUndefined();
+  });
+
+  it("still asks an open box with one rail for the missing one", () => {
+    const ui = validateConfiguratorDesign(box(18, [rail("rt", 40 - 1.8 - 5)]));
+    expect(ui.findings.find((f) => f.rule_id === "STRUCT-BACK-004")).toBeDefined();
+  });
+});
+
+describe("findings the catalogue left without a message", () => {
+  it("still tell the customer something (MFG-EDGE-005 fires on every design)", () => {
+    for (const locale of ["en", "cs"] as const) {
+      const ui = validateConfiguratorDesign(DEFAULT_DESIGN, { locale });
+      const edge = ui.findings.find((f) => f.rule_id === "MFG-EDGE-005");
+      expect(edge).toBeDefined();
+      expect(edge!.message).toBeTruthy();
+    }
+  });
+});

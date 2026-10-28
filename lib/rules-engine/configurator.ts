@@ -9,6 +9,7 @@ import { createEngine, type RulesEngine } from "./engine";
 import { ENGINE_VERSION } from "./constants";
 import { designToEngineModel, type AdapterOptions } from "./adapter";
 import { renderMessage, type Locale } from "./messages";
+import { fallbackMessage } from "./locales/fallback";
 import { MYBLE_PARTNER_PROFILE } from "./myble-profile";
 import type { OrderContext } from "./context";
 import type { DesignPatch } from "./fixes";
@@ -72,7 +73,9 @@ function enrich(report: ValidationReport, rulesById: Map<string, Rule>, locale: 
       const rule = rulesById.get(f.rule_id);
       return {
         ...f,
-        message: rule ? renderMessage(rule, f, locale) : null,
+        // A rule the catalogue left without a message still fires on real
+        // designs; say something useful rather than an empty string.
+        message: (rule ? renderMessage(rule, f, locale) : null) ?? fallbackMessage(f.rule_id, locale),
         rule_name: rule?.name ?? f.rule_id,
         auto_correctable: rule?.auto_correct ?? false,
       };
