@@ -368,11 +368,16 @@ function LibraryHighlights() {
         </div>
       </Reveal>
 
-      <div className="mt-6 grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3">
+      {/* Phones: one row you swipe sideways, each card most of the screen wide
+          with the next one peeking in, bleeding to the screen edges. From sm up
+          it is the usual grid. */}
+      <div className="-mx-5 mt-6 flex snap-x snap-mandatory scroll-px-5 gap-3 overflow-x-auto px-5 pb-2 [scrollbar-width:none] sm:mx-0 sm:grid sm:snap-none sm:grid-cols-2 sm:gap-5 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-3 [&::-webkit-scrollbar]:hidden">
         {items.map((item, i) => (
-          <Reveal key={item.id} delay={(i % 3) * 80}>
-            <HighlightCard item={item} reduced={reduced} t={t} onDetails={setDetail} />
-          </Reveal>
+          <div key={item.id} className="w-[78%] shrink-0 snap-start sm:w-auto">
+            <Reveal delay={(i % 3) * 80}>
+              <HighlightCard item={item} reduced={reduced} t={t} onDetails={setDetail} />
+            </Reveal>
+          </div>
         ))}
       </div>
 
@@ -659,13 +664,14 @@ export default function HomePage() {
           </div>
 
           <Reveal delay={60}>
-            <div className="mt-14 grid grid-cols-2 gap-x-6 sm:grid-cols-2 sm:gap-x-8 lg:grid-cols-4">
+            {/* Phones: four equal tiles in a 2×2 grid (half-borders between the
+                cells never lined up once the titles wrapped differently).
+                From sm up the tiles drop their chrome and sit in open columns. */}
+            <div className="mt-14 grid grid-cols-2 gap-3 sm:gap-x-8 sm:gap-y-10 lg:grid-cols-4">
               {MATERIAL_ICONS.map((path, idx) => (
                 <div
                   key={idx}
-                  className={`py-6 sm:py-0 ${idx % 2 === 1 ? "border-l border-white/10 pl-6 sm:border-l-0 sm:pl-0" : ""} ${
-                    idx >= 2 ? "border-t border-white/10 sm:border-t-0" : ""
-                  }`}
+                  className="rounded-2xl bg-white/5 p-4 ring-1 ring-white/10 sm:rounded-none sm:bg-transparent sm:p-0 sm:ring-0"
                 >
                   <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/10 text-white">
                     <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8">

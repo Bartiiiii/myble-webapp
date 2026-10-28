@@ -1253,6 +1253,11 @@ export function ShelfViewer({
         dpr={[1, 2]}
         gl={capturable ? { preserveDrawingBuffer: true } : undefined}
         onCreated={onCanvasReady ? (state) => onCanvasReady(state.gl.domElement, state) : undefined}
+        // A look-only viewer (hero, cards, thumbnails) lets touches through:
+        // the orbit controls would otherwise hold them, so a swipe that starts
+        // on the picture could not scroll the page on phones. Clicks reach the
+        // card or button around it as before.
+        style={interactive ? undefined : { pointerEvents: "none" }}
         onPointerMissed={
           editable
             ? (e) => {
