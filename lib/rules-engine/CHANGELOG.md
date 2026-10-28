@@ -18,7 +18,10 @@ threshold changed, so no `validated_by:` sign-off is needed.
   lib/quote.ts prices and lib/mebleExport.ts orders), not 3 mm HDF. A narrow
   z-board (≤ 25 cm tall, at least twice as wide) is a `rail` and is emitted as
   a brace (`top_rear` / `mid_rear` / `plinth`), so STRUCT-BACK-004 can see
-  bracing that is designed in. Every joint is the standard cam + dowel system.
+  bracing that is designed in. Every joint is the standard cam + dowel system;
+  a joint on a back also lists the dowels the configurator drills along it
+  (one every ~11 cm), so a back taller than ~70 cm is not read as unfixed
+  (CONN-SPACING-003's 300 mm back-fixing pitch, severity 4).
 - Packing (`calc/packaging.ts`): a pack also closes when the next panel would
   make a stack that fits a parcel carrier too thick for all of them, so a
   tall bookcase ships as two GLS parcels instead of being routed to pallet

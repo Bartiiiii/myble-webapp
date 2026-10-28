@@ -158,12 +158,12 @@ describe("validateConfiguratorDesign (sales-first)", () => {
 });
 
 describe("boards the live product ships (36 mm, backs, rails)", () => {
-  // A 60 × 80 × 35 cm open box in the given board, plus whatever z-boards the
-  // case needs, drawn in centre-origin cm like the configurator stores it.
-  const box = (thickness: 18 | 36, extra: Design["parts"] = []): Design => {
+  // A 60 × 80 × 35 cm open box (or taller) in the given board, plus whatever
+  // z-boards the case needs, drawn in centre-origin cm like the configurator
+  // stores it.
+  const box = (thickness: 18 | 36, extra: Design["parts"] = [], h = 80): Design => {
     const t = thickness / 10;
     const w = 60;
-    const h = 80;
     const d = 35;
     return {
       colour: "white",
@@ -203,6 +203,13 @@ describe("boards the live product ships (36 mm, backs, rails)", () => {
     const ui = validateConfiguratorDesign(box(18, [back]));
     expect(ui.findings.find((f) => f.rule_id === "MAT-THK-001")).toBeUndefined();
     expect(ui.findings.find((f) => f.rule_id === "STRUCT-BACK-004")).toBeUndefined();
+  });
+
+  it("fixes a full-height back along its whole edge, as the configurator drills it", () => {
+    // 180 cm tall: the standard cams alone would leave 80 cm runs with nothing holding the back.
+    const back = { id: "back", role: "wall" as const, axis: "z" as const, aCm: 56.4, bCm: 176.4, pos: { x: 0, y: 0, z: -35 / 2 + 0.9 } };
+    const ui = validateConfiguratorDesign(box(18, [back], 180));
+    expect(ui.findings.find((f) => f.rule_id === "CONN-SPACING-003")).toBeUndefined();
   });
 
   it("reads narrow z-boards as top and plinth rails, which satisfy STRUCT-BACK-004", () => {

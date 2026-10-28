@@ -218,24 +218,31 @@ export function designToEngineModel(design: Design, options: AdapterOptions = {}
       support_type: "cam_dowel",
     }));
 
+  const backIds = new Set(classified.filter((c) => c.role === "back").map((c) => c.cmPart.id));
   const joints: Joint[] = detectJoints(design).map((j, i) => {
     // Joint length ≈ shared seam length.
-    const seamLen = Math.hypot(
-      j.seam.b.x - j.seam.a.x,
-      j.seam.b.y - j.seam.a.y,
-      j.seam.b.z - j.seam.a.z,
-    );
+    const seam = { x: j.seam.b.x - j.seam.a.x, y: j.seam.b.y - j.seam.a.y, z: j.seam.b.z - j.seam.a.z };
+    const seamLen = Math.hypot(seam.x, seam.y, seam.z);
     const length_mm = Math.max(cm(seamLen), 1);
     // Backs and rails are the same board as the carcass and are dowelled like
     // every other joint (lib/drilling.ts drills them all), so they take the
-    // standard system too.
+    // standard system too. A back is fixed along its whole edge: the dowels
+    // the configurator drills there (one every ~11 cm) are listed as well, so
+    // the back-fixing pitch (CONN-SPACING-003) sees what holds it.
+    const connectors = standardConnectors(length_mm);
+    if (seamLen > 0 && (backIds.has(j.aId) || backIds.has(j.bId))) {
+      for (const d of j.dowels) {
+        const along = ((d.x - j.seam.a.x) * seam.x + (d.y - j.seam.a.y) * seam.y + (d.z - j.seam.a.z) * seam.z) / seamLen;
+        connectors.push({ hardware_id: "dowel_8x35", position_mm: Math.round(cm(along)) });
+      }
+    }
     return {
       id: `j${i}`,
       type: "cam_dowel",
       part_a: j.aId,
       part_b: j.bId,
       length_mm,
-      connectors: standardConnectors(length_mm),
+      connectors,
       visible: false,
     };
   });
