@@ -71,11 +71,15 @@ export interface LibraryItem {
    * checks in lib/libraryRules.ts.
    */
   kind?: PieceKind;
-  /** Curated only: people sit on its top (benches are always seats). */
+  /** Curated only: people sit on it (benches are always seats). */
   seat?: boolean;
-  /** Curated only: the rules engine asks for the wall-anchor kit (card label; CI keeps it honest). */
+  /**
+   * The rules engine asks for the wall-anchor kit (card label, and the "tall"
+   * height filter). Curated: declared here and held to the engine by CI.
+   * Community: filled in by /api/library from the engine.
+   */
   wallAnchor?: boolean;
-  /** Curated only: two people recommended to assemble it (card label; CI keeps it honest). */
+  /** Two people recommended to assemble it (card label, assembly filter); sourced like `wallAnchor`. */
   twoPeople?: boolean;
 }
 

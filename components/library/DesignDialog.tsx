@@ -2,12 +2,13 @@
 
 import dynamic from "next/dynamic";
 import { useLocaleRouter } from "../../lib/localeNav";
-import React, { useEffect } from "react";
+import React, { useEffect, useMemo } from "react";
 import posthog from "posthog-js";
 import { FireButton } from "../FireButton";
 import { AuthorChip } from "./AuthorChip";
 import { usePrefersReducedMotion, WALL } from "./LazyStage";
 import { itemName, itemNote, type LibraryItem } from "../../lib/library";
+import { itemTags } from "../../lib/libraryFilters";
 import { roomFor } from "../../lib/rooms";
 import { saveDesign } from "../../lib/design";
 import { useI18n } from "../../lib/i18n";
@@ -35,9 +36,10 @@ export function DesignDialog({
   onClose: () => void;
   from?: string;
 }) {
-  const { t } = useI18n();
+  const { t, fmt } = useI18n();
   const reduced = usePrefersReducedMotion();
   const router = useLocaleRouter();
+  const tags = useMemo(() => (item ? itemTags(item) : null), [item]);
 
   useEffect(() => {
     if (!item) return;
@@ -138,7 +140,23 @@ export function DesignDialog({
               <SpecRow label={t("library.boards")}>
                 <span className="font-mono">{item.design.parts.length}</span>
               </SpecRow>
+              {tags?.assembly && (
+                <SpecRow label={t("library.assembly")}>{t(`library.filters.assembly.${tags.assembly}`)}</SpecRow>
+              )}
+              {tags?.priceCZK != null && (
+                <SpecRow label={t("library.price")}>
+                  <span className="font-mono">{fmt(tags.priceCZK)}</span>{" "}
+                  <span className="text-xs font-normal text-zinc-400">{t("library.priceNote")}</span>
+                </SpecRow>
+              )}
             </dl>
+
+            {item.wallAnchor && (
+              <p className="mt-4 flex items-start gap-2 rounded-xl bg-zinc-50 px-3 py-2.5 text-xs leading-5 text-zinc-600">
+                <span className="shrink-0 rounded-full bg-zinc-900 px-2 py-0.5 font-medium text-white">{t("library.anchor")}</span>
+                <span>{t("library.anchorNote")}</span>
+              </p>
+            )}
 
             <button
               type="button"

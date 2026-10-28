@@ -1,13 +1,14 @@
 "use client";
 
 import { useLocaleRouter } from "../../lib/localeNav";
-import React from "react";
+import React, { useMemo } from "react";
 import posthog from "posthog-js";
 import { Reveal } from "../Reveal";
 import { FireButton } from "../FireButton";
 import { AuthorChip } from "./AuthorChip";
 import { LazyStage, usePrefersReducedMotion } from "./LazyStage";
 import { itemName, type LibraryItem } from "../../lib/library";
+import { itemTags, type ItemTags } from "../../lib/libraryFilters";
 import { roomFor } from "../../lib/rooms";
 import { saveDesign } from "../../lib/design";
 import { useI18n } from "../../lib/i18n";
@@ -20,25 +21,33 @@ import { useIsNarrow } from "../../lib/useIsNarrow";
  * matters: the 🔥 button and the designer link are SIBLINGS of the card's
  * full-bleed click target, not children of it. A button inside a button is
  * invalid HTML and breaks hydration; z-index does the layering instead.
+ *
+ * Under the name: the live kit price and the two labels the rules engine
+ * decides, "wall anchor" for pieces it wants fixed to the wall and "2 people"
+ * for pieces too heavy or long to assemble alone.
  */
 export function DesignCard({
   item,
+  tags: givenTags,
   index = 0,
   onDetails,
   showAuthor = true,
   from = "library",
 }: {
   item: LibraryItem;
+  /** Precomputed by a page that already tagged its pool; computed here otherwise. */
+  tags?: ItemTags;
   index?: number;
   onDetails: (item: LibraryItem) => void;
   showAuthor?: boolean;
   from?: string;
 }) {
-  const { t } = useI18n();
+  const { t, fmt } = useI18n();
   const router = useLocaleRouter();
   const reduced = usePrefersReducedMotion();
   const narrow = useIsNarrow();
   const name = itemName(item, t);
+  const tags = useMemo(() => givenTags ?? itemTags(item), [givenTags, item]);
 
   return (
     <Reveal delay={(index % 3) * 90}>
@@ -53,6 +62,13 @@ export function DesignCard({
               <span className="hidden shrink-0 font-mono text-[11px] text-zinc-400 sm:inline">
                 {t(`library.categories.${item.category}`)}
               </span>
+            </div>
+            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] sm:mt-1.5">
+              {tags.priceCZK != null && (
+                <span className="font-mono font-medium text-zinc-700 sm:text-xs">{fmt(tags.priceCZK)}</span>
+              )}
+              {item.wallAnchor && <Label>{t("library.anchor")}</Label>}
+              {item.twoPeople && <Label>{t("library.twoPeople")}</Label>}
             </div>
             {/* Who made it, on the card itself — the library is a library of
                 people's designs, and this is the way into their profile. The
@@ -95,4 +111,8 @@ export function DesignCard({
       </div>
     </Reveal>
   );
+}
+
+function Label({ children }: { children: React.ReactNode }) {
+  return <span className="rounded-full bg-zinc-100 px-2 py-0.5 font-medium text-zinc-600">{children}</span>;
 }

@@ -4,17 +4,19 @@
 // approved. Every card is a real, orderable Design: opening one writes it to
 // the configurator's storage and goes to /design, so inspiration is one click
 // from editing. Tapping a card opens the detail dialog; tapping the designer
-// goes to their profile.
+// goes to their profile. The filter bar narrows the grid by category, room,
+// size, colour, price and assembly (lib/libraryFilters.ts) and sorts it.
 
 import Link from "../../../lib/localeNav";
 import React, { useMemo, useState } from "react";
 import { SiteHeader } from "../../../components/SiteHeader";
 import { SiteFooter } from "../../../components/SiteFooter";
 import { Reveal } from "../../../components/Reveal";
-import { CategoryPills } from "../../../components/CategoryPills";
 import { DesignCard } from "../../../components/library/DesignCard";
 import { DesignDialog } from "../../../components/library/DesignDialog";
-import { sortedByHeat, type CategoryId, type LibraryItem } from "../../../lib/library";
+import { LibraryFilterBar } from "../../../components/library/LibraryFilterBar";
+import { type CategoryId, type LibraryItem } from "../../../lib/library";
+import { browse, itemTags, type LibraryFilters, type Sort } from "../../../lib/libraryFilters";
 import { ReactionsProvider, useReactions } from "../../../lib/reactions";
 import { useLibraryPool } from "../../../lib/useLibraryPool";
 import { useI18n } from "../../../lib/i18n";
@@ -25,11 +27,27 @@ function LibraryBody() {
   const { counts } = useReactions();
   const { pool } = useLibraryPool();
   const [category, setCategory] = useState<CategoryId>("all");
+  const [filters, setFilters] = useState<LibraryFilters>({});
+  const [sort, setSort] = useState<Sort>("hot");
   const [detail, setDetail] = useState<LibraryItem | null>(null);
 
-  // Hottest first; ties fall back to the pool order, so the grid is stable
-  // before anyone has reacted.
-  const items = useMemo(() => sortedByHeat(counts, category, pool), [counts, category, pool]);
+  // Tags (sizes, live price, assembly) once per pool, not once per render: the
+  // price is a full quote, about a millisecond a design.
+  const tagsOf = useMemo(() => {
+    const byItem = new Map(pool.map((item) => [item, itemTags(item)]));
+    return (item: LibraryItem) => byItem.get(item) ?? itemTags(item);
+  }, [pool]);
+
+  const inCategory = useMemo(
+    () => (category === "all" ? pool : pool.filter((i) => i.category === category)),
+    [category, pool],
+  );
+  // Hottest first by default; ties fall back to the pool order, so the grid is
+  // stable before anyone has reacted.
+  const items = useMemo(
+    () => browse(inCategory, tagsOf, { filters, sort, counts }),
+    [inCategory, tagsOf, filters, sort, counts],
+  );
 
   return (
     <>
@@ -43,20 +61,47 @@ function LibraryBody() {
         </Reveal>
       </section>
 
-      {/* Category filter */}
+      {/* Category pills + filters */}
       <section className="mx-auto w-full max-w-6xl px-5 pt-4">
         <Reveal>
-          <CategoryPills active={category} onSelect={setCategory} pool={pool} />
+          <LibraryFilterBar
+            pool={pool}
+            inCategory={inCategory}
+            tagsOf={tagsOf}
+            category={category}
+            onCategory={setCategory}
+            filters={filters}
+            onFilters={setFilters}
+            sort={sort}
+            onSort={setSort}
+            resultCount={items.length}
+          />
         </Reveal>
       </section>
 
       {/* Grid */}
       <section className="mx-auto w-full max-w-6xl px-5 py-8">
-        <div className="grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-3">
-          {items.map((item, i) => (
-            <DesignCard key={item.id} item={item} index={i} onDetails={setDetail} from="library" />
-          ))}
-        </div>
+        {items.length === 0 ? (
+          <div className="rounded-3xl bg-zinc-50 px-6 py-12 text-center ring-1 ring-zinc-200">
+            <p className="text-sm text-zinc-600">{t("library.filters.none")}</p>
+            <button
+              type="button"
+              onClick={() => {
+                setFilters({});
+                setCategory("all");
+              }}
+              className="press mt-3 text-sm font-semibold text-indigo-600 hover:text-indigo-500"
+            >
+              {t("library.filters.clear")}
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-3">
+            {items.map((item, i) => (
+              <DesignCard key={item.id} item={item} tags={tagsOf(item)} index={i} onDetails={setDetail} from="library" />
+            ))}
+          </div>
+        )}
       </section>
 
       <DesignDialog item={detail} onClose={() => setDetail(null)} from="library" />

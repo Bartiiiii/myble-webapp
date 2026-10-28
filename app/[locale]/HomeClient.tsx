@@ -9,10 +9,10 @@ import { NewsletterForm } from "../../components/NewsletterForm";
 import { Reveal } from "../../components/Reveal";
 import { CategoryPills } from "../../components/CategoryPills";
 import { FireButton } from "../../components/FireButton";
-import { type Design, type LegacyDesign, legacyToDesign } from "../../lib/design";
+import type { Design } from "../../lib/design";
 import { AuthorChip } from "../../components/library/AuthorChip";
 import { DesignDialog } from "../../components/library/DesignDialog";
-import { itemName, sortedByHeat, type CategoryId, type LibraryItem } from "../../lib/library";
+import { LIBRARY, itemName, sortedByHeat, type CategoryId, type LibraryItem } from "../../lib/library";
 import { ReactionsProvider, useReactions } from "../../lib/reactions";
 import { useLibraryPool } from "../../lib/useLibraryPool";
 import { useIsNarrow } from "../../lib/useIsNarrow";
@@ -54,59 +54,12 @@ function usePrefersReducedMotion() {
   return reduced;
 }
 
-const SHOWCASE_LEGACY: LegacyDesign[] = [
-  {
-    widthCm: 72, heightCm: 132, depthCm: 34, decor: "dub",
-    planks: [
-      { id: "cat-1", o: "h", x: 0, y: 28, len: 36 },
-      { id: "cat-2", o: "h", x: 34, y: 52, len: 34 },
-      { id: "cat-3", o: "h", x: 0, y: 78, len: 36 },
-      { id: "cat-4", o: "h", x: 34, y: 102, len: 34 },
-      { id: "cat-den", o: "v", x: 40, y: 0, len: 28 },
-    ],
-  },
-  {
-    widthCm: 100, heightCm: 58, depthCm: 42, decor: "grafit",
-    planks: [
-      { id: "vin-mid", o: "h", x: 0, y: 27, len: 96 },
-      { id: "vin-1", o: "v", x: 30, y: 0, len: 25 },
-      { id: "vin-2", o: "v", x: 50, y: 0, len: 25 },
-      { id: "vin-3", o: "v", x: 70, y: 0, len: 25 },
-    ],
-  },
-  {
-    widthCm: 82, heightCm: 122, depthCm: 33, decor: "dub",
-    planks: [
-      { id: "cube-v", o: "v", x: 38, y: 0, len: 118 },
-      { id: "cube-1", o: "h", x: 0, y: 23, len: 78 },
-      { id: "cube-2", o: "h", x: 0, y: 47, len: 78 },
-      { id: "cube-3", o: "h", x: 0, y: 71, len: 78 },
-      { id: "cube-4", o: "h", x: 0, y: 95, len: 78 },
-    ],
-  },
-  {
-    widthCm: 130, heightCm: 44, depthCm: 40, decor: "bila",
-    planks: [
-      { id: "tv-v1", o: "v", x: 42, y: 0, len: 40 },
-      { id: "tv-v2", o: "v", x: 84, y: 0, len: 40 },
-      { id: "tv-hl", o: "h", x: 0, y: 20, len: 42 },
-      { id: "tv-hr", o: "h", x: 86, y: 20, len: 40 },
-    ],
-  },
-  {
-    widthCm: 112, heightCm: 134, depthCm: 45, decor: "grafit",
-    planks: [
-      { id: "desk-top", o: "h", x: 0, y: 70, len: 108 },
-      { id: "desk-vr", o: "v", x: 72, y: 70, len: 60 },
-      { id: "desk-u1", o: "h", x: 74, y: 96, len: 34 },
-      { id: "desk-u2", o: "h", x: 74, y: 116, len: 34 },
-      { id: "desk-vl", o: "v", x: 36, y: 0, len: 70 },
-      { id: "desk-l1", o: "h", x: 0, y: 34, len: 36 },
-    ],
-  },
-];
-
-const SHOWCASE: Design[] = SHOWCASE_LEGACY.map((l) => legacyToDesign(l));
+// Five pieces from the curated library, picked to show its range: the offset
+// bookcase (the Myble mark as furniture), the record console, the coffee table
+// with a book pod, the plant steps and the work nook. Drawn from LIBRARY, so
+// the hero never spins a piece the library would not sell.
+const SHOWCASE_IDS = ["offset", "record", "podtable", "plantsteps", "worknook"];
+const SHOWCASE: Design[] = SHOWCASE_IDS.flatMap((id) => LIBRARY.find((item) => item.id === id)?.design ?? []);
 
 /** Mono dimension chip — the brand signature: measurements dress like product. */
 function DimChip({ children, className = "" }: { children: React.ReactNode; className?: string }) {

@@ -335,6 +335,20 @@ export function engineVerdict(design: Design): EngineVerdict {
   };
 }
 
+/**
+ * The two card labels for a design nobody hand-checked (a shared community
+ * design), straight from the engine. Empty when the engine cannot read the
+ * design; the card then shows no labels rather than wrong ones.
+ */
+export function engineLabels(design: Design): { wallAnchor?: boolean; twoPeople?: boolean } {
+  try {
+    const { wallAnchor, twoPeople } = engineVerdict(design);
+    return { wallAnchor, twoPeople };
+  } catch {
+    return {};
+  }
+}
+
 function stability(design: Design, verdict: EngineVerdict): Violation[] {
   const out: Violation[] = [];
   // Centre of mass over the floor footprint, with a margin, in both directions.
