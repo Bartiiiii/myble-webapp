@@ -465,6 +465,9 @@ export type PieceKind =
   | "shoe-rack"
   | "console"
   | "storage"
+  | "wardrobe"
+  | "tv-unit"
+  | "kids-desk"
   | "pet"
   | "plant-stand";
 
@@ -483,9 +486,11 @@ export const ENVELOPES: Record<PieceKind, Envelope> = {
   bookcase: { h: [100, 200], w: [40, 160], d: [25, 45], thick: false },
   "low-bookcase": { h: [55, 100], w: [60, 200], d: [25, 45], thick: false },
   "cube-shelf": { h: [35, 160], w: [35, 160], d: [28, 45], thick: false },
-  "room-divider": { h: [100, 200], w: [70, 200], d: [30, 45], thick: false },
+  // Half-height dividers stand free; above 100 cm a divider needs fixing.
+  "room-divider": { h: [80, 200], w: [70, 200], d: [30, 45], thick: false },
   "coffee-table": { h: [35, 48], w: [60, 140], d: [40, 80], thick: true },
-  "side-table": { h: [40, 65], w: [30, 65], d: [30, 60], thick: true },
+  // Nesting tables run low: the small one of a pair lives under the big one.
+  "side-table": { h: [34, 65], w: [30, 65], d: [30, 60], thick: true },
   nightstand: { h: [45, 70], w: [30, 65], d: [28, 45], thick: false },
   "tv-bench": { h: [35, 60], w: [100, 200], d: [30, 50], thick: false },
   sideboard: { h: [55, 95], w: [80, 200], d: [30, 50], thick: false },
@@ -494,7 +499,11 @@ export const ENVELOPES: Record<PieceKind, Envelope> = {
   bench: { h: [42, 50], w: [60, 200], d: [30, 50], thick: false },
   "shoe-rack": { h: [30, 120], w: [40, 140], d: [25, 40], thick: false },
   console: { h: [70, 95], w: [60, 160], d: [25, 45], thick: false },
-  storage: { h: [30, 120], w: [40, 160], d: [28, 50], thick: false },
+  storage: { h: [30, 120], w: [40, 160], d: [25, 50], thick: false },
+  wardrobe: { h: [120, 200], w: [60, 120], d: [40, 60], thick: false },
+  // A low TV bench with a tall bay at one end: the bench sets the seat, the tower the height.
+  "tv-unit": { h: [40, 140], w: [80, 200], d: [30, 50], thick: false },
+  "kids-desk": { h: [50, 60], w: [50, 100], d: [40, 60], thick: true },
   pet: { h: [35, 120], w: [40, 160], d: [30, 60], thick: false },
   "plant-stand": { h: [40, 120], w: [30, 120], d: [25, 45], thick: false },
 };

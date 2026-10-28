@@ -59,6 +59,17 @@ export const CURATED_AUTHOR: Record<string, string> = {
   // The alcove classic and the nightstand grew out of the configurator presets.
   police: "myble",
   stolek: "myble",
+  // Batch 1
+  offset: "tereza",
+  slimtower: "anna",
+  library: "myble",
+  underwindow: "anna",
+  divider: "martin",
+  steps: "myble",
+  windowseat: "lucie",
+  toybox: "petr",
+  wardrobe: "tereza",
+  plantsteps: "lucie",
 };
 
 /** The author of a curated design, falling back to the studio. */

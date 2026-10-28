@@ -186,3 +186,311 @@ export function stolek(): Design {
     boards: [...carcass(k, w, h), k.h("s1", t, w - t, t + 32)],
   });
 }
+
+// ── Batch 1: shelves and storage ────────────────────────────────────────────
+
+const r1 = (n: number) => Math.round(n * 10) / 10;
+
+/**
+ * Offset bookcase: two columns, the right column's shelves halfway between
+ * the left column's (the Myble mark). One continuous divider carries every
+ * shelf at both ends, so nothing is cantilevered. Rails at top, middle and
+ * bottom; the divider stands one board forward to clear them.
+ */
+export function offset(): Design {
+  const w = 78;
+  const h = 190;
+  const d = 33;
+  const k = kit(18, d);
+  const { t } = k;
+  const cx = (w - t) / 2;
+  const left = evenLevels(t, h - t, 5, t);
+  const right = left.slice(0, 4).map((y, i) => r1((y + left[i + 1]) / 2));
+  return piece({
+    colour: "white",
+    thickness: 18,
+    boards: [
+      ...carcass(k, w, h),
+      k.v("C", cx, t, h - t, t, d),
+      ...left.map((y, i) => k.h(`l${i + 1}`, t, cx, y)),
+      ...right.map((y, i) => k.h(`r${i + 1}`, cx + t, w - t, y)),
+      ...rails(k, 0, w, h),
+      k.b("rail-mid", t, w - t, 82.2, 92.2),
+    ],
+  });
+}
+
+/**
+ * Slim tower: 40 cm for the gap beside a door or the fridge. Tall bays at the
+ * bottom for boxes, a 40 cm bay at eye height, low ones at the top.
+ */
+export function slimtower(): Design {
+  const w = 40;
+  const h = 180;
+  const k = kit(18, 30);
+  const { t } = k;
+  const openings = [32, 32, 40, 21.1, 21.1];
+  const levels: number[] = [];
+  let y = t;
+  for (const o of openings) {
+    y = r1(y + o);
+    levels.push(y);
+    y += t;
+  }
+  return piece({
+    colour: "black",
+    thickness: 18,
+    boards: [
+      ...carcass(k, w, h),
+      ...levels.map((ly, i) => k.h(`s${i + 1}`, t, w - t, ly)),
+      ...rails(k, 0, w, h),
+      k.b("rail-mid", t, w - t, 84.4, 94.4),
+    ],
+  });
+}
+
+/**
+ * Three-bay library: 118 × 180 with five shelves in the outer bays and two in
+ * the middle, so the middle bays are twice as tall. Continuous dividers,
+ * standing forward of the top, middle and bottom rails.
+ */
+export function library(): Design {
+  const w = 118;
+  const h = 180;
+  const d = 33;
+  const k = kit(18, d);
+  const { t } = k;
+  const [x1, x2] = evenBays(t, w - t, 2, t);
+  const levels = evenLevels(t, h - t, 5, t);
+  return piece({
+    colour: "white",
+    thickness: 18,
+    boards: [
+      ...carcass(k, w, h),
+      k.v("d1", x1, t, h - t, t, d),
+      k.v("d2", x2, t, h - t, t, d),
+      ...levels.map((y, i) => k.h(`a${i + 1}`, t, x1, y)),
+      ...[levels[1], levels[3]].map((y, i) => k.h(`b${i + 1}`, x1 + t, x2, y)),
+      ...levels.map((y, i) => k.h(`c${i + 1}`, x2 + t, w - t, y)),
+      ...rails(k, 0, w, h),
+      k.b("rail-mid", t, w - t, 100, 110),
+    ],
+  });
+}
+
+/**
+ * Under-window bookcase: 72 cm, under the sill. The uprights run to the floor
+ * as legs and the bays sit 10 cm up; shelves either side, a tall open bay in
+ * the middle. A rail under the top and one behind the plinth brace it.
+ */
+export function underwindow(): Design {
+  const w = 118;
+  const h = 72;
+  const d = 30;
+  const k = kit(18, d);
+  const { t } = k;
+  const lift = 10;
+  const [x1, x2] = evenBays(t, w - t, 2, t);
+  const shelfY = evenLevels(lift + t, h - t, 1, t)[0];
+  return piece({
+    colour: "black",
+    thickness: 18,
+    boards: [
+      k.v("L", 0, 0, h),
+      k.v("R", w - t, 0, h),
+      k.h("T", t, w - t, h - t),
+      k.v("d1", x1, 0, h - t, t, d),
+      k.v("d2", x2, 0, h - t, t, d),
+      k.h("b1", t, x1, lift),
+      k.h("b2", x1 + t, x2, lift),
+      k.h("b3", x2 + t, w - t, lift),
+      k.h("s1", t, x1, shelfY),
+      k.h("s2", x2 + t, w - t, shelfY),
+      k.b("rail-top", t, w - t, h - t - 10, h - t),
+      k.b("rail-bottom", t, w - t, 0, lift),
+    ],
+  });
+}
+
+/**
+ * Checkerboard divider: splits a room at 96 cm and looks finished from both
+ * sides. The outer cubbies each get a back, on alternating sides; the middle
+ * column stays open as a window. Backs stop 5 mm short of the shelf (a back
+ * jointed to a fixed shelf has no assembly path).
+ */
+export function divider(): Design {
+  const w = 118;
+  const h = 96;
+  const d = 38;
+  const k = kit(18, d);
+  const { t } = k;
+  const [x1, x2] = evenBays(t, w - t, 2, t);
+  const mid = evenLevels(t, h - t, 1, t)[0];
+  const gap = 0.5;
+  const back = 0;
+  const front = d - t;
+  return piece({
+    colour: "black",
+    thickness: 18,
+    boards: [
+      ...carcass(k, w, h),
+      k.v("d1", x1, t, h - t),
+      k.v("d2", x2, t, h - t),
+      k.h("s1", t, x1, mid),
+      k.h("s2", x1 + t, x2, mid),
+      k.h("s3", x2 + t, w - t, mid),
+      k.b("p1", t, x1, t, mid - gap, back),
+      k.b("p2", t, x1, mid + t + gap, h - t, front),
+      k.b("p3", x2 + t, w - t, t, mid - gap, front),
+      k.b("p4", x2 + t, w - t, mid + t + gap, h - t, back),
+    ],
+  });
+}
+
+/**
+ * Step shelf: three columns climbing 40, 80 and 120 cm. Every top is held
+ * between two uprights; the shelves line up across the columns. The tall
+ * column carries the rails.
+ */
+export function steps(): Design {
+  const bay = 36;
+  const k = kit(18, 35);
+  const { t } = k;
+  const xs = [0, t + bay, 2 * (t + bay), 3 * (t + bay)];
+  return piece({
+    colour: "white",
+    thickness: 18,
+    boards: [
+      k.v("u0", xs[0], 0, 40),
+      k.v("u1", xs[1], t, 80),
+      k.v("u2", xs[2], t, 120),
+      k.v("u3", xs[3], 0, 120),
+      k.h("B", t, xs[3], 0),
+      k.h("t1", t, xs[1], 40 - t),
+      k.h("t2", xs[1] + t, xs[2], 80 - t),
+      k.h("t3", xs[2] + t, xs[3], 120 - t),
+      k.h("s2", xs[1] + t, xs[2], 40 - t),
+      k.h("s3a", xs[2] + t, xs[3], 40 - t),
+      k.h("s3b", xs[2] + t, xs[3], 80 - t),
+      k.b("rail-top", xs[2] + t, xs[3], 120 - t - 10, 120 - t),
+      k.b("rail-bottom", xs[2] + t, xs[3], t, t + 10),
+    ],
+  });
+}
+
+/**
+ * Window seat: a 47 cm bench with three cubbies for standard 33 cm storage
+ * boxes. The uprights are the legs, the cubbies sit 10 cm up. Bays of 36 cm
+ * keep the seat strong for a person sitting anywhere on it.
+ */
+export function windowseat(): Design {
+  const w = 116;
+  const h = 47;
+  const d = 42;
+  const k = kit(18, d);
+  const { t } = k;
+  const lift = 10;
+  const [x1, x2] = evenBays(t, w - t, 2, t);
+  return piece({
+    colour: "white",
+    thickness: 18,
+    boards: [
+      k.v("L", 0, 0, h),
+      k.v("R", w - t, 0, h),
+      k.h("T", t, w - t, h - t),
+      k.v("d1", x1, 0, h - t),
+      k.v("d2", x2, 0, h - t),
+      k.h("b1", t, x1, lift),
+      k.h("b2", x1 + t, x2, lift),
+      k.h("b3", x2 + t, w - t, lift),
+    ],
+  });
+}
+
+/**
+ * Toy garage: no bottom board, so toy bins slide straight out on the floor.
+ * One shelf at 28 cm with books and favourites above. A low rail at the back
+ * stops bins from leaving through the back and squares the frame.
+ */
+export function toybox(): Design {
+  const w = 100;
+  const h = 52;
+  const d = 40;
+  const k = kit(18, d);
+  const { t } = k;
+  const cx = (w - t) / 2;
+  const shelfY = 28;
+  return piece({
+    colour: "white",
+    thickness: 18,
+    boards: [
+      k.v("L", 0, 0, h),
+      k.v("R", w - t, 0, h),
+      k.h("T", t, w - t, h - t),
+      k.h("s1", t, w - t, shelfY),
+      k.v("c1", cx, 0, shelfY, t, d),
+      k.v("c2", cx, shelfY + t, h - t),
+      k.b("rail-bottom", t, w - t, 0, 10),
+    ],
+  });
+}
+
+/**
+ * Open wardrobe: 42 cm deep for folded clothes (a 180 × 50 cm side would not
+ * fit a parcel courier's girth). Five shelves on the left; on the right an
+ * 87 cm bay for the laundry basket under three shelves. One continuous
+ * divider, rails at top, middle and bottom.
+ */
+export function wardrobe(): Design {
+  const w = 100;
+  const h = 180;
+  const d = 42;
+  const k = kit(18, d);
+  const { t } = k;
+  const cx = (w - t) / 2;
+  const levels = evenLevels(t, h - t, 5, t);
+  return piece({
+    colour: "white",
+    thickness: 18,
+    boards: [
+      ...carcass(k, w, h),
+      k.v("C", cx, t, h - t, t, d),
+      ...levels.map((y, i) => k.h(`l${i + 1}`, t, cx, y)),
+      ...levels.slice(2).map((y, i) => k.h(`r${i + 1}`, cx + t, w - t, y)),
+      ...rails(k, 0, w, h),
+      k.b("rail-mid", t, w - t, 100, 110),
+    ],
+  });
+}
+
+/**
+ * Plant steps: two steps for pots, the lower 45 cm deep at 36 cm, the upper
+ * 25 cm deep at 72 cm, with cubbies under both. The lower top runs over its
+ * sides so the upper row stands on it directly above them.
+ */
+export function plantsteps(): Design {
+  const w = 80;
+  const k = kit(18, 45);
+  const { t } = k;
+  const low = 36;
+  const high = 72;
+  const upper = 25;
+  const cx = (w - t) / 2;
+  return piece({
+    colour: "black",
+    thickness: 18,
+    boards: [
+      k.v("L", 0, 0, low - t),
+      k.v("R", w - t, 0, low - t),
+      k.h("B", t, w - t, 0),
+      k.v("c1", cx, t, low - t, t, 45),
+      k.h("t1", 0, w, low - t),
+      k.v("uL", 0, low, high - t, 0, upper),
+      k.v("uR", w - t, low, high - t, 0, upper),
+      k.v("c2", cx, low, high - t, t, upper),
+      k.h("t2", 0, w, high - t, 0, upper),
+      k.b("rail-top", t, w - t, high - t - 10, high - t),
+      k.b("rail-bottom", t, w - t, t, t + 10),
+    ],
+  });
+}
