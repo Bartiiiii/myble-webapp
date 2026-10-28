@@ -51,18 +51,13 @@ export function seedDesigner(handle: string): SeedDesigner | null {
  * ship without an author.
  */
 export const CURATED_AUTHOR: Record<string, string> = {
-  staggered: "tereza",
   grid: "tereza",
   record: "kuba",
   tvbench: "martin",
-  worknook: "martin",
-  coffee: "anna",
-  nightstand: "anna",
   catbench: "lucie",
   shoebench: "petr",
-  // The three configurator presets are ours.
+  // The alcove classic and the nightstand grew out of the configurator presets.
   police: "myble",
-  skrinka: "myble",
   stolek: "myble",
 };
 

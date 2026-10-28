@@ -62,6 +62,13 @@ const overlap = (a0: number, a1: number, b0: number, b1: number) => Math.min(a1,
 const near = (a: number, b: number) => Math.abs(a - b) <= TOUCH;
 const centre = (b: Box, axis: Axis) => (b.min[axis] + b.max[axis]) / 2;
 
+/** Two boxes share a face (touching on one axis, real overlap on the other two). */
+function touching(a: Box, b: Box): boolean {
+  const ov = (["x", "y", "z"] as Axis[]).map((k) => overlap(a.min[k], a.max[k], b.min[k], b.max[k]));
+  if (ov.some((o) => o < -TOUCH)) return false;
+  return ov.filter((o) => o >= 0.5).length >= 2;
+}
+
 function boards(design: Design): Board[] {
   const t = thicknessCm(design);
   return design.parts.map((part) => ({ part, box: partBox(part, t) }));
@@ -107,7 +114,7 @@ function uprightsUnder(h: Box, uprights: Board[]): Board[] {
  *     that board within 5 cm (or the board on the floor, or the upright right
  *     at the board's supported end) — a divider mid-span on a shelf is a point
  *     load the shelf was never sized for;
- *   • a back panel or rail hangs between grounded uprights at both its ends.
+ *   • a back panel, front panel or rail is fixed to two grounded boards.
  */
 export function groundedIds(design: Design): Set<string> {
   const all = boards(design);
@@ -155,15 +162,11 @@ export function groundedIds(design: Design): Set<string> {
     }
     for (const p of panel) {
       if (isGrounded(p)) continue;
-      const touchesEnd = (end: "lo" | "hi") =>
-        upright.some(
-          (v) =>
-            isGrounded(v) &&
-            (end === "lo" ? near(v.box.max.x, p.box.min.x) : near(v.box.min.x, p.box.max.x)) &&
-            overlap(p.box.min.y, p.box.max.y, v.box.min.y, v.box.max.y) >= 0.8 * (p.box.max.y - p.box.min.y) &&
-            overlap(p.box.min.z, p.box.max.z, v.box.min.z, v.box.max.z) > 0,
-        );
-      if (touchesEnd("lo") && touchesEnd("hi")) {
+      // A panel carries only itself: fixed along two edges to grounded boards
+      // (a back between two uprights, a valance under a top and on a divider)
+      // it cannot move.
+      const fixedTo = all.filter((o) => o !== p && isGrounded(o) && touching(p.box, o.box));
+      if (fixedTo.length >= 2) {
         grounded.add(p.part.id);
         changed = true;
       }
@@ -249,7 +252,46 @@ export function spans(design: Design): SpanReport[] {
   return out;
 }
 
-function span(design: Design): Violation[] {
+/** EN 312 P2 bending strength (N/mm²): the catalogue's 13–20 mm value; the
+ *  standard's lower requirement for the 32–40 mm class is used for 36 mm,
+ *  which the catalogue does not list yet. */
+const BENDING_STRENGTH_NMM2: Record<number, number> = { 18: 11, 36: 8.5 };
+/** A person sitting down hard on a seat, as a point load mid-span (N). */
+const SEAT_LOAD_N = 1000;
+/** Margin a seat keeps against the board's bending strength. */
+const SEAT_SAFETY = 2;
+
+export interface SeatReport {
+  partId: string;
+  spanCm: number;
+  /** Bending stress under SEAT_LOAD_N at mid-span, N/mm². */
+  stress: number;
+  allowed: number;
+}
+
+/**
+ * Seats (benches, the cat bench): the top surface must take a person sitting
+ * in the middle of its longest span with a safety factor of 2 on the board's
+ * bending strength: σ = 3PL / (2bt²). Depth (b) matters here, unlike for the
+ * spread book load.
+ */
+export function seatChecks(design: Design): SeatReport[] {
+  const all = boards(design);
+  const top = Math.max(...all.map((b) => b.box.max.y));
+  const allowed = (BENDING_STRENGTH_NMM2[design.thickness] ?? 8.5) / SEAT_SAFETY;
+  const bySeat = new Map(spans(design).map((s) => [s.partId, s]));
+  return all
+    .filter((b) => b.part.axis === "y" && near(b.box.max.y, top) && bySeat.has(b.part.id))
+    .map((b) => {
+      const s = bySeat.get(b.part.id)!;
+      const L = s.spanCm * 10;
+      const depth = (b.box.max.z - b.box.min.z) * 10;
+      const stress = (3 * SEAT_LOAD_N * L) / (2 * depth * design.thickness ** 2);
+      return { partId: b.part.id, spanCm: s.spanCm, stress: Math.round(stress * 100) / 100, allowed };
+    });
+}
+
+function span(design: Design, seat = false): Violation[] {
   const out: Violation[] = [];
   for (const s of spans(design)) {
     if (s.sagMm > s.limitMm) {
@@ -257,6 +299,13 @@ function span(design: Design): Violation[] {
     }
     if (s.overhangCm > SUPPORT_REACH_CM) {
       out.push({ rule: "span", partIds: [s.partId], detail: `${s.partId} overhangs its last support by ${s.overhangCm} cm (max ${SUPPORT_REACH_CM})` });
+    }
+  }
+  if (seat) {
+    for (const c of seatChecks(design)) {
+      if (c.stress > c.allowed) {
+        out.push({ rule: "span", partIds: [c.partId], detail: `seat ${c.partId} spans ${c.spanCm} cm: ${c.stress} N/mm² under a sitter (max ${c.allowed})` });
+      }
     }
   }
   return out;
@@ -384,11 +433,11 @@ function structural(design: Design, verdict: EngineVerdict): Violation[] {
     .map((f) => ({ rule: (f.rule_id.startsWith("STRUCT-SHELF") ? "span" : "load-path") as LibraryRule, partIds: f.part_ids, detail: `${f.rule_id}: ${f.message ?? f.rule_name}` }));
 }
 
-/** Rules 1–6: everything that can be judged from the design alone. */
-export function checkDesign(design: Design, verdict: EngineVerdict = engineVerdict(design)): Violation[] {
+/** Rules 1–6: everything that can be judged from the design alone. `seat`: people sit on its top. */
+export function checkDesign(design: Design, verdict: EngineVerdict = engineVerdict(design), seat = false): Violation[] {
   return [
     ...loadPath(design),
-    ...span(design),
+    ...span(design, seat),
     ...structural(design, verdict),
     ...stability(design, verdict),
     ...racking(design, verdict),
@@ -454,13 +503,15 @@ export interface ItemMeta {
   id: string;
   kind: PieceKind;
   design: Design;
+  /** People sit on it (benches always do). */
+  seat?: boolean;
   /** Card labels — must match what the engine says. */
   wallAnchor: boolean;
   twoPeople: boolean;
 }
 
 export function checkItem(item: ItemMeta, verdict: EngineVerdict = engineVerdict(item.design)): Violation[] {
-  const out = checkDesign(item.design, verdict);
+  const out = checkDesign(item.design, verdict, item.seat || item.kind === "bench");
   const env = ENVELOPES[item.kind];
   const { w, h, d } = item.design.outerCm;
   for (const [k, v] of [["h", h], ["w", w], ["d", d]] as const) {

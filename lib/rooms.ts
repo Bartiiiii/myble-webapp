@@ -1,10 +1,11 @@
 // Which room each library design is shown in (see components/rooms/Room.tsx).
 //
-// The house pieces each get a room chosen for what they are — the nightstand
-// in a bedroom, the TV bench under a TV, the shoe bench by the front door.
-// Community designs get a room that suits their category, picked by a stable
-// hash of their id so neighbouring cards don't all share one room and a design
-// keeps its room between visits.
+// Every curated piece gets a room chosen for what it is — the nightstand in a
+// bedroom, the TV bench under a TV, the shoe bench by the front door. With
+// more pieces than rooms, several share one, so neighbours in the grid are
+// spread over the rooms that suit their category. Community designs get a
+// room that suits their category, picked by a stable hash of their id so a
+// design keeps its room between visits.
 
 import type { Design } from "./model";
 
@@ -22,27 +23,24 @@ export type RoomId =
   | "office"
   | "terrace";
 
-const CURATED: Record<string, RoomId> = {
-  staggered: "living",
-  catbench: "reading",
-  record: "music",
+export const CURATED_ROOMS: Record<string, RoomId> = {
   police: "study",
-  coffee: "lounge",
   grid: "loft",
-  nightstand: "bedroom",
+  stolek: "bedroom",
   tvbench: "tvwall",
-  skrinka: "hallway",
+  record: "music",
   shoebench: "entry",
-  worknook: "office",
-  stolek: "terrace",
+  catbench: "reading",
 };
 
 const BY_CATEGORY: Record<string, RoomId[]> = {
-  shelves: ["living", "study", "loft", "hallway"],
-  tables: ["terrace", "reading", "loft", "music"],
-  storage: ["hallway", "entry", "living", "loft"],
-  media: ["music", "tvwall"],
+  shelves: ["living", "study", "loft", "reading"],
+  tables: ["lounge", "living", "reading", "terrace"],
+  nightstands: ["bedroom"],
+  media: ["tvwall", "music"],
   office: ["office", "study"],
+  hallway: ["hallway", "entry"],
+  storage: ["loft", "living", "study", "hallway"],
   pets: ["reading", "living"],
   other: ["living", "loft", "terrace", "reading"],
 };
@@ -54,7 +52,7 @@ function hash(s: string): number {
 }
 
 export function roomFor(item: { id: string; category: string; design: Design }): RoomId {
-  const fixed = CURATED[item.id];
+  const fixed = CURATED_ROOMS[item.id];
   if (fixed) return fixed;
   let options = BY_CATEGORY[item.category] ?? BY_CATEGORY.other;
   // A TV only goes over something low enough to sit under one.
