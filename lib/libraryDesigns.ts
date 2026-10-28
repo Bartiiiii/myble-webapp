@@ -691,3 +691,298 @@ export function catclimber(): Design {
     ],
   });
 }
+
+// ── Batch 3: TV & music, desks (36 mm), hallway, the reading den ────────────
+
+/**
+ * Record cube: four cubes sized for LPs (34 cm clear each way, 38 cm deep),
+ * raised on its uprights so the turntable on top sits at 83 cm, a comfortable
+ * height to cue a record standing. Rails under the top and behind the plinth;
+ * the dividers stand forward of them.
+ */
+export function lpcube(): Design {
+  const bay = 34;
+  const lift = 10;
+  const k = kit(18, 40);
+  const { t, d } = k;
+  const w = 3 * t + 2 * bay;
+  const shelfY = lift + t + bay;
+  const h = shelfY + t + bay + t;
+  const cx = t + bay;
+  return piece({
+    colour: "white",
+    thickness: 18,
+    boards: [
+      k.v("L", 0, 0, h),
+      k.v("R", w - t, 0, h),
+      k.h("T", t, w - t, h - t),
+      k.h("b1", t, cx, lift),
+      k.h("b2", cx + t, w - t, lift),
+      k.v("c1", cx, 0, shelfY, t, d),
+      k.h("s1", t, w - t, shelfY),
+      k.v("c2", cx, shelfY + t, h - t, t, d),
+      k.b("rail-top", t, w - t, h - t - 10, h - t),
+      k.b("rail-bottom", t, w - t, 0, lift),
+    ],
+  });
+}
+
+/**
+ * Speaker bench: a bay at each end for a bookshelf speaker (26 cm wide, 48 cm
+ * tall, open at the back for the cables and the bass port), the receiver and
+ * the streamer on two levels in the middle.
+ */
+export function speakerbench(): Design {
+  const w = 118;
+  const h = 52;
+  const k = kit(18, 40);
+  const { t } = k;
+  const end = 26;
+  const x1 = t + end;
+  const x2 = w - t - end - t;
+  return piece({
+    colour: "black",
+    thickness: 18,
+    boards: [...carcass(k, w, h), k.v("d1", x1, t, h - t), k.v("d2", x2, t, h - t), k.h("s1", x1 + t, x2, t + 24)],
+  });
+}
+
+/**
+ * Work nook: a 36 mm desk whose right end is a bookcase pedestal, two 34 cm
+ * bays for ring binders and books, open to the chair. The top runs over a
+ * slab on the left and the pedestal; a rail under it and a stretcher at the
+ * floor brace the 77 cm knee space at the back, a rail under the top braces
+ * the pedestal. 50 cm deep, so every board comes out of one 36 mm sheet.
+ */
+export function worknook(): Design {
+  const w = 118;
+  const h = 75;
+  const k = kit(36, 50);
+  const { t } = k;
+  const under = h - t;
+  const p = w - t - 30 - t; // the pedestal's inner upright: a 30 cm bay
+  return piece({
+    colour: "white",
+    thickness: 36,
+    boards: [
+      k.v("L", 0, 0, under),
+      k.v("P", p, 0, under),
+      k.v("R", w - t, 0, under),
+      k.h("T", 0, w, under),
+      k.h("S", p + t, w - t, 33.6),
+      k.b("rail-top", t, p, under - 10, under),
+      k.b("stretcher", t, p, 0, 10),
+      k.b("p-rail-top", p + t, w - t, under - 10, under),
+    ],
+  });
+}
+
+/**
+ * Compact desk for the 80–90 cm window nook: a 36 mm top on two slabs, with an
+ * 11 cm cable tray at the back under the top for the power strip and the
+ * chargers. A rail above the tray and a stretcher at the floor keep it square.
+ * 78 cm wide: at 80 the quote's sheet packer bills a second 36 mm sheet.
+ */
+export function minidesk(): Design {
+  const w = 78;
+  const h = 75;
+  const k = kit(36, 50);
+  const { t } = k;
+  const under = h - t;
+  const trayY = under - 11 - t;
+  return piece({
+    colour: "black",
+    thickness: 36,
+    boards: [
+      k.v("L", 0, 0, under),
+      k.v("R", w - t, 0, under),
+      k.h("T", 0, w, under),
+      k.h("tray", t, w - t, trayY, 0, 15),
+      k.b("rail", t, w - t, trayY + t + 0.5, under),
+      k.b("stretcher", t, w - t, 0, 10),
+    ],
+  });
+}
+
+/**
+ * Desk shelf: lifts the laptop or a small screen 20 cm toward eye level (20 cm
+ * is also the lowest piece the configurator makes) and keeps paper, the router
+ * and notebooks in three A4 bays underneath.
+ */
+export function hutch(): Design {
+  const w = 100;
+  const h = 20;
+  const k = kit(18, 25);
+  const { t } = k;
+  const [x1, x2] = evenBays(t, w - t, 2, t);
+  return piece({
+    colour: "black",
+    thickness: 18,
+    boards: [...carcass(k, w, h), k.v("d1", x1, t, h - t), k.v("d2", x2, t, h - t)],
+  });
+}
+
+/**
+ * Printer stand: the printer on top at 66 cm, a 12 cm slot under it for reams
+ * of paper, and below a 25 cm bay with a shelf for ink and envelopes beside a
+ * 34 cm bay for the shredder or the paper bin.
+ */
+export function printerstand(): Design {
+  const w = 64;
+  const h = 66;
+  const d = 42;
+  const k = kit(18, d);
+  const { t } = k;
+  const slotY = h - t - 12 - t;
+  const x = t + 25;
+  return piece({
+    colour: "white",
+    thickness: 18,
+    boards: [
+      ...carcass(k, w, h),
+      k.h("slot", t, w - t, slotY),
+      k.v("d1", x, t, slotY, t, d),
+      k.h("s1", t, x, evenLevels(t, slotY, 1, t)[0]),
+      k.b("rail-top", t, w - t, slotY + t + 0.5, h - t),
+      k.b("rail-bottom", t, w - t, t, t + 10),
+    ],
+  });
+}
+
+/**
+ * Kids' desk: a 36 mm top at 52 cm (ages 4–7) with the sides and a back rail
+ * rising 8 cm above it, so pencils and crayons stay on the desk. A stretcher
+ * at the floor keeps it square.
+ */
+export function kidsdesk(): Design {
+  const w = 70;
+  const h = 60;
+  const top = 52;
+  const k = kit(36, 45);
+  const { t, d } = k;
+  return piece({
+    colour: "white",
+    thickness: 36,
+    boards: [
+      k.v("L", 0, 0, h),
+      k.v("R", w - t, 0, h),
+      k.h("T", t, w - t, top - t, t, d),
+      k.b("gallery", t, w - t, top - t, h),
+      k.b("stretcher", t, w - t, 0, 10),
+    ],
+  });
+}
+
+/**
+ * Shoe tower: a 32 cm bay at the bottom for winter boots and four 18 cm tiers
+ * above it, two pairs to a tier, on 52 cm of floor.
+ */
+export function shoetower(): Design {
+  const w = 52;
+  const h = 114;
+  const k = kit(18, 32);
+  const { t } = k;
+  const boots = t + 32;
+  const tiers = [boots, ...evenLevels(boots + t, h - t, 3, t)];
+  return piece({
+    colour: "black",
+    thickness: 18,
+    boards: [...carcass(k, w, h), ...tiers.map((y, i) => k.h(`s${i + 1}`, t, w - t, y)), ...rails(k, 0, w, h)],
+  });
+}
+
+/**
+ * Hall console for a narrow hallway: keys on top at 80 cm, a 12 cm slot for
+ * the post and the gloves, two bays for bags or baskets and two for shoes. One
+ * line of dividers down the middle carries every board at mid-span.
+ */
+export function hallConsole(): Design {
+  const w = 100;
+  const h = 80;
+  const d = 32;
+  const k = kit(18, d);
+  const { t } = k;
+  const cx = (w - t) / 2;
+  const shoeY = t + 17;
+  const slotY = h - t - 12 - t;
+  return piece({
+    colour: "white",
+    thickness: 18,
+    boards: [
+      ...carcass(k, w, h),
+      k.h("shoes", t, w - t, shoeY),
+      k.h("slot", t, w - t, slotY),
+      k.v("c1", cx, t, shoeY, t, d),
+      k.v("c2", cx, shoeY + t, slotY),
+      k.v("c3", cx, slotY + t, h - t, t, d),
+      k.b("rail-top", t, w - t, slotY + t + 0.5, h - t),
+      k.b("rail-bottom", t, w - t, t, t + 10),
+    ],
+  });
+}
+
+/**
+ * Hall bench with a back: sit at 46 cm to put your shoes on and lean on the
+ * back panel (it takes the coat hooks of your choice); hats and gloves on the
+ * shelf above, four shoe cubbies under the seat. The back panel stops 5 mm
+ * short of the seat and the shelf, so the two sides hold it.
+ */
+export function halltree(): Design {
+  const w = 66;
+  const h = 120;
+  const d = 36;
+  const k = kit(18, d);
+  const { t } = k;
+  const cx = (w - t) / 2;
+  const seatY = 46 - t;
+  const shoeY = evenLevels(t, seatY, 1, t)[0];
+  const hatY = 98;
+  const gap = 0.5;
+  return piece({
+    colour: "black",
+    thickness: 18,
+    boards: [
+      ...carcass(k, w, h),
+      k.h("seat", t, w - t, seatY),
+      k.v("c", cx, t, seatY, t, d),
+      k.h("s1", t, cx, shoeY),
+      k.h("s2", cx + t, w - t, shoeY),
+      k.h("hat", t, w - t, hatY),
+      k.b("back", t, w - t, seatY + t + gap, hatY - gap),
+      ...rails(k, 0, w, h),
+    ],
+  });
+}
+
+/**
+ * Reading den: two book towers joined by a seat at 40 cm and a top at 120 cm,
+ * so a child sits inside the bookcase and leans on the back panel. A box of
+ * toys or books goes under the seat. The back panel runs from the bottom to
+ * the top (it braces the whole piece) and the seat stops 5 mm short of it; at
+ * 42 cm the seat is strong enough for an adult.
+ */
+export function den(): Design {
+  const tower = 30;
+  const seat = 42;
+  const h = 120;
+  const k = kit(18, 40);
+  const { t } = k;
+  const u1 = t + tower;
+  const u2 = u1 + t + seat;
+  const w = u2 + t + tower + t;
+  const seatY = 40 - t;
+  const levels = [seatY, 80 - t];
+  return piece({
+    colour: "white",
+    thickness: 18,
+    boards: [
+      ...carcass(k, w, h),
+      k.v("u1", u1, t, h - t),
+      k.v("u2", u2, t, h - t),
+      k.h("seat", u1 + t, u2, seatY, t + 0.5, k.d),
+      ...levels.map((y, i) => k.h(`l${i + 1}`, t, u1, y)),
+      ...levels.map((y, i) => k.h(`r${i + 1}`, u2 + t, w - t, y)),
+      k.b("back", u1 + t, u2, t, h - t),
+    ],
+  });
+}

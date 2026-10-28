@@ -80,6 +80,18 @@ export const CURATED_AUTHOR: Record<string, string> = {
   talltable: "petr",
   lowstand: "anna",
   catclimber: "lucie",
+  // Batch 3
+  lpcube: "kuba",
+  speakerbench: "kuba",
+  worknook: "martin",
+  minidesk: "kuba",
+  hutch: "tereza",
+  printerstand: "petr",
+  kidsdesk: "lucie",
+  shoetower: "petr",
+  console: "anna",
+  halltree: "tereza",
+  den: "myble",
 };
 
 /** The author of a curated design, falling back to the studio. */

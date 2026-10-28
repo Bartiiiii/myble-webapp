@@ -130,6 +130,18 @@ export const LIBRARY: LibraryItem[] = [
   curated("talltable", "nightstands", D.talltable(), { kind: "nightstand" }),
   curated("lowstand", "nightstands", D.lowstand(), { kind: "nightstand" }),
   curated("catclimber", "pets", D.catclimber(), { kind: "pet", wallAnchor: true }),
+  // Batch 3: TV & music, desks and office, hallway, the reading den
+  curated("lpcube", "media", D.lpcube(), { kind: "cube-shelf" }),
+  curated("speakerbench", "media", D.speakerbench(), { kind: "tv-bench" }),
+  curated("worknook", "office", D.worknook(), { kind: "desk", twoPeople: true }),
+  curated("minidesk", "office", D.minidesk(), { kind: "desk" }),
+  curated("hutch", "office", D.hutch(), { kind: "desk-shelf" }),
+  curated("printerstand", "office", D.printerstand(), { kind: "storage" }),
+  curated("kidsdesk", "office", D.kidsdesk(), { kind: "kids-desk" }),
+  curated("shoetower", "hallway", D.shoetower(), { kind: "shoe-rack", wallAnchor: true }),
+  curated("console", "hallway", D.hallConsole(), { kind: "console" }),
+  curated("halltree", "hallway", D.halltree(), { kind: "hall-tree", seat: true, wallAnchor: true }),
+  curated("den", "storage", D.den(), { kind: "reading-nook", seat: true, wallAnchor: true, twoPeople: true }),
 ];
 
 /** The curated ids, the only ones whose name/story come from the dictionary. */

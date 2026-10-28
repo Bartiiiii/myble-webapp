@@ -270,18 +270,21 @@ export interface SeatReport {
 }
 
 /**
- * Seats (benches, the cat bench): the top surface must take a person sitting
- * in the middle of its longest span with a safety factor of 2 on the board's
- * bending strength: σ = 3PL / (2bt²). Depth (b) matters here, unlike for the
- * spread book load.
+ * Seats (benches, the cat bench): the surface people sit on must take a person
+ * sitting in the middle of its longest span with a safety factor of 2 on the
+ * board's bending strength: σ = 3PL / (2bt²). Depth (b) matters here, unlike
+ * for the spread book load. The seat is the board named "seat" where a piece
+ * has one under its top (the hall bench, the reading den), else the top.
  */
 export function seatChecks(design: Design): SeatReport[] {
   const all = boards(design);
   const top = Math.max(...all.map((b) => b.box.max.y));
+  const named = all.filter((b) => b.part.id === "seat");
+  const seats = named.length > 0 ? named : all.filter((b) => b.part.axis === "y" && near(b.box.max.y, top));
   const allowed = (BENDING_STRENGTH_NMM2[design.thickness] ?? 8.5) / SEAT_SAFETY;
   const bySeat = new Map(spans(design).map((s) => [s.partId, s]));
-  return all
-    .filter((b) => b.part.axis === "y" && near(b.box.max.y, top) && bySeat.has(b.part.id))
+  return seats
+    .filter((b) => bySeat.has(b.part.id))
     .map((b) => {
       const s = bySeat.get(b.part.id)!;
       const L = s.spanCm * 10;
@@ -466,7 +469,8 @@ export type PieceKind =
   | "console"
   | "storage"
   | "wardrobe"
-  | "tv-unit"
+  | "hall-tree"
+  | "reading-nook"
   | "kids-desk"
   | "pet"
   | "plant-stand";
@@ -501,8 +505,10 @@ export const ENVELOPES: Record<PieceKind, Envelope> = {
   console: { h: [70, 95], w: [60, 160], d: [25, 45], thick: false },
   storage: { h: [30, 120], w: [40, 160], d: [25, 50], thick: false },
   wardrobe: { h: [120, 200], w: [60, 120], d: [40, 60], thick: false },
-  // A low TV bench with a tall bay at one end: the bench sets the seat, the tower the height.
-  "tv-unit": { h: [40, 140], w: [80, 200], d: [30, 50], thick: false },
+  // A hall bench with a back panel and a hat shelf above: the seat sets the depth, the shelf the height.
+  "hall-tree": { h: [100, 200], w: [50, 120], d: [30, 45], thick: false },
+  // A bookcase a child sits inside: towers either side of a seat, joined by the top.
+  "reading-nook": { h: [100, 160], w: [80, 160], d: [30, 50], thick: false },
   "kids-desk": { h: [50, 60], w: [50, 100], d: [40, 60], thick: true },
   pet: { h: [35, 120], w: [40, 160], d: [30, 60], thick: false },
   "plant-stand": { h: [40, 120], w: [30, 120], d: [25, 45], thick: false },
