@@ -146,10 +146,7 @@ export function DesignDialog({
             </dl>
 
             {item.wallAnchor && (
-              <p className="mt-4 flex items-start gap-2 rounded-xl bg-zinc-50 px-3 py-2.5 text-xs leading-5 text-zinc-600">
-                <span className="shrink-0 rounded-full bg-zinc-900 px-2 py-0.5 font-medium text-white">{t("library.anchor")}</span>
-                <span>{t("library.anchorNote")}</span>
-              </p>
+              <p className="mt-3 text-[11px] leading-4 text-zinc-400">* {t("library.anchorNote")}</p>
             )}
 
             <button
