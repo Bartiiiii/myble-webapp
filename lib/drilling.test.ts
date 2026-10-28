@@ -82,6 +82,37 @@ describe("drilling plan", () => {
     // Each joint contributes exactly two rows (one per board).
     expect(drillingPlan(d).rows.length).toBe(joints.length * 2);
   });
+
+  // skrinka stacks its centre divider through four shelves, so every shelf is
+  // drilled from above and from below at the same x. Two 12 mm blind holes in
+  // 18 mm board meet in the middle, and the dowels collide before either joint
+  // closes: the lower row has to sit between the upper row's holes.
+  it("staggers holes drilled into both faces of one 18 mm board", () => {
+    const d = presetDesign("skrinka");
+    const plan = drillingPlan(d);
+    expect(plan.warnings).toEqual([]);
+    const clear = DOWEL.diameterMm + DOWEL.minHoleGapMm;
+    let opposedBoards = 0;
+    for (const rows of plan.byPart.values()) {
+      const front = rows.filter((r) => r.kind === "face" && r.surface === "front").flatMap(rowHoles);
+      const back = rows.filter((r) => r.kind === "face" && r.surface === "back").flatMap(rowHoles);
+      if (front.length > 0 && back.length > 0) opposedBoards++;
+      for (const f of front) for (const b of back) {
+        expect(Math.hypot(f.xMm - b.xMm, f.yMm - b.yMm)).toBeGreaterThanOrEqual(clear);
+      }
+    }
+    expect(opposedBoards).toBeGreaterThan(0);
+    // Staggering moves holes, it never drops a joint below two dowels.
+    for (const row of plan.rows) expect(row.count).toBeGreaterThanOrEqual(2);
+  });
+
+  it("leaves 36 mm board alone: two blind holes fit through it", () => {
+    const thin = presetDesign("skrinka");
+    const thick = { ...thin, thickness: 36 as const };
+    const plan = drillingPlan(thick);
+    // Same joints at 36 mm keep the standard layout on both faces.
+    expect(plan.dowelCount).toBe(detectJoints(thick).reduce((n, j) => n + j.dowels.length, 0));
+  });
 });
 
 describe("cut parts vs drilling", () => {

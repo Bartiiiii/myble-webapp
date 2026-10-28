@@ -30,7 +30,7 @@ import {
   type Part,
   faceAxes,
 } from "./model";
-import { detectJoints } from "./geometry";
+import { detectJoints, type Joint } from "./geometry";
 
 // --- Hardware & machine limits ----------------------------------------------
 // One place for every number meble's drilling form wants. The depths assume a
@@ -112,7 +112,8 @@ export type DrillWarningCode =
   | "edgeMargin" // hole centre too close to a formatka edge
   | "holeGap" // two holes closer than meble's 5 mm minimum
   | "depth" // blind face hole too deep for the board
-  | "unsupported"; // a contact we can't express as dowels
+  | "unsupported" // a contact we can't express as dowels
+  | "faceClash"; // blind holes from both faces meet inside a thin board
 
 export interface DrillWarning {
   code: DrillWarningCode;
@@ -190,7 +191,7 @@ export function drillingPlan(design: Design): DrillingPlan {
   const warnings: DrillWarning[] = [];
   let dowelCount = 0;
 
-  for (const joint of detectJoints(design)) {
+  for (const joint of staggerOpposedDowels(detectJoints(design), byId, tMm)) {
     const a = byId.get(joint.aId);
     const b = byId.get(joint.bId);
     if (!a || !b || joint.dowels.length === 0) continue;
@@ -276,7 +277,7 @@ export function drillingPlan(design: Design): DrillingPlan {
 
   for (const [partId, list] of byPart) {
     const part = byId.get(partId);
-    if (part) warnings.push(...checkPart(part, list));
+    if (part) warnings.push(...checkPart(part, list, tMm));
   }
 
   return {
@@ -306,7 +307,7 @@ export function rowHoles(row: DrillRow): { xMm: number; yMm: number }[] {
 }
 
 /** meble rejects holes too close to each other; blow-out is on us to avoid. */
-function checkPart(part: Part, list: DrillRow[]): DrillWarning[] {
+function checkPart(part: Part, list: DrillRow[], tMm: number): DrillWarning[] {
   const out: DrillWarning[] = [];
   const wMm = mm(part.aCm);
   const hMm = mm(part.bCm);
@@ -363,7 +364,106 @@ function checkPart(part: Part, list: DrillRow[]): DrillWarning[] {
       }
     }
   }
+
+  // Holes on OPPOSITE faces only stay apart while the board is thicker than
+  // both blind holes together. In 18 mm board two 12 mm holes overlap by
+  // 6 mm, so a pair drilled at the same spot from both faces is a through
+  // hole, and the two dowels meet in the middle before either joint closes.
+  if (opposedClashes(list, tMm)) {
+    out.push({
+      code: "faceClash",
+      partId: part.id,
+      detail: `Face holes from both sides land within ${DOWEL.diameterMm + DOWEL.minHoleGapMm} mm of each other; two ${DOWEL.faceDepthMm} mm holes meet inside a ${tMm} mm board.`,
+    });
+  }
   return dedupe(out);
+}
+
+/** Do face holes drilled from opposite surfaces of one board meet inside it? */
+function opposedClashes(list: DrillRow[], tMm: number): boolean {
+  if (2 * DOWEL.faceDepthMm <= tMm) return false;
+  const front = list.filter((r) => r.kind === "face" && r.surface === "front").flatMap(rowHoles);
+  const back = list.filter((r) => r.kind === "face" && r.surface === "back").flatMap(rowHoles);
+  const min = DOWEL.diameterMm + DOWEL.minHoleGapMm;
+  return front.some((f) => back.some((b) => Math.hypot(f.xMm - b.xMm, f.yMm - b.yMm) < min));
+}
+
+// --- Opposed joints ------------------------------------------------------------
+// A board with a joint on each face at the same place — a shelf with one
+// divider standing on it and another under it, the classic stacked grid —
+// gets its two rows of face holes drilled into the same spots. In 18 mm board
+// the two blind holes meet (see `opposedClashes`). The fix a workshop uses is
+// to stagger the second row: same joint, same strength, holes between the
+// first row's holes instead of opposite them.
+
+const CLEAR_CM = (DOWEL.diameterMm + DOWEL.minHoleGapMm) / 10;
+/** meble's end-hole offset minimum, as an inset from the joint's ends (cm). */
+const END_MIN_CM = MEBLE_LIMITS.edgeOffsetMinMm / 10;
+
+/**
+ * Re-space the dowels of every joint that would clash, through the board, with
+ * a joint on that board's other face. Joints on the board's "−" side move; the
+ * "+" side keeps the standard layout. Boards thick enough for two blind holes
+ * (36 mm) are left exactly as they were.
+ */
+function staggerOpposedDowels(joints: Joint[], byId: Map<string, Part>, tMm: number): Joint[] {
+  if (2 * DOWEL.faceDepthMm <= tMm) return joints;
+  const out = joints.map((j) => ({ ...j, dowels: j.dowels.map((d) => ({ ...d })) }));
+
+  for (const board of byId.values()) {
+    // Joints that drill this board's face, split by which face.
+    const facing = out.filter(
+      (j) => (j.aId === board.id || j.bId === board.id) && j.axis === board.axis && j.dowels.length > 0,
+    );
+    const sideOf = (j: Joint) => {
+      const mate = byId.get(j.aId === board.id ? j.bId : j.aId);
+      return mate && mate.pos[j.axis] > board.pos[j.axis] ? "+" : "-";
+    };
+    const plus = facing.filter((j) => sideOf(j) === "+");
+    const minus = facing.filter((j) => sideOf(j) === "-");
+    if (plus.length === 0 || minus.length === 0) continue;
+
+    const blocked = plus.flatMap((j) => j.dowels);
+    for (const joint of minus) {
+      const clashes = (pts: Joint["dowels"]) =>
+        pts.some((p) => blocked.some((q) => inPlaneGap(p, q, joint.axis) < CLEAR_CM));
+      if (!clashes(joint.dowels)) continue;
+      const moved = restagger(joint).find((candidate) => !clashes(candidate));
+      if (moved) joint.dowels = moved;
+    }
+  }
+  return out;
+}
+
+/** Distance between two hole centres projected onto a board's face (cm). */
+function inPlaneGap(p: Joint["dowels"][number], q: Joint["dowels"][number], axis: Axis): number {
+  const [u, v] = (["x", "y", "z"] as Axis[]).filter((a) => a !== axis);
+  return Math.hypot(p[u] - q[u], p[v] - q[v]);
+}
+
+/**
+ * Alternative dowel layouts for one joint, best first: between the standard
+ * holes (one fewer dowel, never fewer than two), then the standard holes
+ * pulled 2 cm further in from the ends. Every layout keeps meble's 20 mm
+ * end distance.
+ */
+function restagger(joint: Joint): Joint["dowels"][] {
+  const along = (["x", "y", "z"] as Axis[]).find((a) => Math.abs(joint.seam.a[a] - joint.seam.b[a]) > 1e-6);
+  if (!along) return [];
+  const lo = Math.min(joint.seam.a[along], joint.seam.b[along]);
+  const hi = Math.max(joint.seam.a[along], joint.seam.b[along]);
+  const at = (c: number) => {
+    const p = { ...joint.dowels[0] };
+    p[along] = Math.round(c * 100) / 100;
+    return p;
+  };
+  const inRange = (c: number) => c >= lo + END_MIN_CM - 1e-6 && c <= hi - END_MIN_CM + 1e-6;
+  const sorted = joint.dowels.map((d) => d[along]).sort((p, q) => p - q);
+
+  const layouts: number[][] = [];
+  if (sorted.length >= 3) layouts.push(sorted.slice(1).map((c, i) => (c + sorted[i]) / 2));
+  layouts.push(sorted.map((c) => (c < (lo + hi) / 2 ? c + 2 : c - 2)));
+  return layouts.filter((cs) => cs.length >= 2 && cs.every(inRange)).map((cs) => cs.map(at));
 }
 
 function groupBySurface(list: DrillRow[]): Map<string, DrillRow[]> {
