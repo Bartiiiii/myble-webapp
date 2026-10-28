@@ -678,7 +678,19 @@ export default function HomePage() {
                       <path d={path} strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                   </div>
-                  <h3 className="mt-4 text-base font-semibold text-white">{t(`home.materials.m${idx + 1}t`)}</h3>
+                  <h3 className="mt-4 text-base font-semibold text-white">
+                    {/* The last title is too long for a phone tile: it wrapped
+                        to a third line and stretched the whole grid, so phones
+                        get a shorter version. */}
+                    {idx === 3 ? (
+                      <>
+                        <span className="sm:hidden">{t("home.materials.m4tShort")}</span>
+                        <span className="hidden sm:inline">{t("home.materials.m4t")}</span>
+                      </>
+                    ) : (
+                      t(`home.materials.m${idx + 1}t`)
+                    )}
+                  </h3>
                   <p className="mt-1.5 hidden text-sm leading-6 text-zinc-400 sm:block">{t(`home.materials.m${idx + 1}b`)}</p>
                 </div>
               ))}
