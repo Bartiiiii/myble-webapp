@@ -19,6 +19,11 @@ threshold changed, so no `validated_by:` sign-off is needed.
   z-board (≤ 25 cm tall, at least twice as wide) is a `rail` and is emitted as
   a brace (`top_rear` / `mid_rear` / `plinth`), so STRUCT-BACK-004 can see
   bracing that is designed in. Every joint is the standard cam + dowel system.
+- Packing (`calc/packaging.ts`): a pack also closes when the next panel would
+  make a stack that fits a parcel carrier too thick for all of them, so a
+  tall bookcase ships as two GLS parcels instead of being routed to pallet
+  freight (SHIP-PANEL-001, severity 4) just because its boards were light
+  enough to share one stack. A single panel no carrier takes still goes pallet.
 - Facade: findings whose rule has no catalogue message (MFG-EDGE-005 fires on
   every design) get a fallback message from `locales/fallback.ts` instead of
   an empty string.

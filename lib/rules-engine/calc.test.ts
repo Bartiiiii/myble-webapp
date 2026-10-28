@@ -132,6 +132,18 @@ describe("packaging.ts", () => {
     expect(packed.length).toBe(design.parts.length);
   });
 
+  it("starts a second parcel rather than a stack too thick for the courier", () => {
+    // Two 1.8 m sides and a pile of short shelves: light enough for one pack,
+    // but stacked together far past GLS's 3 m girth. Two parcels, no pallet.
+    const design = makeValidBedside();
+    design.parts.push(part("tallL", "side", 1800, 300), part("tallR", "side", 1800, 300));
+    for (let i = 0; i < 8; i++) design.parts.push(part(`sh${i}`, "shelf_fixed", 360, 300));
+    const result = packDesign(design, materials, DEFAULT_CARRIER_PROFILES);
+    expect(result.any_pallet).toBe(false);
+    expect(result.packages.length).toBeGreaterThan(1);
+    expect(result.packages.flatMap((p) => p.part_ids).length).toBe(design.parts.length);
+  });
+
   it("falls back to pallet freight when no carrier fits", () => {
     expect(carrierFor([2500, 400, 150], 20, DEFAULT_CARRIER_PROFILES)).toBe("pallet_freight");
     expect(carrierFor([1900, 400, 150], 20, DEFAULT_CARRIER_PROFILES)).toBe("gls_cz");

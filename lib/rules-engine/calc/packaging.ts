@@ -4,7 +4,10 @@
 // plus a protective allowance per side (SHIP-PROT-003, provisional 20 mm);
 // pack height = Σ panel thicknesses + allowance. Greedy fill in a STABLE order
 // (sort by longest side desc, then shortest side desc, then part id) — no
-// randomised heuristics, same input ⇒ same packs, always.
+// randomised heuristics, same input ⇒ same packs, always. A pack closes at the
+// handling target, or when the next panel would make a stack that fits a
+// parcel carrier too thick for every one of them (a 180 cm bookcase is two GLS
+// parcels, not a pallet); a single panel no carrier takes still goes pallet.
 
 import type { DesignModel, Part } from "../design";
 import type { Material } from "../types";
@@ -79,13 +82,19 @@ export function packDesign(
   const packages: PackedPackage[] = [];
   let current: P[] = [];
 
+  const dimsOf = (pack: P[]): [number, number, number] => {
+    const long = Math.max(...pack.map((p) => p.long)) + 2 * PACKAGING_ALLOWANCE_MM;
+    const short = Math.max(...pack.map((p) => p.short)) + 2 * PACKAGING_ALLOWANCE_MM;
+    const height = pack.reduce((s, p) => s + p.part.thickness_mm, 0) + 2 * PACKAGING_ALLOWANCE_MM;
+    return [long, short, height].sort((a, b) => b - a) as [number, number, number];
+  };
+  const massOf = (pack: P[]): number => pack.reduce((s, p) => s + p.mass, 0);
+  const parcel = (pack: P[]): boolean => carrierFor(dimsOf(pack), massOf(pack), carriers) !== "pallet_freight";
+
   const flush = (): void => {
     if (current.length === 0) return;
-    const long = Math.max(...current.map((p) => p.long)) + 2 * PACKAGING_ALLOWANCE_MM;
-    const short = Math.max(...current.map((p) => p.short)) + 2 * PACKAGING_ALLOWANCE_MM;
-    const height = current.reduce((s, p) => s + p.part.thickness_mm, 0) + 2 * PACKAGING_ALLOWANCE_MM;
-    const dims = [long, short, height].sort((a, b) => b - a) as [number, number, number];
-    const mass = current.reduce((s, p) => s + p.mass, 0);
+    const dims = dimsOf(current);
+    const mass = massOf(current);
     packages.push({
       index: packages.length,
       part_ids: current.map((p) => p.part.id),
@@ -97,8 +106,9 @@ export function packDesign(
   };
 
   for (const item of items) {
-    const mass = current.reduce((s, p) => s + p.mass, 0);
-    if (current.length > 0 && mass + item.mass > PACK_TARGET_KG) flush();
+    const mass = massOf(current);
+    const outgrowsParcel = current.length > 0 && parcel(current) && !parcel([...current, item]);
+    if (current.length > 0 && (mass + item.mass > PACK_TARGET_KG || outgrowsParcel)) flush();
     current.push(item);
     // A single part heavier than the target still ships alone (may exceed
     // target; SHIP-MASS-002 flags it if it busts the hard cap).
