@@ -24,6 +24,7 @@
 
 import { type Design, legacyToDesign, type LegacyDesign, presetDesign } from "./design";
 import { type Author, curatedAuthor } from "./designers";
+import type { PieceKind } from "./libraryRules";
 
 /**
  * Browse categories. `all` is the default pseudo-category (never assigned to an
@@ -65,6 +66,15 @@ export interface LibraryItem {
   title?: string;
   note?: string;
   createdAt?: string;
+  /**
+   * Curated only: what the piece is for. Drives the proportion and board
+   * checks in lib/libraryRules.ts.
+   */
+  kind?: PieceKind;
+  /** Curated only: the rules engine asks for the wall-anchor kit (card label; CI keeps it honest). */
+  wallAnchor?: boolean;
+  /** Curated only: two people recommended to assemble it (card label; CI keeps it honest). */
+  twoPeople?: boolean;
 }
 
 /** Legacy-format sources for the curated pieces (BOARD = 1.8 cm). */

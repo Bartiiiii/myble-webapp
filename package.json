@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "vitest run"
+    "test": "vitest run",
+    "library:render": "vite-node scripts/render-library.ts"
   },
   "dependencies": {
     "@opentelemetry/exporter-logs-otlp-http": "^0.219.0",
