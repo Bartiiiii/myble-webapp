@@ -121,6 +121,29 @@ describe("exposed edges + joints (L-corner)", () => {
   });
 });
 
+describe("dowel spacing", () => {
+  // A shelf butting a wall: the joint runs along the depth, so the depth is its length.
+  const joint = (depthCm: number) => {
+    const wall: Part = { id: "wall", role: "wall", axis: "x", aCm: 40, bCm: depthCm, pos: { x: 19.1, y: 0, z: 0 } };
+    const shelf: Part = { id: "shelf", role: "shelf", axis: "y", aCm: 38.2, bCm: depthCm, pos: { x: -0.9, y: 0, z: 0 } };
+    return detectJoints(base([wall, shelf], { w: 40, h: 40, d: depthCm }))[0];
+  };
+
+  it("never puts two dowels closer than meble drills (8 mm hole + 5 mm wall)", () => {
+    for (let mm = 100; mm <= 400; mm++) {
+      const zs = joint(mm / 10)
+        .dowels.map((p) => p.z)
+        .sort((a, b) => a - b);
+      for (let i = 1; i < zs.length; i++) expect(zs[i] - zs[i - 1]).toBeGreaterThanOrEqual(1.3 - 1e-9);
+    }
+  });
+
+  it("gives a joint just over the two end insets one central dowel, a longer one two", () => {
+    expect(joint(10.5).dowels).toHaveLength(1);
+    expect(joint(12).dowels).toHaveLength(2);
+  });
+});
+
 describe("snap", () => {
   it("pulls a part with a small gap flush against a neighbour and reports a contact point", () => {
     const wall: Part = { id: "wall", role: "wall", axis: "x", aCm: 40, bCm: 30, pos: { x: 19.1, y: 0, z: 0 } };

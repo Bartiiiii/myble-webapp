@@ -3,6 +3,7 @@ import { type Axis, type Design, partBox, thicknessCm } from "../model";
 import {
   AXES,
   DOWEL_END_INSET_CM,
+  DOWEL_MIN_SPACING_CM,
   DOWEL_PITCH_CM,
   contactAxis,
   overlap1D,
@@ -21,7 +22,10 @@ export interface Joint {
 
 function dowelOffsets(lengthCm: number): number[] {
   const usable = lengthCm - 2 * DOWEL_END_INSET_CM;
-  if (usable <= 0) return [0]; // tiny joint: a single central dowel
+  // Tiny joint: a single central dowel. That includes joints only just longer
+  // than the two insets, where a second dowel would land closer to the first
+  // than meble drills (a 10.5 cm rail used to get two holes 5 mm apart).
+  if (usable < DOWEL_MIN_SPACING_CM) return [0];
   const count = Math.max(2, Math.floor(usable / DOWEL_PITCH_CM) + 1);
   const step = usable / (count - 1);
   return Array.from({ length: count }, (_, i) => -lengthCm / 2 + DOWEL_END_INSET_CM + i * step);

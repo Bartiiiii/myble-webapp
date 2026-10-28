@@ -14,6 +14,9 @@ export const MIN_CONTACT_CM = 0.5; // a real joint must share at least this much
 export const DOWEL_PITCH_CM = 11; // dowel spacing along a joint (~96–128 mm)
 export const DOWEL_END_INSET_CM = 5; // first/last dowel inset from the joint ends
 export const DOWEL_DIAM_MM = 8; // 8 mm dowels per the meble sheet
+// Closest two dowels may sit, centre to centre: the 8 mm hole plus meble's
+// 5 mm minimum between holes (DOWEL in lib/drilling.ts).
+export const DOWEL_MIN_SPACING_CM = 1.3;
 
 export const AXES: Axis[] = ["x", "y", "z"];
 
