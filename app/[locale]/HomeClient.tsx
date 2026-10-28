@@ -434,10 +434,12 @@ function HighlightCard({
             />
           )}
         </div>
-        <div className="p-4 sm:p-5">
+        <div className="p-3 sm:p-5">
+          {/* On phones the two-up card is too narrow for both, so the name
+              wins and the category (already in the pills above) hides. */}
           <div className="flex items-center justify-between gap-3">
-            <h3 className="truncate text-base font-semibold text-zinc-900">{name}</h3>
-            <span className="shrink-0 font-mono text-[11px] text-zinc-400">
+            <h3 className="truncate text-sm font-semibold text-zinc-900 sm:text-base">{name}</h3>
+            <span className="hidden shrink-0 font-mono text-[11px] text-zinc-400 sm:inline">
               {t(`library.categories.${item.category}`)}
             </span>
           </div>
