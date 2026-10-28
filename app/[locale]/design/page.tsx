@@ -42,6 +42,7 @@ import {
 import { quoteDesign } from "../../../lib/quote";
 import { PRICING_DEBUG } from "../../../lib/pricingConfig";
 import { LIBRARY, type LibraryItem } from "../../../lib/library";
+import { roomFor } from "../../../lib/rooms";
 import { useLibraryPool } from "../../../lib/useLibraryPool";
 import { useI18n, useT, type TFn } from "../../../lib/i18n";
 import { FRONT_FRAME, type MoveFrame } from "../../../lib/viewAxes";
@@ -941,7 +942,15 @@ function InspirationCard({ item, onUse }: { item: LibraryItem; onUse: () => void
     >
       <div ref={observe} className="relative flex aspect-square items-center justify-center overflow-hidden">
         {visible && (
-          <ShelfViewer design={item.design} background={WALL} height={200} interactive={false} autoRotate={!reduced} lite />
+          <ShelfViewer
+            design={item.design}
+            background={WALL}
+            height={200}
+            interactive={false}
+            autoRotate={!reduced}
+            lite
+            room={roomFor(item)}
+          />
         )}
       </div>
       {/* White strip under the thumbnail, so the name reads as a caption rather
