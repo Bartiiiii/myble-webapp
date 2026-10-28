@@ -945,7 +945,7 @@ function InspirationCard({ item, onUse }: { item: LibraryItem; onUse: () => void
           <ShelfViewer
             design={item.design}
             background={WALL}
-            height={200}
+            height="100%"
             interactive={false}
             autoRotate={!reduced}
             lite
