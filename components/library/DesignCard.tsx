@@ -8,6 +8,7 @@ import { FireButton } from "../FireButton";
 import { AuthorChip } from "./AuthorChip";
 import { LazyStage, usePrefersReducedMotion } from "./LazyStage";
 import { itemName, type LibraryItem } from "../../lib/library";
+import { roomFor } from "../../lib/rooms";
 import { saveDesign } from "../../lib/design";
 import { useI18n } from "../../lib/i18n";
 import { useIsNarrow } from "../../lib/useIsNarrow";
@@ -44,7 +45,7 @@ export function DesignCard({
       <div className="relative">
         <div className="card-lift relative overflow-hidden rounded-2xl bg-white text-left ring-1 ring-zinc-200 sm:rounded-3xl">
           <div className="relative aspect-square overflow-hidden bg-[#ece7df]">
-            <LazyStage design={item.design} reduced={reduced} />
+            <LazyStage design={item.design} reduced={reduced} room={roomFor(item)} />
           </div>
           <div className="p-3 sm:p-6">
             <div className="flex items-baseline justify-between gap-2 sm:gap-3">

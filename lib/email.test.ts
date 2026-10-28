@@ -12,9 +12,10 @@ const base = (locale: "en" | "cs"): OrderConfirmationEmailParams => ({
   consent: {
     orderNo: "MB-2026-1234",
     locale,
-    acceptedAt: "2026-08-18T10:00:00.000Z",
+    submittedAt: "2026-08-18T10:00:00.000Z",
+    legalCopyVersion: "2026-10-04",
+    termsVersion: "1.4",
     acceptedDocVersions: { "terms-and-conditions": "1.4" },
-    acknowledgedCustomWithdrawalExclusion: true,
   },
   summary: { total_price_czk: 3790 },
 });

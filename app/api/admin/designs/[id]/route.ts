@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { backstageApiStatus } from "@/lib/adminAuth";
 import { createAdminClient } from "@/utils/supabase/admin";
+import { awardDesignPublished } from "@/lib/rewards";
 
 // Backstage review of one community submission.
 //
@@ -48,5 +49,8 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     console.error("[admin/designs] review failed", { id, action, error: error.message });
     return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
   }
+  // myble+ bonus for getting a design into the library. Once per design, even
+  // if it is unpublished and approved again.
+  if (next === "published") await awardDesignPublished(id);
   return NextResponse.json({ ok: true, status: next });
 }

@@ -39,7 +39,7 @@ export async function POST(req: Request) {
   const { data: order, error } = await supabase
     .from("orders")
     .select(
-      "id, order_no, email, first_name, last_name, phone, street, city, zip, country, locale, design, payment_status, delivery_method",
+      "id, order_no, email, first_name, last_name, phone, street, city, zip, country, locale, design, payment_status, delivery_method, discount_czk",
     )
     .eq("order_no", orderNo)
     .maybeSingle();
@@ -77,6 +77,7 @@ export async function POST(req: Request) {
       country: order.country as string | null,
       locale: order.locale as string | null,
       deliveryMethod: order.delivery_method === "in-room" ? "in-room" : "curbside",
+      discountCzk: typeof order.discount_czk === "number" ? order.discount_czk : 0,
       clientTotalCzk: body.displayedTotalCzk ?? null,
     });
 

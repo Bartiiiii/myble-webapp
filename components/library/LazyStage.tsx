@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import React, { useCallback, useEffect, useState } from "react";
 import type { Design } from "../../lib/model";
+import type { RoomId } from "../../lib/rooms";
 import { useIsNarrow } from "../../lib/useIsNarrow";
 
 const ShelfViewer = dynamic(() => import("../ShelfViewer"), { ssr: false });
@@ -36,11 +37,14 @@ export function LazyStage({
   height = 380,
   fit,
   reduced = false,
+  room,
 }: {
   design: Design;
   height?: number;
   fit?: number;
   reduced?: boolean;
+  /** Show the piece standing in this furnished room. */
+  room?: RoomId;
 }) {
   const [visible, setVisible] = useState(false);
   const narrow = useIsNarrow();
@@ -69,6 +73,7 @@ export function LazyStage({
           autoRotate={!reduced}
           lite
           fit={fit ?? (narrow ? 0.78 : 1.1)}
+          room={room}
         />
       )}
     </div>

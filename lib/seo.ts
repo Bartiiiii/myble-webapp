@@ -7,7 +7,7 @@ import type { LegalSlug } from "./legal";
 // lives here. House rule: no em dashes in copy.
 
 type Copy = { title: string; description: string };
-type PageKey = "home" | "design" | "library" | "about" | "contact";
+type PageKey = "home" | "design" | "library" | "about" | "contact" | "delivery" | "refer" | "mybleplus";
 
 const PAGES: Record<PageKey, { path: string; en: Copy; cs: Copy }> = {
   home: {
@@ -60,6 +60,45 @@ const PAGES: Record<PageKey, { path: string; en: Copy; cs: Copy }> = {
       title: "O Myble | proč existujeme",
       description:
         "Myble začalo jedním kusem nábytku, který nikde nebyl k sehnání, a třemi víkendy jeho stavby. Výkres, nářezový plán, fronta, půjčená vrtačka a to, co jsme postavili, abyste nemuseli vy.",
+    },
+  },
+  delivery: {
+    path: "/delivery",
+    en: {
+      title: "Delivery and returns | Myble",
+      description:
+        "Delivery across Czechia for 499 Kč, free on kits from 10 000 Kč. Most orders arrive within 3 to 4 weeks of payment, always within 28 days.",
+    },
+    cs: {
+      title: "Doprava a doručení | Myble",
+      description:
+        "Doprava po celé ČR za 499 Kč, u sady od 10 000 Kč zdarma. Většina objednávek dorazí do 3 až 4 týdnů od platby, vždy do 28 dnů.",
+    },
+  },
+  refer: {
+    path: "/refer",
+    en: {
+      title: "Give 500 Kč, get 500 Kč | Refer a friend to Myble",
+      description:
+        "Share your code: your friend saves 500 Kč on their first made-to-measure piece and you get a 500 Kč voucher when their order goes into production.",
+    },
+    cs: {
+      title: "Dejte 500 Kč, získejte 500 Kč | Doporučte Myble",
+      description:
+        "Pošlete kamarádovi svůj kód: ušetří 500 Kč na první kus na míru a vy dostanete voucher na 500 Kč, jakmile jeho objednávka půjde do výroby.",
+    },
+  },
+  mybleplus: {
+    path: "/myble-plus",
+    en: {
+      title: "myble+ loyalty programme | Myble",
+      description:
+        "Earn a point for every 10 Kč you spend and 200 points for each design accepted into the library. Swap points for up to 1 500 Kč off.",
+    },
+    cs: {
+      title: "myble+ věrnostní program | Myble",
+      description:
+        "Za každých 10 Kč získáte bod a za návrh přijatý do knihovny 200 bodů. Body vyměníte za slevu až 1 500 Kč.",
     },
   },
   contact: {

@@ -181,6 +181,15 @@ export const LIBRARY: LibraryItem[] = [
 export const LIBRARY_IDS: readonly string[] = LIBRARY.map((i) => i.id);
 
 /**
+ * The curated pieces with backstage's published edits laid over them (see
+ * lib/curatedOverrides.ts). Anything without an edit keeps its code version.
+ */
+export function withCuratedOverrides(overrides: Record<string, Design> | null | undefined): LibraryItem[] {
+  if (!overrides) return LIBRARY;
+  return LIBRARY.map((item) => (overrides[item.id] ? { ...item, design: overrides[item.id] } : item));
+}
+
+/**
  * A community piece someone shared and backstage approved. Same shape as a
  * curated item, so every card, dialog and sort works on both without knowing
  * which is which — only the name/story lookup differs (see `itemName`).

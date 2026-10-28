@@ -74,7 +74,7 @@ export function saveDesign(d: Design): void {
   }
 }
 
-function isPartsDesign(v: unknown): v is Design {
+export function isPartsDesign(v: unknown): v is Design {
   return (
     !!v &&
     typeof v === "object" &&

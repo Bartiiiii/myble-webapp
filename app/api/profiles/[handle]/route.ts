@@ -9,7 +9,8 @@ import {
   isFollowing,
   toAuthor,
 } from "@/lib/community";
-import { communityItem, LIBRARY, type LibraryItem } from "@/lib/library";
+import { communityItem, type LibraryItem, withCuratedOverrides } from "@/lib/library";
+import { fetchCuratedOverrides } from "@/lib/curatedOverrides";
 import { CURATED_AUTHOR } from "@/lib/designers";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -34,8 +35,11 @@ export async function GET(_req: Request, ctx: { params: Promise<{ handle: string
   const profile = await getProfileByHandle(handle.toLowerCase());
   if (!profile) return NextResponse.json({ ok: false, error: "not_found" }, { status: 404 });
 
+  const overrides = profile.is_seed ? await fetchCuratedOverrides() : {};
   const curated: LibraryItem[] = profile.is_seed
-    ? LIBRARY.filter((item) => CURATED_AUTHOR[item.id] === profile.handle)
+    ? withCuratedOverrides(Object.fromEntries(Object.entries(overrides).map(([id, o]) => [id, o.design]))).filter(
+        (item) => CURATED_AUTHOR[item.id] === profile.handle,
+      )
     : [];
   const shared = profile.email ? await fetchPublishedByEmail(profile.email) : [];
   const items = [...curated, ...shared.map(communityItem)];

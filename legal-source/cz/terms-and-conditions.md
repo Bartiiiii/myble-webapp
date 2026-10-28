@@ -1,10 +1,10 @@
 # OBCHODNÍ PODMÍNKY — Myble (my-ble.eu)
 
-**Verze 1.4 (MVP) — Účinnost od: 18. srpna 2026**
+**Verze 1.5 (MVP) — Účinnost od: 4. října 2026**
 
 ## 1. Úvodní ustanovení
 1.1. Tyto obchodní podmínky ("**Podmínky**") upravují nákupy uskutečněné prostřednictvím internetového obchodu na adrese **my-ble.eu** ("**E-shop**").
-1.2. **Prodávající:** Bartłomiej Karol Kwaśnica, IČO 24439673, Uralská 689/7, 160 00 Praha 6 – Bubeneč, Česká republika ("**Prodávající**"). Kontaktní e-mail: **myble.eu@gmail.com**. Prodávající komunikuje především e-mailem.
+1.2. **Prodávající:** Bartłomiej Karol Kwaśnica, IČO 24439673, Uralská 689/7, 160 00 Praha 6 – Bubeneč, Česká republika ("**Prodávající**"). Kontaktní e-mail: **myble.eu@gmail.com**, telefon: **+420 773 028 150**. Prodávající komunikuje e-mailem a telefonicky.
 1.3. Zákazníkem může být spotřebitel nebo podnikatel. Je-li Zákazníkem **spotřebitel** (fyzická osoba jednající mimo rámec své podnikatelské činnosti), použijí se kogentní ustanovení českého a unijního práva na ochranu spotřebitele, která mají přednost před jakýmkoli odchylným ustanovením těchto Podmínek.
 1.4. Závazné znění smlouvy je v **českém jazyce**. Prodávající uzavřenou smlouvu archivuje a na žádost ji Zákazníkovi poskytne.
 

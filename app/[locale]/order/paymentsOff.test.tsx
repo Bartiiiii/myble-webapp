@@ -56,15 +56,8 @@ function fillForm() {
   }
 }
 
-/** Tick the three consent boxes so the submit button is enabled. */
-function acceptEverything() {
-  const boxes = screen.getAllByRole("checkbox") as HTMLInputElement[];
-  // Dimensions confirmation, §1837 custom-goods acknowledgement, T&C acceptance.
-  for (const box of boxes) if (!box.checked) fireEvent.click(box);
-}
-
 function submitButton() {
-  return screen.getByRole("button", { name: /Submit order|Order with obligation to pay/ });
+  return screen.getByRole("button", { name: "Order with obligation to pay" });
 }
 
 beforeEach(() => {
@@ -81,10 +74,22 @@ afterEach(() => {
 });
 
 describe("checkout interstitial — payments disabled", () => {
-  it("labels the submit button so it does not promise a payment", async () => {
+  it("labels the button with the obligation to pay (§1826a) even while payments are off", async () => {
+    // The order is binding either way; it is only settled by invoice.
     await renderOrderPage(false);
-    expect(screen.getByRole("button", { name: "Submit order" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Order with obligation to pay" })).toBeNull();
+    expect((submitButton() as HTMLButtonElement).disabled).toBe(false);
+    expect(screen.queryByRole("button", { name: "Submit order" })).toBeNull();
+  });
+
+  it("has no consent ticks: the legal terms are a passive notice under the button", async () => {
+    await renderOrderPage(false);
+    expect(screen.queryAllByRole("checkbox")).toHaveLength(0);
+    expect(screen.getByText("Made to measure: the 14-day right of withdrawal does not apply.")).toBeTruthy();
+    for (const name of ["Terms & Conditions", "Complaints Procedure", "Privacy Policy"]) {
+      const link = screen.getByRole("link", { name });
+      expect(link.getAttribute("target")).toBe("_blank");
+      expect(link.getAttribute("href")).toMatch(/^\/en\/legal\//);
+    }
   });
 
   it("states in the form, before the button, that no card payment happens yet", async () => {
@@ -100,7 +105,6 @@ describe("checkout interstitial — payments disabled", () => {
   it("opens the dialog on submit instead of placing the order straight away", async () => {
     await renderOrderPage(false);
     fillForm();
-    acceptEverything();
     fireEvent.click(submitButton());
 
     const dialog = await screen.findByRole("dialog");
@@ -113,7 +117,6 @@ describe("checkout interstitial — payments disabled", () => {
   it("cancelling closes the dialog and submits nothing", async () => {
     await renderOrderPage(false);
     fillForm();
-    acceptEverything();
     fireEvent.click(submitButton());
     await screen.findByRole("dialog");
 
@@ -129,7 +132,6 @@ describe("checkout interstitial — payments disabled", () => {
   it("Escape cancels too", async () => {
     await renderOrderPage(false);
     fillForm();
-    acceptEverything();
     fireEvent.click(submitButton());
     await screen.findByRole("dialog");
 
@@ -142,7 +144,6 @@ describe("checkout interstitial — payments disabled", () => {
   it("confirming submits exactly once, even on a double click", async () => {
     await renderOrderPage(false);
     fillForm();
-    acceptEverything();
     fireEvent.click(submitButton());
 
     const confirm = await screen.findByRole("button", { name: "I understand, submit the order" });
@@ -153,7 +154,12 @@ describe("checkout interstitial — payments disabled", () => {
     expect(fetch).toHaveBeenCalledTimes(1);
     const [url, init] = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
     expect(url).toBe("/api/order");
-    expect(JSON.parse((init as RequestInit).body as string).orderNo).toMatch(/^MB-\d{4}-\d{4}$/);
+    const body = JSON.parse((init as RequestInit).body as string);
+    expect(body.orderNo).toMatch(/^MB-\d{4}-\d{4}$/);
+    // The evidence of what was shown replaces the old tick booleans.
+    expect(body.consent).toMatchObject({ locale: "en", legalCopyVersion: "2026-10-04", termsVersion: expect.any(String) });
+    expect(typeof body.consent.submittedAt).toBe("string");
+    expect(body.consent).not.toHaveProperty("acknowledgedCustomWithdrawalExclusion");
     expect(push).toHaveBeenCalledWith(expect.stringContaining("/en/order/confirmation?order=MB-"));
   });
 });
@@ -166,7 +172,6 @@ describe("checkout interstitial — payments enabled", () => {
     expect(screen.getByRole("button", { name: "Order with obligation to pay" })).toBeTruthy();
 
     fillForm();
-    acceptEverything();
     fireEvent.click(submitButton());
 
     await waitFor(() => expect(push).toHaveBeenCalledTimes(1));

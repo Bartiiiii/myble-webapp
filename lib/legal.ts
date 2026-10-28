@@ -30,7 +30,7 @@ export interface LegalDocMeta {
 // these in sync when a file changes (the withdrawal form carries no version line
 // of its own, so it tracks the T&C release it ships with).
 export const LEGAL_DOCS: Record<LegalSlug, LegalDocMeta> = {
-  "terms-and-conditions": { slug: "terms-and-conditions", titleKey: "legal.docs.terms-and-conditions.title", version: "1.4" },
+  "terms-and-conditions": { slug: "terms-and-conditions", titleKey: "legal.docs.terms-and-conditions.title", version: "1.5" },
   "privacy-policy": { slug: "privacy-policy", titleKey: "legal.docs.privacy-policy.title", version: "1.2" },
   "cookies-policy": { slug: "cookies-policy", titleKey: "legal.docs.cookies-policy.title", version: "1.1" },
   "withdrawal-form": { slug: "withdrawal-form", titleKey: "legal.docs.withdrawal-form.title", version: "1.4" },
@@ -44,8 +44,17 @@ export function isLegalSlug(v: string): v is LegalSlug {
   return v in LEGAL_DOCS;
 }
 
-// The three documents a customer explicitly accepts at checkout (B4). The
-// accepted versions are stored with the consent record.
+/** Version of the T&C in force, recorded with every order. */
+export const TERMS_VERSION = LEGAL_DOCS["terms-and-conditions"].version;
+
+/** Version of the passive legal copy under the checkout order button (the
+ *  made-to-measure notice + "by placing the order you agree to…" line). The
+ *  checkout no longer collects ticks, so this is the proof of what the customer
+ *  saw: bump it whenever that copy in lib/i18n.tsx (`checkout.legal`) changes. */
+export const CHECKOUT_LEGAL_COPY_VERSION = "2026-10-04";
+
+// The three documents a customer agrees to by placing the order (B4). Their
+// versions are stored with the consent record.
 export const CHECKOUT_ACCEPTED_DOCS: LegalSlug[] = [
   "terms-and-conditions",
   "complaints-procedure",

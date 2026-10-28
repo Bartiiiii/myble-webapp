@@ -3,6 +3,9 @@ import { fetchSubmissions, type ShareStatus } from "@/lib/community";
 import { EmptyState, Kpi } from "@/components/admin/ui";
 import { SubmissionCard, type Submission } from "@/components/admin/SubmissionCard";
 import type { Design } from "@/lib/model";
+import { CuratedCard, type CuratedEntry } from "@/components/admin/CuratedCard";
+import { fetchCuratedOverrides } from "@/lib/curatedOverrides";
+import { LIBRARY } from "@/lib/library";
 
 // Backstage → Designs is the APPROVAL QUEUE for the public Design Library.
 //
@@ -14,6 +17,10 @@ import type { Design } from "@/lib/model";
 //
 // Private saves are still in the table (My Account → My Designs); they simply
 // aren't this page's business.
+//
+// The house designs (lib/library.ts, credited to the seeded designers) are
+// always live, so they sit under "Live in library" and "All" too, with an edit
+// path instead of approve/reject (components/admin/CuratedCard.tsx).
 
 export const dynamic = "force-dynamic";
 
@@ -32,7 +39,18 @@ export default async function BackstageDesigns({
   const { status } = await searchParams;
   const active = (FILTERS.find((f) => f.id === status)?.id ?? "pending") as ShareStatus | "all";
 
-  const all = await fetchSubmissions();
+  const [all, overrides] = await Promise.all([fetchSubmissions(), fetchCuratedOverrides()]);
+  const curated: CuratedEntry[] = LIBRARY.map((item) => {
+    const o = overrides[item.id];
+    return {
+      id: item.id,
+      category: item.category,
+      design: o?.design ?? item.design,
+      author: { handle: item.author.handle, name: item.author.name },
+      edited: o ? { version: o.version, updatedAt: o.updatedAt } : null,
+    };
+  });
+  const showCurated = active === "published" || active === "all";
   const shown = active === "all" ? all : all.filter((d) => d.share_status === active);
 
   const pending = all.filter((d) => d.share_status === "pending").length;
@@ -50,7 +68,7 @@ export default async function BackstageDesigns({
 
       <div className="grid grid-cols-3 gap-4">
         <Kpi label="Waiting for review" value={pending} />
-        <Kpi label="Live in library" value={published} />
+        <Kpi label="Live in library" value={published + curated.length} />
         <Kpi label="Rejected" value={rejected} />
       </div>
 
@@ -69,6 +87,23 @@ export default async function BackstageDesigns({
           </Link>
         ))}
       </div>
+
+      {showCurated && (
+        <section className="space-y-3">
+          <div>
+            <h2 className="text-sm font-semibold text-zinc-900">House designs · {curated.length}</h2>
+            <p className="text-xs text-zinc-500">
+              Made by us and credited to the house designers. Edit one in the configurator and publish the update.
+            </p>
+          </div>
+          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+            {curated.map((c) => (
+              <CuratedCard key={c.id} item={c} />
+            ))}
+          </div>
+          <h2 className="pt-3 text-sm font-semibold text-zinc-900">Community submissions · {shown.length}</h2>
+        </section>
+      )}
 
       {shown.length === 0 ? (
         <div className="rounded-2xl bg-white p-5 ring-1 ring-zinc-200">

@@ -385,3 +385,33 @@ body {
   user-select: text;
   -webkit-touch-callout: default;
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Promo ticker (components/promo/PromoBar.tsx). Two identical tracks each
+   slide one track-width left, so the loop is seamless. Hover, keyboard focus
+   or the pause button stop it; reduced motion makes it a still, swipeable row.
+   ───────────────────────────────────────────────────────────────────────── */
+@keyframes promo-marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-100%); }
+}
+.promo-marquee {
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 24px, #000 calc(100% - 72px), transparent calc(100% - 48px));
+  mask-image: linear-gradient(to right, transparent 0, #000 24px, #000 calc(100% - 72px), transparent calc(100% - 48px));
+}
+.promo-track {
+  animation: promo-marquee 52s linear infinite;
+  will-change: transform;
+}
+.promo-marquee:hover .promo-track,
+.promo-marquee:focus-within .promo-track,
+.promo-marquee[data-paused="true"] .promo-track {
+  animation-play-state: paused;
+}
+@media (prefers-reduced-motion: reduce) {
+  .promo-track { animation: none; }
+  .promo-track[aria-hidden="true"] { display: none; }
+  .promo-marquee { overflow-x: auto; scrollbar-width: none; }
+  .promo-marquee::-webkit-scrollbar { display: none; }
+  .promo-toggle { display: none; }
+}

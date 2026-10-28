@@ -85,11 +85,20 @@ export default async function BackstageOrderDetail({
           <div className="mt-5 border-t border-zinc-100 pt-4">
             <h3 className="text-xs font-medium uppercase tracking-wide text-zinc-500">Consent record (B4)</h3>
             <dl className="mt-3 grid grid-cols-2 gap-4">
-              <Field label="Accepted at" value={formatDate(order.accepted_at)} />
-              <Field
-                label="§1837 withdrawal ack."
-                value={order.acknowledged_custom_withdrawal_exclusion ? "Yes ✓" : "NO — check!"}
-              />
+              <Field label="Submitted at" value={formatDate(order.submitted_at ?? order.accepted_at)} />
+              {order.checkout_legal_copy_version ? (
+                // Passive notice (no ticks): the proof is which copy was shown.
+                <Field
+                  label="Checkout legal copy"
+                  value={<span className="font-mono text-xs">{order.checkout_legal_copy_version} · T&C {order.terms_version ?? "?"}</span>}
+                />
+              ) : (
+                // Orders placed before 2026-10-04 carried a §1837 tick.
+                <Field
+                  label="§1837 withdrawal ack."
+                  value={order.acknowledged_custom_withdrawal_exclusion ? "Yes ✓" : "NO — check!"}
+                />
+              )}
               <Field
                 label="Doc versions"
                 value={

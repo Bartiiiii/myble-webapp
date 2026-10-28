@@ -54,6 +54,8 @@ export interface Quote {
   price: number;
   /** Delivery, in CZK (DELIVERY_CZK, never marked up; + in-room surcharge). */
   deliveryCZK: number;
+  /** Promo discount taken off the kit, CZK (0 when none). Already in `total`. */
+  discountCZK: number;
   /** Landed COGS in CZK (mebleCZK + accessories + packaging). Excludes freight. */
   landedCZK: number;
   /** meble.pl cost only (board + edge + cutting + gluing + drilling), gross PLN. */
@@ -133,12 +135,18 @@ export interface PriceOptions {
    *  (only possible if FREE_SHIP_CZK is re-enabled) — it's a service fee, not
    *  transport cost. */
   deliveryMethod?: "curbside" | "in-room";
+  /** Server-validated promo discount (lib/rewards.ts), CZK. Comes off the kit,
+   *  never off delivery, and is clamped so the kit never goes below zero. It
+   *  counts toward the free-delivery threshold: the threshold is judged on
+   *  what the customer actually pays for the kit. */
+  discountCZK?: number;
 }
 
 export interface CzkPrice {
   price: number;
   sticker: number;
   deliveryCZK: number;
+  discountCZK: number;
   landedCZK: number;
   marginPct: number;
   vatRegistered: boolean;
@@ -161,9 +169,10 @@ export function priceFromMeble(mebleCostPLN: number, opts: PriceOptions = {}): C
   const base = (landedCZK * MARKUP) / (1 - PAYMENT_FEE_PCT) + freightShortfallCZK;
   const price = Math.max(PRICE_FLOOR_CZK, ceilTo90(base));
   const sticker = vat ? round0(price * (1 + CZ_VAT)) : price;
+  const discountCZK = Math.min(Math.max(0, Math.round(opts.discountCZK ?? 0)), price);
   // FREE_SHIP_CZK = 0 disables free shipping. In-room is a service surcharge, not
-  // the base transport fee — it would apply even if free shipping were on.
-  const freeShip = FREE_SHIP_CZK > 0 && price >= FREE_SHIP_CZK;
+  // the base transport fee — it applies even when the base fee is waived.
+  const freeShip = FREE_SHIP_CZK > 0 && price - discountCZK >= FREE_SHIP_CZK;
   const baseDeliveryCZK = freeShip ? 0 : DELIVERY_CZK;
   const inRoomSurchargeCZK = opts.deliveryMethod === "in-room" ? IN_ROOM_DELIVERY_SURCHARGE_CZK : 0;
   const deliveryCZK = baseDeliveryCZK + inRoomSurchargeCZK;
@@ -171,7 +180,7 @@ export function priceFromMeble(mebleCostPLN: number, opts: PriceOptions = {}): C
   const marginPct = price > 0 ? (price - landedCZK - freightShortfallCZK) / price : 0;
   const wtpCeilingCZK = opts.wtpCeilingCZK ?? null;
   const exceedsWTP = wtpCeilingCZK != null && sticker > wtpCeilingCZK;
-  return { price, sticker, deliveryCZK, landedCZK, marginPct, vatRegistered: vat, wtpCeilingCZK, exceedsWTP };
+  return { price, sticker, deliveryCZK, discountCZK, landedCZK, marginPct, vatRegistered: vat, wtpCeilingCZK, exceedsWTP };
 }
 
 /** WTP ceiling for a design: short pieces are side tables, taller ones shelves. §4. */
@@ -193,6 +202,7 @@ export function quoteDesign(design: Design, opts: PriceOptions = {}): Quote {
       total: emptyDeliveryCZK,
       price: 0,
       deliveryCZK: emptyDeliveryCZK,
+      discountCZK: 0,
       landedCZK: 0,
       mebleCostPLN: 0,
       marginPct: 0,
@@ -214,13 +224,15 @@ export function quoteDesign(design: Design, opts: PriceOptions = {}): Quote {
   const wtpCeilingCZK = opts.wtpCeilingCZK ?? wtpCeilingFor(design);
   const cz = priceFromMeble(pricing.mebleCostPLN, { ...opts, wtpCeilingCZK });
 
+  const total = cz.sticker - cz.discountCZK + cz.deliveryCZK;
   const quote: Quote = {
-    customerCZK: cz.sticker + cz.deliveryCZK,
+    customerCZK: total,
     kitCZK: cz.sticker,
     sticker: cz.sticker,
-    total: cz.sticker + cz.deliveryCZK,
+    total,
     price: cz.price,
     deliveryCZK: cz.deliveryCZK,
+    discountCZK: cz.discountCZK,
     landedCZK: cz.landedCZK,
     mebleCostPLN: pricing.mebleCostPLN,
     marginPct: cz.marginPct,

@@ -49,6 +49,7 @@ import {
   refundPayment,
 } from "@/lib/comgate/client";
 import type { ComgateStatus, ComgateStatusResponse } from "@/lib/comgate/types";
+import { awardOrderRewards } from "@/lib/rewards";
 
 export type PaymentStatus =
   | "created"
@@ -141,9 +142,14 @@ export function authoritativePrice(
   design: Design,
   country: string | null | undefined,
   deliveryMethod?: "curbside" | "in-room" | null,
+  discountCzk = 0,
 ): AuthoritativePrice {
+  // The discount comes from the order row, where /api/order wrote it only after
+  // lib/rewards.ts validated and reserved the code. It is server data, never a
+  // number the browser sent.
   const quote = quoteDesign(design, {
     deliveryMethod: deliveryMethod === "in-room" ? "in-room" : "curbside",
+    discountCZK: discountCzk,
   });
   const totalCzk = Math.round(quote.total);
   if (!Number.isFinite(totalCzk) || totalCzk <= 0) {
@@ -187,6 +193,8 @@ export interface StartPaymentInput {
   /** "in-room" adds IN_ROOM_DELIVERY_SURCHARGE_CZK server-side — must match what
    *  the customer selected at checkout, or assertPriceMatches below will fail. */
   deliveryMethod?: "curbside" | "in-room" | null;
+  /** orders.discount_czk — validated and reserved server-side at order time. */
+  discountCzk?: number | null;
   /** What the browser showed. Checked, never trusted. */
   clientTotalCzk?: number | null;
 }
@@ -232,7 +240,7 @@ export async function startPaymentForOrder(input: StartPaymentInput): Promise<St
     };
   }
 
-  const price = authoritativePrice(input.design, input.country, input.deliveryMethod);
+  const price = authoritativePrice(input.design, input.country, input.deliveryMethod, input.discountCzk ?? 0);
   assertPriceMatches(input.clientTotalCzk, price);
 
   const usePreauth = CAPTURE_MODE === "preauth";
@@ -454,6 +462,7 @@ export async function syncPaymentByTransId(
       orderPatch.status = "confirmed";
     }
     await supabase.from("orders").update(orderPatch).eq("id", payment.order_id);
+    if (next === "paid") await awardOrderRewards(payment.order_no);
   }
 
   const { data: fresh } = await supabase.from("payments").select("*").eq("id", payment.id).single();
@@ -577,6 +586,7 @@ export async function capturePaymentById(paymentId: string, amountCzk?: number):
     statusFrom: "authorized",
     statusTo: "paid",
   });
+  await awardOrderRewards(payment.order_no);
 }
 
 /** Release a held authorization — call this when a design is rejected. */

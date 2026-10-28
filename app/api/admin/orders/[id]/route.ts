@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { backstageApiStatus } from "@/lib/adminAuth";
 import { createAdminClient } from "@/utils/supabase/admin";
+import { REWARDABLE_STATUSES, awardOrderRewards, reverseOrderRewards } from "@/lib/rewards";
 
 const ALLOWED_STATUSES = [
   "received",
@@ -27,9 +28,23 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   }
 
   const supabase = createAdminClient();
-  const { error } = await supabase.from("orders").update({ status: body.status }).eq("id", id);
+  const { data: updated, error } = await supabase
+    .from("orders")
+    .update({ status: body.status })
+    .eq("id", id)
+    .select("order_no")
+    .maybeSingle();
   if (error) {
     return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+  }
+
+  // While online payment is off, "confirmed" is set here by hand once the bank
+  // transfer lands, so this is where a paid order earns its myble+ points and
+  // its referrer's voucher. Both are idempotent (lib/rewards.ts).
+  const orderNo = updated?.order_no as string | undefined;
+  if (orderNo) {
+    if ((REWARDABLE_STATUSES as readonly string[]).includes(body.status)) await awardOrderRewards(orderNo);
+    if (body.status === "cancelled") await reverseOrderRewards(orderNo);
   }
   return NextResponse.json({ ok: true });
 }

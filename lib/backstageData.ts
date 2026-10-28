@@ -35,6 +35,10 @@ export interface OrderRow {
   accepted_at: string;
   accepted_doc_versions: Record<string, string>;
   acknowledged_custom_withdrawal_exclusion: boolean;
+  /** Set on orders placed under the passive checkout notice (0011). */
+  submitted_at: string | null;
+  checkout_legal_copy_version: string | null;
+  terms_version: string | null;
   custom_specification: Record<string, unknown> | null;
   ip: string | null;
   user_agent: string | null;

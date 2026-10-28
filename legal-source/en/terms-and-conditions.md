@@ -1,10 +1,10 @@
 # TERMS & CONDITIONS — Myble (my-ble.eu)
 
-**Version 1.4 (MVP) — Effective date: 18 August 2026**
+**Version 1.5 (MVP) — Effective date: 4 October 2026**
 
 ## 1. Introduction
 1.1. These Terms & Conditions ("**Terms**") govern purchases made via the online store at **my-ble.eu** ("**E-shop**").
-1.2. **Seller:** Bartłomiej Karol Kwaśnica, Business ID (IČO) 24439673, Uralská 689/7, 160 00 Praha 6 – Bubeneč, Czech Republic ("**Seller**"). Contact e-mail: **myble.eu@gmail.com**. The Seller communicates primarily by e-mail.
+1.2. **Seller:** Bartłomiej Karol Kwaśnica, Business ID (IČO) 24439673, Uralská 689/7, 160 00 Praha 6 – Bubeneč, Czech Republic ("**Seller**"). Contact e-mail: **myble.eu@gmail.com**, phone: **+420 773 028 150**. The Seller communicates by e-mail and by phone.
 1.3. The Customer may be a consumer or a business customer. If the Customer is a **consumer** (a natural person acting outside their trade or profession), mandatory Czech and EU consumer-protection laws apply and prevail over any conflicting provision of these Terms.
 1.4. The binding wording of the contract is in **Czech**. The Seller archives the concluded contract and provides it to the Customer on request.
 

@@ -13,7 +13,7 @@
 //   base     = landed × MARKUP / (1 − PAYMENT_FEE_PCT) + (FREIGHT_COST_CZK − DELIVERY_CZK)
 //   price    = max(PRICE_FLOOR_CZK, ceilTo90(base))       (ceilTo90: up to the next …90)
 //   sticker  = VAT_REGISTERED ? round(price × (1 + CZ_VAT)) : price
-//   delivery = DELIVERY_CZK, never marked up (free only if FREE_SHIP_CZK > 0 and price ≥ it)
+//   delivery = DELIVERY_CZK, never marked up (free once price − discount ≥ FREE_SHIP_CZK > 0)
 
 import type { ServiceTier } from "./pricing";
 
@@ -71,9 +71,11 @@ export const PAYMENT_FEE_PCT = 0.018;
 /** Minimum sellable kit price, CZK — keeps tiny designs above break-even. §4. */
 export const PRICE_FLOOR_CZK = 1490;
 
-/** Free delivery at/above this ex-VAT price, CZK. 0 = free shipping disabled
- *  (current policy: freight is pass-through, so delivery is always charged). §2. */
-export const FREE_SHIP_CZK = 0;
+/** Free delivery when the kit price (ex-VAT, after any discount) reaches this,
+ *  CZK. 0 = free shipping disabled. Set to 10 000 on 4 Oct 2026 (Barti): the
+ *  waived 499 is under 5% of the order, so a free-delivery order still keeps
+ *  ~43% gross margin at MARKUP 2.0. (5 000 was tried first: ~37%.) */
+export const FREE_SHIP_CZK = 10000;
 
 // --- VAT staging (§5) --------------------------------------------------------
 /**

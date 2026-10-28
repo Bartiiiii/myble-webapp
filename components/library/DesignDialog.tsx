@@ -8,6 +8,7 @@ import { FireButton } from "../FireButton";
 import { AuthorChip } from "./AuthorChip";
 import { usePrefersReducedMotion, WALL } from "./LazyStage";
 import { itemName, itemNote, type LibraryItem } from "../../lib/library";
+import { roomFor } from "../../lib/rooms";
 import { saveDesign } from "../../lib/design";
 import { useI18n } from "../../lib/i18n";
 
@@ -90,14 +91,17 @@ export function DesignDialog({
         </button>
 
         <div className="grid sm:grid-cols-2">
-          <div className="relative flex items-center justify-center bg-[#ece7df]">
+          {/* The room fills the whole column, so the viewer takes its full
+              height (at least 320px) rather than floating in a band of wall. */}
+          <div className="relative flex min-h-[320px] items-center justify-center bg-[#ece7df]">
             <ShelfViewer
               design={item.design}
               background={WALL}
-              height={320}
+              height="100%"
               interactive
               autoRotate={!reduced}
               fit={1.0}
+              room={roomFor(item)}
             />
             <div className="absolute left-3 top-3 sm:left-4 sm:top-4">
               <FireButton id={item.id} />

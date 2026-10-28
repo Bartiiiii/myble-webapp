@@ -89,9 +89,9 @@ function ContactForm() {
 }
 
 // Contact / seller identification (imprint). The seller's legal identification
-// (name, IČO, registered address) lives here rather than in the footer — a
-// Czech sole trader must keep it present and reachable, just not necessarily
-// on every page footer.
+// (name, IČO, registered address, trade-register and VAT status, e-mail, phone)
+// lives here and in the T&C rather than in the footer: Comgate and § 435 OZ
+// require it to be on the website and easy to reach, not on every page.
 export default function ContactPage() {
   const { t } = useI18n();
 
@@ -114,6 +114,12 @@ export default function ContactPage() {
             myble.eu@gmail.com
           </a>
           <p className="mt-1 text-sm text-zinc-500">{t("contact.emailNote")}</p>
+
+          <p className="mt-5 text-xs font-semibold uppercase tracking-wide text-zinc-500">{t("imprint.phoneLabel")}</p>
+          <a href="tel:+420773028150" className="mt-1 block text-lg font-semibold text-indigo-600 hover:text-indigo-500">
+            {t("imprint.phone")}
+          </a>
+          <p className="mt-1 text-sm text-zinc-500">{t("imprint.phoneHours")}</p>
         </section>
 
         <ContactForm />
@@ -121,9 +127,19 @@ export default function ContactPage() {
         <section className="mt-6 rounded-3xl bg-white p-6 ring-1 ring-zinc-200">
           <h2 className="text-sm font-semibold text-zinc-900">{t("contact.sellerTitle")}</h2>
           <div className="mt-3 space-y-1 text-sm leading-6 text-zinc-600">
-            <p className="font-medium text-zinc-900">{t("imprint.name")}</p>
-            <p>{t("imprint.ico")}</p>
+            <p>
+              <span className="font-medium text-zinc-900">{t("imprint.name")}</span>
+              {" · "}{t("imprint.ico")}
+            </p>
             <p>{t("imprint.address")}</p>
+            <p>{t("imprint.tradeRegister")} {t("imprint.notVatPayer")}</p>
+            <p>
+              {t("imprint.emailLabel")}:{" "}
+              <a href="mailto:myble.eu@gmail.com" className="font-medium text-indigo-600 hover:text-indigo-500">{t("imprint.email")}</a>
+              {" · "}{t("imprint.phoneLabel")}:{" "}
+              <a href="tel:+420773028150" className="font-medium text-indigo-600 hover:text-indigo-500">{t("imprint.phone")}</a>
+              {" "}({t("imprint.phoneHours")})
+            </p>
           </div>
         </section>
 

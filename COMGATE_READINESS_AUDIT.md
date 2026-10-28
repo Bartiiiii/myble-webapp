@@ -53,35 +53,40 @@ with HSTS. Supabase is RLS deny-all on every table, every `/api/admin/*` route c
 
 ## A1. Comgate's stated requirements
 
-### A1.1 Company identification — **was PARTIAL, now PASS**
+### A1.1 Company identification — **PASS**
 
-| | Before | After |
-|---|---|---|
-| `/contact` | Name, IČO, address present (`app/contact/page.tsx:110-117`, verified live) | unchanged |
-| Every page (footer) | **Absent** — `components/SiteFooter.tsx` carried no seller block; confirmed live (`curl https://my-ble.eu/` → 0 hits for `24439673`) | Present |
-| Sole-trader / trade-register statement | **Absent everywhere** | Present |
+*Revised 4 Oct 2026.* The seller block was moved out of the footer. Neither Comgate's
+checklist nor § 435 of the Civil Code requires it on every page, only that it is on the
+website and easy to reach. It now lives in two places:
 
-Fix applied: seller identification block added to `components/SiteFooter.tsx:70-84`, backed by
-new i18n keys `imprint.tradeRegister` / `imprint.notVatPayer` in both locales
-(`lib/i18n.tsx`). The footer now reads, on every page:
+| Where | What |
+|---|---|
+| `/contact`, "Seller information" / "Údaje o prodávajícím" (`app/[locale]/contact/page.tsx:126-144`), linked from every page footer as "Get in touch" | Name, IČO, address, sole-trader / trade-register statement, VAT status, e-mail, phone |
+| T&C §1.2, both locales (`legal-source/{cz,en}/terms-and-conditions.md:7`), linked from every page footer and from checkout | Name, IČO, address, e-mail, phone |
+| Footer (`components/SiteFooter.tsx`) | No seller block; the footer ends with the language switcher |
 
-> Bartłomiej Karol Kwaśnica · Business ID (IČO): 24439673 · Uralská 689/7, 160 00 Praha 6 – Bubeneč, Czech Republic
-> Sole trader entered in the Czech Trade Register. Not registered for VAT. myble.eu@gmail.com
+All strings come from the existing `imprint.*` keys in `lib/i18n.tsx` (both locales). The
+contact page reads:
+
+> Bartłomiej Karol Kwaśnica · Business ID (IČO): 24439673
+> Uralská 689/7, 160 00 Praha 6 – Bubeneč, Czech Republic
+> Sole trader entered in the Czech Trade Register. Not registered for VAT.
+> Email: myble.eu@gmail.com · Phone: +420 773 028 150 (Mon–Fri 9:00–17:00)
 
 Wording matches `legal-source/cz/terms-and-conditions.md:7` and the Privacy Policy controller
-block exactly.
+block.
 
-### A1.2 Contact information — **PARTIAL**
+### A1.2 Contact information — **PASS**
 
-E-mail is present and prominent (`app/contact/page.tsx:102`, footer, every legal document,
-order confirmation). A working contact form posts to `/api/contact`
-(`app/contact/page.tsx:13-78`).
+*Revised 4 Oct 2026.* A business phone number is now published: **+420 773 028 150**,
+linked as `tel:+420773028150`, with hours Mon–Fri 9:00–17:00 (Po–Pá 9:00–17:00).
 
-**No phone number anywhere on the site.** Comgate's checklist says "contact information";
-Czech distance-selling practice expects a phone or a clear statement of the contact channel.
-The T&C mitigate this — CZ §1.2 states the Seller communicates primarily by e-mail — so this
-is a weakness rather than a failure. Adding a phone number is the cheapest single improvement
-to the application.
+- `/contact` shows the phone next to the e-mail in the contact details, same styling
+  (`app/[locale]/contact/page.tsx:111-123`), and again in the seller block.
+- T&C §1.2 (CZ + EN) lists the phone beside the e-mail and now states the Seller
+  communicates "by e-mail and by phone" / "e-mailem a telefonicky" (was "primarily by
+  e-mail"). T&C bumped 1.4 → **1.5**, effective 4 Oct 2026 (`lib/legal.ts:33`).
+- The working contact form (`/api/contact`) and the e-mail address are unchanged.
 
 ### A1.3 Products with prices, no sign-in — **PASS**
 

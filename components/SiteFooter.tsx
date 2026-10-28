@@ -8,15 +8,19 @@ import { NewsletterForm } from "./NewsletterForm";
 import { useI18n } from "../lib/i18n";
 import { useConsent } from "../lib/consent";
 import { LEGAL_SLUGS } from "../lib/legal";
+import { usePromoCopy } from "./promo/usePromoCopy";
 
 // Shared global footer. Carries the localized Legal group (Part A), links to
 // the Contact and About pages, a persistent "Cookie settings" control (B6),
 // the newsletter capture, and the language switcher. Seller identification /
-// imprint (B9) lives on the Contact page (/contact) — see app/contact/page.tsx.
+// imprint (B9) and the phone number live on the Contact page and in the T&C,
+// not here: Comgate and § 435 OZ need them reachable, not on every page.
+// See app/[locale]/contact/page.tsx.
 // `newsletter={false}` skips the capture card for pages that render their own
 // (the homepage has a dedicated section right above the footer).
 export function SiteFooter({ newsletter = true }: { newsletter?: boolean }) {
   const { t } = useI18n();
+  const promo = usePromoCopy();
   const { openSettings } = useConsent();
 
   return (
@@ -58,6 +62,9 @@ export function SiteFooter({ newsletter = true }: { newsletter?: boolean }) {
             <ul className="mt-3 space-y-2 text-sm text-zinc-600">
               <li><Link className="hover:text-zinc-900" href="/contact">{t("footer.contactLink")}</Link></li>
               <li><Link className="hover:text-zinc-900" href="/about">{t("footer.aboutLink")}</Link></li>
+              <li><Link className="hover:text-zinc-900" href="/delivery">{t("home.footerShipping")}</Link></li>
+              <li><Link className="hover:text-zinc-900" href="/refer">{promo.refer.eyebrow}</Link></li>
+              <li><Link className="hover:text-zinc-900" href="/myble-plus">myble+</Link></li>
               <li>
                 <button type="button" onClick={openSettings} className="text-left hover:text-zinc-900">
                   {t("footer.cookieSettings")}
@@ -69,21 +76,7 @@ export function SiteFooter({ newsletter = true }: { newsletter?: boolean }) {
 
         {newsletter && <NewsletterForm source="footer" className="mt-10" />}
 
-        {/* Seller identification on every page. Comgate's merchant review looks
-            for company registration details site-wide, not only on /contact. */}
         <div className="mt-10 border-t border-zinc-200 pt-6">
-          <p className="text-xs leading-5 text-zinc-500">
-            <span className="font-medium text-zinc-700">{t("imprint.name")}</span>
-            {" · "}{t("imprint.ico")}
-            {" · "}{t("imprint.address")}
-          </p>
-          <p className="mt-1 text-xs leading-5 text-zinc-500">
-            {t("imprint.tradeRegister")} {t("imprint.notVatPayer")}{" "}
-            <a href="mailto:myble.eu@gmail.com" className="hover:text-zinc-900">{t("imprint.email")}</a>
-          </p>
-        </div>
-
-        <div className="mt-6 border-t border-zinc-200 pt-6">
           <LanguageSwitcher />
         </div>
       </div>

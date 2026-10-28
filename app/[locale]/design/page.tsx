@@ -42,6 +42,7 @@ import {
 import { quoteDesign } from "../../../lib/quote";
 import { PRICING_DEBUG } from "../../../lib/pricingConfig";
 import { LIBRARY, type LibraryItem } from "../../../lib/library";
+import { useLibraryPool } from "../../../lib/useLibraryPool";
 import { useI18n, useT, type TFn } from "../../../lib/i18n";
 import { FRONT_FRAME, type MoveFrame } from "../../../lib/viewAxes";
 import { useUndoable, useUndoRedoKeys } from "../../../lib/history";
@@ -195,15 +196,72 @@ export default function DesignPage() {
   // the furniture one. Declared up here so the editing helpers below can close
   // over it.
   const selectedPart = design.parts.find((p) => p.id === selectedId) ?? null;
+  // Sidebar box the viewer renders the selected board's control pad into.
+  const [padEl, setPadEl] = useState<HTMLDivElement | null>(null);
   // Undo, delete and "clear" can all take a selected board away with them.
   const liveIds = selectedIds.filter((id) => design.parts.some((p) => p.id === id));
   const selection = liveIds.length === selectedIds.length ? selectedIds : liveIds;
+
+  // Set when backstage opened a house (curated) design here to edit it. The
+  // admin bar then offers "Publish update" instead of the customer flow.
+  const [curatedEdit, setCuratedEdit] = useState<string | null>(null);
+  const [publishState, setPublishState] = useState<{ kind: "idle" | "busy" | "done" | "error"; text?: string }>({
+    kind: "idle",
+  });
+  const isAdmin = !!(session as (typeof session & { isAdmin?: boolean }) | null)?.isAdmin;
+
+  // Any edit after a publish makes the "Published" note stale.
+  useEffect(() => {
+    setPublishState((s) => (s.kind === "idle" ? s : { kind: "idle" }));
+  }, [design]);
+
+  async function publishCurated() {
+    if (!curatedEdit) return;
+    setPublishState({ kind: "busy" });
+    try {
+      const res = await fetch(`/api/admin/library/${curatedEdit}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ design }),
+      });
+      const body = await res.json().catch(() => null);
+      if (res.ok && body?.ok) {
+        setPublishState({ kind: "done", text: `Published as version ${body.version}.` });
+        return;
+      }
+      const text =
+        body?.error === "design_has_errors"
+          ? "Fix the red boards first: a design with errors can't be published."
+          : res.status === 401 || res.status === 403 || res.status === 404
+            ? "Backstage is locked. Unlock it in another tab, then publish again."
+            : "Could not publish. Try again.";
+      setPublishState({ kind: "error", text });
+    } catch {
+      setPublishState({ kind: "error", text: "Could not publish. Try again." });
+    }
+  }
 
   // Hydrate on the client only (after mount, to avoid a hydration mismatch
   // against the server-rendered default). A ?d=<slug> share link loads the
   // shared design from the server; otherwise fall back to localStorage.
   useEffect(() => {
-    const slug = new URLSearchParams(window.location.search).get("d");
+    const params = new URLSearchParams(window.location.search);
+    // Backstage "Edit in configurator" on a house design: load its current
+    // published version (an edit from backstage, else the one in code).
+    const curatedId = params.get("curated");
+    const curatedItem = curatedId ? LIBRARY.find((i) => i.id === curatedId) : undefined;
+    if (curatedItem) {
+      setCuratedEdit(curatedItem.id);
+      fetch("/api/library")
+        .then((res) => (res.ok ? res.json() : null))
+        .then((body) => {
+          const published = body?.curated?.[curatedItem.id] as Design | undefined;
+          loadIntoEditor(JSON.parse(JSON.stringify(published ?? curatedItem.design)) as Design);
+        })
+        .catch(() => loadIntoEditor(JSON.parse(JSON.stringify(curatedItem.design)) as Design));
+      return;
+    }
+    const slug = params.get("d");
     if (slug) {
       fetch(`/api/designs?slug=${encodeURIComponent(slug)}`)
         .then((res) => (res.ok ? res.json() : null))
@@ -293,8 +351,11 @@ export default function DesignPage() {
     // Never write it to storage: it would clobber a design handed over by the
     // library (/library) or a share link before the hydrate effect lands.
     if (design === DEFAULT_DESIGN) return;
+    // Editing a house design is backstage work: keep it out of this browser's
+    // own saved draft.
+    if (curatedEdit) return;
     saveDesign(design);
-  }, [design]);
+  }, [design, curatedEdit]);
 
   const quote = useMemo(() => quoteDesign(design), [design]);
   const v = useMemo(() => validate(design), [design]);
@@ -446,9 +507,36 @@ export default function DesignPage() {
 
   return (
     <main className="no-text-select min-h-screen bg-zinc-50 pb-40 text-zinc-900 lg:pb-0">
-      <SiteHeader variant="app" />
+      <SiteHeader variant="app" promo={false} />
 
       <div className="mx-auto w-full max-w-7xl px-5 py-6">
+        {curatedEdit && isAdmin && (
+          <div className="mb-5 flex flex-wrap items-center gap-3 rounded-2xl bg-zinc-900 px-4 py-3 text-sm text-white">
+            <span className="rounded-md bg-indigo-500 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide">
+              Backstage
+            </span>
+            <span className="min-w-0 flex-1">
+              Editing house design <strong>{t(`library.items.${curatedEdit}.n`)}</strong>. Publishing replaces the
+              version in the library.
+            </span>
+            {publishState.text && (
+              <span className={publishState.kind === "error" ? "text-rose-300" : "text-emerald-300"}>
+                {publishState.text}
+              </span>
+            )}
+            <a href="/admin/designs?status=published" className="text-zinc-300 hover:text-white">
+              Back to backstage
+            </a>
+            <button
+              type="button"
+              onClick={publishCurated}
+              disabled={publishState.kind === "busy" || v.errors.length > 0}
+              className="rounded-lg bg-emerald-500 px-3.5 py-1.5 font-semibold text-white transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {publishState.kind === "busy" ? "Publishing…" : "Publish update"}
+            </button>
+          </div>
+        )}
         <div className="mb-5">
           <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{t("design.title")}</h1>
           <p className="mt-1.5 max-w-2xl text-sm text-zinc-600">{t("design.subtitle")}</p>
@@ -481,8 +569,10 @@ export default function DesignPage() {
                   tone="indigo"
                   label={t("design.addPart")}
                   disabled={design.parts.length >= MAX_PARTS}
+                  wide
                 >
                   <PlusIcon />
+                  <span className="text-sm font-semibold">{t("design.addPart")}</span>
                 </SquareBtn>
                 <div className="pointer-events-auto flex items-center gap-2">
                   <ShareBtn onClick={openShare} label={t("design.share")} />
@@ -530,8 +620,8 @@ export default function DesignPage() {
                 onChange={setDesign}
                 onMoveFrame={setMoveFrame}
                 onGesture={setGesture}
+                padTarget={padEl}
               />
-              <MoveAxesBadge frame={moveFrame} />
 
               {arrangeAt && selection.length >= MIN_TO_ALIGN && (
                 <div
@@ -613,6 +703,17 @@ export default function DesignPage() {
               </div>
             )}
 
+            {/* The selected board's move / duplicate / flip / remove pad lives
+                here rather than on the canvas, so it never covers the piece.
+                ShelfViewer portals it into this box. */}
+            {selectedPart && (
+              <div className="rounded-3xl bg-white p-6 ring-1 ring-indigo-300 shadow-sm">
+                <p className="text-base font-semibold text-zinc-900">{t("design.partMove")}</p>
+                <p className="mt-1 text-xs text-zinc-500">{t("design.partMoveHint")}</p>
+                <div ref={setPadEl} className="mt-4" />
+              </div>
+            )}
+
             {selectedPart && (
               <BoardSizePanel
                 part={selectedPart}
@@ -623,7 +724,9 @@ export default function DesignPage() {
               />
             )}
 
-            {/* PROMINENT furniture-size panel */}
+            {/* PROMINENT furniture-size panel. Steps aside while one board is
+                selected, so the board's own panels have the column to themselves. */}
+            {!selectedPart && (
             <div className="rounded-3xl bg-white p-6 ring-1 ring-indigo-200 shadow-sm">
               <div className="flex items-baseline justify-between">
                 <p className="text-base font-semibold text-zinc-900">{t("design.size")}</p>
@@ -641,6 +744,7 @@ export default function DesignPage() {
                 </ul>
               )}
             </div>
+            )}
 
             {/* Material: colour + thickness */}
             <div className="rounded-3xl bg-white p-5 ring-1 ring-zinc-200">
@@ -771,6 +875,8 @@ function Inspiration({
   onUse: (item: LibraryItem) => void;
 }) {
   const t = useT();
+  // Curated pieces, with any version backstage has published since the deploy.
+  const { curated } = useLibraryPool();
   return (
     <section className={`rounded-3xl bg-white p-6 ring-1 ring-zinc-200 ${className}`}>
       <div className="flex flex-wrap items-baseline justify-between gap-3">
@@ -788,12 +894,12 @@ function Inspiration({
       </div>
 
       <div className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-3">
-        {LIBRARY.slice(0, count).map((item) => (
+        {curated.slice(0, count).map((item) => (
           <InspirationCard key={item.id} item={item} onUse={() => onUse(item)} />
         ))}
       </div>
 
-      {count < LIBRARY.length && (
+      {count < curated.length && (
         <button
           type="button"
           onClick={onShowMore}
@@ -866,48 +972,21 @@ function InspirationCard({ item, onUse }: { item: LibraryItem; onUse: () => void
  *  It has to paint AFTER the canvas for that: a blended element only sees the
  *  backdrop inside its own stacking context, and the controls row above sets a
  *  z-index, which would isolate it from the very thing it needs to read. */
-function MoveAxesBadge({ frame }: { frame: MoveFrame }) {
-  const t = useT();
-  const name: Record<Axis, string> = {
-    x: t("design.width"),
-    y: t("design.height"),
-    z: t("design.depth"),
-  };
-  return (
-    <div
-      // Desktop: top row, left of 68px lines it up past the add button (12
-      // inset + 44 button + 12 gap). Phone/tablet: that row is full (add,
-      // Share, menu), so the hint sits in the bottom-left corner instead,
-      // opposite the board pad that docks bottom-right there.
-      className="pointer-events-none absolute bottom-3 left-3 flex h-8 items-center lg:bottom-auto lg:left-[68px] lg:top-3 lg:h-11"
-      style={{ mixBlendMode: "difference" }}
-    >
-      <span
-        className="font-mono text-[11px] font-light uppercase tracking-[0.16em]"
-        // Mid grey: far enough from both ends that the difference against a
-        // white or a black backdrop still comes out readable, and muted.
-        style={{ color: "#8a8a8a" }}
-      >
-        <span aria-hidden="true" style={{ opacity: 0.7 }}>↔</span> {name[frame.h]}
-        <span aria-hidden="true" className="mx-1.5" style={{ opacity: 0.45 }}>·</span>
-        <span aria-hidden="true" style={{ opacity: 0.7 }}>↕</span> {name[frame.v]}
-      </span>
-    </div>
-  );
-}
-
 function SquareBtn({
   children,
   onClick,
   tone,
   label,
   disabled = false,
+  wide = false,
 }: {
   children: React.ReactNode;
   onClick: () => void;
   tone: "indigo" | "ghost";
   label: string;
   disabled?: boolean;
+  /** Icon plus a text label, rather than a bare square icon. */
+  wide?: boolean;
 }) {
   const cls =
     tone === "indigo"
@@ -920,7 +999,7 @@ function SquareBtn({
       disabled={disabled}
       title={label}
       aria-label={label}
-      className={`pointer-events-auto flex h-11 w-11 items-center justify-center rounded-2xl shadow-sm backdrop-blur transition disabled:cursor-not-allowed ${cls}`}
+      className={`pointer-events-auto flex h-11 ${wide ? "gap-2 px-4" : "w-11"} items-center justify-center rounded-2xl shadow-sm backdrop-blur transition disabled:cursor-not-allowed ${cls}`}
     >
       {children}
     </button>
@@ -1154,7 +1233,6 @@ function BoardSizePanel({
           />
         ))}
       </div>
-      <p className="mt-3 text-xs text-zinc-500">{t("design.partThickness", { mm: design.thickness })}</p>
     </div>
   );
 }
@@ -1200,7 +1278,7 @@ function SizeControl({
               min={lim.min}
               max={lim.max}
               onChange={(e) => set(Number(e.target.value))}
-              className="w-14 bg-transparent px-2 py-1 text-right text-sm tabular-nums outline-none"
+              className="w-16 [appearance:textfield] bg-transparent px-2 py-1 text-right text-sm tabular-nums outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
               aria-label={label}
             />
             <span className="pr-2 text-xs text-zinc-400">cm</span>

@@ -10,6 +10,8 @@ import {
 } from "@/lib/bankTransfer";
 import type { Design } from "@/lib/model";
 import { validateConfiguratorDesign } from "@/lib/rules-engine/configurator";
+import { quoteDesign } from "@/lib/quote";
+import { checkDiscount, reserveDiscount, reverseOrderRewards, type DiscountCheck } from "@/lib/rewards";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Order intake + consent record (B4 / B5).
@@ -36,12 +38,18 @@ export interface Customer {
   deliveryMethod?: string;
 }
 
+/** What the customer was shown when they placed the order. The checkout has no
+ *  consent ticks: placing the order under the passive notice is the agreement,
+ *  so the proof is which version of that notice and of the T&C was on screen. */
 export interface ConsentRecord {
   orderNo: string;
   locale: string;
-  acceptedAt: string; // ISO timestamp
+  submittedAt: string; // ISO timestamp
+  /** CHECKOUT_LEGAL_COPY_VERSION (lib/legal.ts) shown under the order button. */
+  legalCopyVersion: string;
+  /** T&C version in force (TERMS_VERSION). */
+  termsVersion: string;
   acceptedDocVersions: Record<string, string>;
-  acknowledgedCustomWithdrawalExclusion: boolean;
   customSpecification?: Record<string, unknown>;
 }
 
@@ -74,6 +82,8 @@ export interface OrderPayload {
   design?: Record<string, unknown>;
   /** Client-side rules record + acknowledgements (server re-validates). */
   rules?: OrderRulesRecord;
+  /** Referral code or voucher the customer applied (lib/rewards.ts re-checks it). */
+  promoCode?: string;
 }
 
 export async function POST(req: Request) {
@@ -84,8 +94,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "invalid_json" }, { status: 400 });
   }
 
-  const { orderNo, consent, customer, summary, design, rules: clientRules } = body ?? {};
-  if (!orderNo || !consent?.acceptedDocVersions || !consent.acknowledgedCustomWithdrawalExclusion) {
+  const { orderNo, consent, customer, summary, design, rules: clientRules, promoCode } = body ?? {};
+  if (!orderNo || !consent?.acceptedDocVersions || !consent.submittedAt || !consent.legalCopyVersion || !consent.termsVersion) {
     return NextResponse.json({ ok: false, error: "missing_consent" }, { status: 400 });
   }
 
@@ -125,6 +135,37 @@ export async function POST(req: Request) {
     }
   }
 
+  // ── Promo code: re-check and claim ─────────────────────────────────────────
+  // The checkout already previewed this code, but the browser is not trusted:
+  // re-check it against a server-computed kit price, then claim it (a voucher
+  // is taken atomically). If it no longer applies, refuse the order rather than
+  // record a price the customer was never shown.
+  let discount: Extract<DiscountCheck, { ok: true }> | null = null;
+  let serverKitCzk: number | null = null;
+  let serverTotalCzk: number | null = null;
+  if (typeof promoCode === "string" && promoCode.trim()) {
+    if (!design || typeof design !== "object") {
+      return NextResponse.json({ ok: false, error: "promo_invalid", reason: "invalid_design" }, { status: 422 });
+    }
+    try {
+      const full = quoteDesign(design as unknown as Design);
+      const check = await checkDiscount({ code: promoCode, email: customer?.email, kitCzk: full.kitCZK, excludeOrderNo: orderNo });
+      if (!check.ok) {
+        return NextResponse.json({ ok: false, error: "promo_invalid", reason: check.reason }, { status: 409 });
+      }
+      if (!(await reserveDiscount(check, orderNo))) {
+        return NextResponse.json({ ok: false, error: "promo_invalid", reason: "used" }, { status: 409 });
+      }
+      discount = check;
+      const priced = quoteDesign(design as unknown as Design, { discountCZK: check.discountCzk });
+      serverKitCzk = priced.kitCZK;
+      serverTotalCzk = priced.total;
+    } catch (err) {
+      console.error("[order] promo check failed", { orderNo, err });
+      return NextResponse.json({ ok: false, error: "promo_invalid", reason: "unavailable" }, { status: 500 });
+    }
+  }
+
   // Light audit trail. Behind Vercel/proxies the client IP is the first entry of
   // x-forwarded-for; fall back to x-real-ip.
   const forwardedFor = req.headers.get("x-forwarded-for");
@@ -150,12 +191,23 @@ export async function POST(req: Request) {
 
       design_spec: summary ?? {},
       design: design ?? null,
-      kit_price_czk: typeof summary?.kit_price_czk === "number" ? summary.kit_price_czk : null,
-      total_price_czk: typeof summary?.total_price_czk === "number" ? summary.total_price_czk : null,
+      kit_price_czk: serverKitCzk ?? (typeof summary?.kit_price_czk === "number" ? summary.kit_price_czk : null),
+      total_price_czk: serverTotalCzk ?? (typeof summary?.total_price_czk === "number" ? summary.total_price_czk : null),
 
-      accepted_at: consent.acceptedAt,
+      discount_code: discount?.code ?? null,
+      discount_kind: discount?.kind ?? null,
+      discount_czk: discount?.discountCzk ?? 0,
+      referrer_email: discount?.referrerEmail ?? null,
+
+      // `accepted_at` (NOT NULL, predates the passive notice) keeps the same
+      // timestamp; `acknowledged_custom_withdrawal_exclusion` is no longer
+      // written (no tick exists) and falls back to its default, false. The
+      // §1837 proof for these orders is `checkout_legal_copy_version`.
+      submitted_at: consent.submittedAt,
+      accepted_at: consent.submittedAt,
+      checkout_legal_copy_version: consent.legalCopyVersion,
+      terms_version: consent.termsVersion,
       accepted_doc_versions: consent.acceptedDocVersions,
-      acknowledged_custom_withdrawal_exclusion: consent.acknowledgedCustomWithdrawalExclusion,
       custom_specification: consent.customSpecification ?? null,
 
       // Sales-first rules record (server-authoritative report + the tips the
@@ -177,11 +229,13 @@ export async function POST(req: Request) {
 
     if (error) {
       console.error("[order] persist failed", { orderNo, error: error.message });
+      if (discount) await reverseOrderRewards(orderNo); // give the voucher back
       return NextResponse.json({ ok: false, error: "persist_failed" }, { status: 500 });
     }
   } catch (err) {
     // Missing env / client init — don't lose the record silently.
     console.error("[order] persist threw", { orderNo, err });
+    if (discount) await reverseOrderRewards(orderNo);
     return NextResponse.json({ ok: false, error: "persist_failed" }, { status: 500 });
   }
 
@@ -189,16 +243,16 @@ export async function POST(req: Request) {
     orderNo,
     customer,
     consent,
-    summary,
+    summary: serverTotalCzk != null ? { ...summary, total_price_czk: serverTotalCzk } : summary,
     // Only while Comgate is off: once payments are live the customer has already
     // paid by the time this e-mail goes out, so no transfer details belong in it.
     paymentInstructions:
-      !PAYMENTS_ENABLED && typeof summary?.total_price_czk === "number"
+      !PAYMENTS_ENABLED && typeof (serverTotalCzk ?? summary?.total_price_czk) === "number"
         ? {
             accountNumber: BANK_TRANSFER_ACCOUNT_NUMBER,
             bankName: BANK_TRANSFER_BANK_NAME,
             variableSymbol: variableSymbolFromOrderNo(orderNo),
-            amountCzk: summary.total_price_czk,
+            amountCzk: (serverTotalCzk ?? summary?.total_price_czk) as number,
             dueDays: BANK_TRANSFER_DUE_DAYS,
           }
         : null,

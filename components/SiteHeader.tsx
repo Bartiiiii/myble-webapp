@@ -4,6 +4,7 @@ import Link, { useLocalePathname } from "../lib/localeNav";
 import React from "react";
 import { HomeNavAuth } from "./HomeNavAuth";
 import { useT } from "../lib/i18n";
+import { PromoBar } from "./promo/PromoBar";
 
 // The single global header shared across home → configurator → order, so the
 // whole app feels continuous.
@@ -55,12 +56,18 @@ export function Logo({ dark = false }: { dark?: boolean }) {
  *  - "app" — configurator / order: same logo in the same place, but the homepage
  *    section links are dropped (they only point at homepage sections) and a
  *    "back to home" button is shown instead.
+ *
+ * `promo` shows the offers ticker above the header (on by default). The
+ * configurator and checkout turn it off: they are where people concentrate,
+ * and checkout states the delivery threshold in its own summary.
  */
-export function SiteHeader({ variant = "marketing" }: { variant?: "marketing" | "app" }) {
+export function SiteHeader({ variant = "marketing", promo = true }: { variant?: "marketing" | "app"; promo?: boolean }) {
   const t = useT();
   const isApp = variant === "app";
 
   return (
+    <>
+    {promo && <PromoBar />}
     <header className="sticky top-0 z-40 border-b border-zinc-200 bg-white/80 backdrop-blur">
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-5 py-3.5">
         <Logo />
@@ -80,5 +87,6 @@ export function SiteHeader({ variant = "marketing" }: { variant?: "marketing" | 
         </div>
       </div>
     </header>
+    </>
   );
 }

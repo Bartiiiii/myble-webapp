@@ -6,15 +6,18 @@ import { useLocaleRouter } from "../../../lib/localeNav";
 import React, { useEffect, useMemo, useState } from "react";
 import { SiteHeader } from "../../../components/SiteHeader";
 import { SiteFooter } from "../../../components/SiteFooter";
-import { Design, DEFAULT_DESIGN, loadDesign, DELIVERY_CZK } from "../../../lib/design";
+import { Design, DEFAULT_DESIGN, loadDesign } from "../../../lib/design";
 import { quoteDesign } from "../../../lib/quote";
 import { useI18n, useT } from "../../../lib/i18n";
-import { acceptedDocVersions } from "../../../lib/legal";
+import { acceptedDocVersions, CHECKOUT_LEGAL_COPY_VERSION, TERMS_VERSION } from "../../../lib/legal";
 import { PAYMENTS_ENABLED } from "../../../lib/comgate/config";
 import { safeValidateConfiguratorDesign } from "../../../lib/rules-engine/configurator";
 import posthog from "posthog-js";
+import { usePromoCopy } from "../../../components/promo/usePromoCopy";
+import { czk } from "../../../lib/promoCopy";
+import { PROMO_CODE_STORAGE_KEY, normalizeCode } from "../../../lib/promotions";
 
-// Persist the accepted-terms consent record (B4) locally so the confirmation
+// Persist the consent record (B4) locally so the confirmation
 // page can show it and a returning session can reference it. The API stub
 // (/api/order) is the server-side home for this once a datastore/email exist.
 function persistConsent(record: unknown) {
@@ -52,9 +55,6 @@ export default function OrderPage() {
   const router = useLocaleRouter();
   const { t, fmt, locale } = useI18n();
   const [design, setDesign] = useState<Design>(DEFAULT_DESIGN);
-  const [confirmed, setConfirmed] = useState(false);
-  const [acceptedTerms, setAcceptedTerms] = useState(false); // B4
-  const [acceptedCustom, setAcceptedCustom] = useState(false); // B3 (§1837)
   // One delivery arrangement, so this is a constant rather than a choice. It
   // still feeds the quote, which prices the in-room service separately, so
   // reinstating that option later is a matter of making this state again.
@@ -65,7 +65,83 @@ export default function OrderPage() {
     setDesign(loadDesign());
   }, []);
 
-  const quote = useMemo(() => quoteDesign(design, { deliveryMethod }), [design, deliveryMethod]);
+  // ── Discount code ──────────────────────────────────────────────────────────
+  // A referral code or voucher (lib/rewards.ts). Applying it here only previews
+  // the price; /api/order checks it again and claims it before the order is
+  // written, and the payment step re-prices from what the server stored.
+  const promo = usePromoCopy();
+  const formRef = React.useRef<HTMLFormElement>(null);
+  const [promoOpen, setPromoOpen] = useState(false);
+  const [promoInput, setPromoInput] = useState("");
+  const [promoChecking, setPromoChecking] = useState(false);
+  const [promoError, setPromoError] = useState<string | null>(null);
+  const [applied, setApplied] = useState<{ code: string; discountCzk: number; kind: string } | null>(null);
+
+  // A code carried over from a friend's /refer link.
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(PROMO_CODE_STORAGE_KEY);
+      if (saved) {
+        setPromoInput(saved);
+        setPromoOpen(true);
+      }
+    } catch {
+      /* storage blocked */
+    }
+  }, []);
+
+  function reasonText(reason: string, minKitCzk?: number): string {
+    const r = promo.checkout.reasons[reason] ?? promo.checkout.reasons.unavailable;
+    return typeof r === "function" ? r(czk(minKitCzk ?? 0)) : r;
+  }
+
+  async function applyPromo() {
+    const code = normalizeCode(promoInput);
+    if (!code) return;
+    const email = (formRef.current?.elements.namedItem("email") as HTMLInputElement | null)?.value.trim();
+    if (!email) {
+      setPromoError(promo.checkout.needEmail);
+      return;
+    }
+    setPromoChecking(true);
+    setPromoError(null);
+    try {
+      const res = await fetch("/api/promo/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code, email, design }),
+      });
+      const j = await res.json();
+      if (j?.ok) {
+        setApplied({ code: j.code, discountCzk: j.discountCzk, kind: j.kind });
+        posthog.capture("promo_code_applied", { kind: j.kind, discount_czk: j.discountCzk });
+      } else {
+        setApplied(null);
+        setPromoError(reasonText(j?.reason ?? "unavailable", j?.minKitCzk));
+        posthog.capture("promo_code_rejected", { reason: j?.reason });
+      }
+    } catch {
+      setPromoError(reasonText("unavailable"));
+    } finally {
+      setPromoChecking(false);
+    }
+  }
+
+  function removePromo() {
+    setApplied(null);
+    setPromoInput("");
+    setPromoError(null);
+    try {
+      window.localStorage.removeItem(PROMO_CODE_STORAGE_KEY);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  const quote = useMemo(
+    () => quoteDesign(design, { deliveryMethod, discountCZK: applied?.discountCzk ?? 0 }),
+    [design, deliveryMethod, applied],
+  );
   const kit = quote.kitCZK;
   const total = quote.customerCZK;
   // The cut list (lib/cutlist.ts) is production data for us, not the customer:
@@ -81,10 +157,9 @@ export default function OrderPage() {
   // is placed, so asserting them against a customer's cart wrongly flags every
   // correct design. Same stage the server re-validates with (app/api/order).
   const rules = useMemo(() => safeValidateConfiguratorDesign(design, { locale, stage: "design" }), [design, locale]);
-  // Consent only. The rules engine never gates this: it advises, we review.
-  // See `orderable` in lib/rules-engine/configurator.ts.
-  const canPlace = confirmed && acceptedTerms && acceptedCustom;
-
+  // Nothing gates the button but the form's own `required` fields: the legal
+  // terms are a passive notice under it (§1826a), and the rules engine only
+  // advises. See `orderable` in lib/rules-engine/configurator.ts.
 
   // ── Submit flow ────────────────────────────────────────────────────────────
   // While PAYMENTS_ENABLED is false nothing is charged here, so the submit is
@@ -114,7 +189,7 @@ export default function OrderPage() {
 
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (!canPlace || submitting) return;
+    if (submitting) return;
     const customer = readCustomer(e.currentTarget);
     if (!PAYMENTS_ENABLED) {
       setPendingCustomer(customer); // opens the interstitial; nothing is sent yet
@@ -128,22 +203,25 @@ export default function OrderPage() {
     submitBtnRef.current?.focus();
   }
 
-  function placeOrder(customer: Customer) {
+  async function placeOrder(customer: Customer) {
     if (submitting) return;
     setSubmitting(true);
 
     const orderNo = `MB-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
 
-    // B4: consent record — accepted document versions, locale, timestamp.
-    // Also records the customer-set specification (confirmed dimensions etc.),
-    // which anchors the §1837 "made to the customer's specification" position
-    // per T&C Art. 2.3 / 9.2.
+    // B4: consent record. The checkout collects no ticks: placing the order is
+    // the agreement, so this records what the customer was shown when they
+    // did it: the version of the notice under the button, the T&C version,
+    // the linked documents' versions, locale and time. Also records the
+    // customer-set specification, which anchors the §1837 "made to the
+    // customer's specification" position per T&C Art. 2.3 / 9.2.
     const consent = {
       orderNo,
       locale,
-      acceptedAt: new Date().toISOString(),
+      submittedAt: new Date().toISOString(),
+      legalCopyVersion: CHECKOUT_LEGAL_COPY_VERSION,
+      termsVersion: TERMS_VERSION,
       acceptedDocVersions: acceptedDocVersions(),
-      acknowledgedCustomWithdrawalExclusion: acceptedCustom,
       customSpecification: {
         width_cm: design.outerCm.w,
         height_cm: design.outerCm.h,
@@ -173,6 +251,7 @@ export default function OrderPage() {
       orderNo,
       consent,
       customer,
+      promoCode: applied?.code,
       // Full parts list — the production/cut-list source of truth. Without it
       // the order can't be manufactured (localStorage is not a datastore).
       design,
@@ -193,6 +272,7 @@ export default function OrderPage() {
         thickness_mm: design.thickness,
         parts_count: design.parts.length,
         kit_price_czk: kit,
+        discount_czk: quote.discountCZK,
         total_price_czk: total,
         product_type: "custom",
       },
@@ -201,21 +281,50 @@ export default function OrderPage() {
     // Also persist the total/delivery method locally (NOT sent to /api/order —
     // `consent` above is unchanged) so the confirmation page can show accurate
     // bank-transfer instructions without a second round-trip to the server.
-    persistConsent({ ...consent, totalCzk: total, deliveryMethod });
-    // B5: hand off to the (stub) order route which records consent and will send
-    // the durable-medium confirmation e-mail. Fire-and-forget; the on-screen
-    // confirmation is the durable copy until email is wired.
-    void fetch("/api/order", {
+    // B5: hand off to the order route which records consent and sends the
+    // durable-medium confirmation e-mail. Fire-and-forget, except when a
+    // discount code is applied: the server re-checks it and may refuse, and
+    // the customer must not land on a confirmation for a price that was not
+    // accepted.
+    const send = fetch("/api/order", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
-    }).catch(() => {
-      /* stub — see /api/order route TODO */
     });
+    if (applied) {
+      let rejected: string | null = null;
+      try {
+        const res = await send;
+        const j = await res.json().catch(() => null);
+        if (!res.ok && j?.error === "promo_invalid") rejected = j.reason ?? "unavailable";
+      } catch {
+        /* network trouble: same behaviour as the un-discounted path */
+      }
+      if (rejected) {
+        setApplied(null);
+        setPromoOpen(true);
+        setPromoError(`${promo.checkout.promoRejected} ${reasonText(rejected)}`);
+        setPendingCustomer(null);
+        setSubmitting(false);
+        posthog.capture("promo_code_rejected", { reason: rejected, at: "order" });
+        return;
+      }
+      try {
+        window.localStorage.removeItem(PROMO_CODE_STORAGE_KEY);
+      } catch {
+        /* ignore */
+      }
+    } else {
+      void send.catch(() => {
+        /* the on-screen confirmation is the durable copy */
+      });
+    }
+    persistConsent({ ...consent, totalCzk: total, deliveryMethod });
 
     posthog.capture("order_placed", {
       ...payload.summary,
       accepted_doc_versions: JSON.stringify(consent.acceptedDocVersions),
+      legal_copy_version: consent.legalCopyVersion,
       rules_health: rules.report.health,
       rules_catalogue_version: rules.report.catalogue_version,
       rules_recommendations_shown: recommendationsShown.length,
@@ -228,9 +337,9 @@ export default function OrderPage() {
 
   return (
     <main className="min-h-screen bg-zinc-50 text-zinc-900">
-      <SiteHeader variant="app" />
+      <SiteHeader variant="app" promo={false} />
 
-      <form onSubmit={onSubmit} className="mx-auto w-full max-w-7xl px-5 py-8">
+      <form ref={formRef} onSubmit={onSubmit} className="mx-auto w-full max-w-7xl px-5 py-8">
         <div className="mb-6">
           <div className="flex items-center justify-between gap-4">
             <h1 className="text-2xl font-semibold tracking-tight">{t("order.title")}</h1>
@@ -284,7 +393,7 @@ export default function OrderPage() {
                 <FixedOption
                   title={t("order.shipCourier")}
                   sub={t("order.shipCourierSub")}
-                  price={fmt(DELIVERY_CZK)}
+                  price={quote.deliveryCZK > 0 ? fmt(quote.deliveryCZK) : t("order.deliveryFree")}
                 />
               </div>
             </section>
@@ -306,8 +415,6 @@ export default function OrderPage() {
                 full findings in the server's stored report) for our team to
                 review before production. */}
 
-            {/* Dimension confirmation now lives in the summary column, next to
-                the price and the §1837 notice — see the aside below. */}
           </div>
 
           {/* Right */}
@@ -334,6 +441,9 @@ export default function OrderPage() {
                   the reference price. */}
               <div className="space-y-3 rounded-2xl bg-zinc-50 p-4">
                 <Row label={t("order.summaryKit", { dims: `${w}×${h}×${d}` })} value={fmt(kit)} />
+                {applied && quote.discountCZK > 0 && (
+                  <Row label={promo.checkout.discountRow(applied.code)} value={`−${fmt(quote.discountCZK)}`} accent />
+                )}
                 {/* Must be the delivery actually included in the total — it is
                     free at/above FREE_SHIP_CZK, and a hardcoded 199 made the
                     lines fail to add up. */}
@@ -346,90 +456,97 @@ export default function OrderPage() {
                 </div>
               </div>
 
-              {/* The three things that gate the order, all read the same way.
-                  They used to sit in coloured panels of their own, which made
-                  the two legal ones look like warnings rather than the consents
-                  they are. The wording is untouched: the §1837 exclusion still
-                  states why the withdrawal right does not apply, right where it
-                  is being agreed to. */}
-              <div className="mt-4 space-y-3">
-                <label className="flex items-start gap-2.5">
-                  <input
-                    type="checkbox"
-                    checked={confirmed}
-                    onChange={(e) => setConfirmed(e.target.checked)}
-                    className="mt-0.5 h-4 w-4 rounded border-zinc-300 accent-indigo-600"
-                  />
-                  <span className="text-xs leading-5 text-zinc-600">
-                    {t("order.measuredOk1")}{" "}
-                    <Link href="/" className="font-medium text-indigo-600 underline">{t("order.measuredGuide")}</Link>{" "}
-                    {t("order.measuredOk2")}
-                  </span>
-                </label>
-
-                {/* B3: the un-prechecked §1837 acknowledgement. The notice that
-                    explains *why* the withdrawal right does not apply used to
-                    sit above it as its own paragraph, which said the same thing
-                    twice in a row. It is still shown verbatim, now on the info
-                    tip attached to the line it is the reason for. */}
-                <label className="relative flex items-start gap-2.5">
-                  <input
-                    type="checkbox"
-                    checked={acceptedCustom}
-                    onChange={(e) => setAcceptedCustom(e.target.checked)}
-                    className="mt-0.5 h-4 w-4 rounded border-zinc-300 accent-indigo-600"
-                  />
-                  <span className="text-xs leading-5 text-zinc-600">
-                    {t("checkout.customAck")}
-                    <InfoTip label={t("checkout.customNoticeTip")} text={t("checkout.customNotice")} />
-                  </span>
-                </label>
-
-              {/* B4: un-prechecked Terms/Complaints/Privacy acceptance. */}
-              <label className="flex items-start gap-2.5">
-                <input
-                  type="checkbox"
-                  checked={acceptedTerms}
-                  onChange={(e) => setAcceptedTerms(e.target.checked)}
-                  className="mt-0.5 h-4 w-4 rounded border-zinc-300 accent-indigo-600"
-                />
-                <span className="text-xs leading-5 text-zinc-600">
-                  {t("checkout.termsPre")}{" "}
-                  <Link href="/legal/terms-and-conditions" className="font-medium text-indigo-600 underline">
-                    {t("legal.docs.terms-and-conditions.title")}
-                  </Link>
-                  {t("checkout.termsSep")}
-                  <Link href="/legal/complaints-procedure" className="font-medium text-indigo-600 underline">
-                    {t("legal.docs.complaints-procedure.title")}
-                  </Link>{" "}
-                  {t("checkout.termsAnd")}{" "}
-                  <Link href="/legal/privacy-policy" className="font-medium text-indigo-600 underline">
-                    {t("legal.docs.privacy-policy.title")}
-                  </Link>
-                  {t("checkout.termsEnd")}
-                </span>
-              </label>
+              <div className="mt-4">
+                {applied ? (
+                  <div className="flex items-center justify-between gap-3 rounded-xl bg-indigo-50 px-3 py-2.5 ring-1 ring-indigo-100">
+                    <span className="font-mono text-sm tracking-[0.06em] text-indigo-900">{applied.code}</span>
+                    <button type="button" onClick={removePromo} className="text-xs font-semibold text-indigo-700 hover:text-indigo-900">
+                      {promo.checkout.remove}
+                    </button>
+                  </div>
+                ) : !promoOpen ? (
+                  <div className="text-right">
+                    <button
+                      type="button"
+                      onClick={() => setPromoOpen(true)}
+                      className="text-sm font-medium text-zinc-600 underline decoration-zinc-300 underline-offset-4 hover:text-zinc-900"
+                    >
+                      {promo.checkout.codeToggle}
+                    </button>
+                  </div>
+                ) : (
+                  <div>
+                    <label htmlFor="promo-code" className="mb-1.5 block text-xs font-medium text-zinc-600">
+                      {promo.checkout.codeLabel}
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        id="promo-code"
+                        value={promoInput}
+                        onChange={(e) => {
+                          setPromoInput(e.target.value.toUpperCase());
+                          setPromoError(null);
+                        }}
+                        onKeyDown={(e) => {
+                          // Enter applies the code; it must never submit the order.
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            void applyPromo();
+                          }
+                        }}
+                        placeholder={promo.checkout.codePlaceholder}
+                        autoComplete="off"
+                        spellCheck={false}
+                        aria-invalid={promoError ? true : undefined}
+                        aria-describedby={promoError ? "promo-error" : undefined}
+                        className="min-w-0 flex-1 rounded-xl border border-zinc-300 bg-white px-3 py-2 font-mono text-sm tracking-[0.06em] outline-none transition focus:border-indigo-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => void applyPromo()}
+                        disabled={promoChecking || !promoInput.trim()}
+                        className="shrink-0 rounded-xl bg-zinc-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-300"
+                      >
+                        {promoChecking ? promo.checkout.applying : promo.checkout.apply}
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {promoError && (
+                  <p id="promo-error" role="alert" className="mt-2 text-xs leading-5 text-red-600">
+                    {promoError}
+                  </p>
+                )}
               </div>
 
               <button
                 ref={submitBtnRef}
                 type="submit"
-                disabled={!canPlace || submitting}
+                disabled={submitting}
                 className="mt-5 inline-flex w-full items-center justify-center rounded-2xl bg-indigo-600 px-5 py-3.5 text-base font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:bg-zinc-300"
               >
-                {/* Nothing is charged while payments are off, so the button must
-                    not promise a payment. */}
-                {PAYMENTS_ENABLED ? t("order.place") : t("order.placeNoPay")}
+                {/* §1826a OZ: the button itself must say ordering creates an
+                    obligation to pay. Same wording while payments are off: the
+                    order is still binding, it is just settled by invoice. */}
+                {t("order.place")}
               </button>
-              {!confirmed && (
-                <p className="mt-2 text-center text-xs text-amber-600">{t("order.confirmFirst")}</p>
-              )}
-              {confirmed && !acceptedCustom && (
-                <p className="mt-2 text-center text-xs text-amber-600">{t("checkout.mustAckCustom")}</p>
-              )}
-              {confirmed && acceptedCustom && !acceptedTerms && (
-                <p className="mt-2 text-center text-xs text-amber-600">{t("checkout.mustAccept")}</p>
-              )}
+
+              {/* Passive legal notice, no ticks (§1837 + T&C acceptance). What
+                  was shown is recorded per order as CHECKOUT_LEGAL_COPY_VERSION,
+                  so changing this copy means bumping that constant. Links open
+                  in a new tab so the filled-in form survives. */}
+              <div className="mt-3 space-y-1.5 px-1 text-sm leading-6 text-zinc-500">
+                <p className="font-medium text-zinc-700">{t("checkout.legal.madeToMeasure")}</p>
+                <p>
+                  {t("checkout.legal.agreePre")}{" "}
+                  <LegalLink href="/legal/terms-and-conditions">{t("checkout.legal.terms")}</LegalLink>{" "}
+                  {t("checkout.legal.agreeAnd")}{" "}
+                  <LegalLink href="/legal/complaints-procedure">{t("checkout.legal.complaints")}</LegalLink>
+                  {t("checkout.legal.agreeEnd")} {t("checkout.legal.privacyPre")}{" "}
+                  <LegalLink href="/legal/privacy-policy">{t("checkout.legal.privacy")}</LegalLink>
+                  {t("checkout.legal.privacyEnd")}
+                </p>
+              </div>
             </section>
           </aside>
         </div>
@@ -556,51 +673,21 @@ function Input({ type = "text", name, placeholder, required }: { type?: string; 
   );
 }
 
-/** The "why" behind a consent line, one hover away. Legal copy that has to be
- *  shown but does not have to be read before ticking sits here rather than as a
- *  paragraph of its own, which is what used to push the order button down the
- *  page. Hover and keyboard focus are handled in CSS so the note never depends
- *  on JS; the click toggle is for touch, where there is no hover at all.
- *
- *  The bubble is positioned against the row it hangs off (the label carries
- *  `relative`), not against the 16px mark — anchored to the mark it runs off the
- *  edge of the summary column, since that is where the mark sits. */
-function InfoTip({ label, text }: { label: string; text: string }) {
-  const [open, setOpen] = useState(false);
+/** A legal document link under the order button: opens in a new tab so the
+ *  half-filled checkout is not lost. */
+function LegalLink({ href, children }: { href: string; children: React.ReactNode }) {
   return (
-    <span className="group ml-1 inline-block align-middle">
-      <button
-        type="button"
-        aria-label={label}
-        aria-expanded={open}
-        // Inside a <label>: stop the click here so revealing the note never
-        // ticks the checkbox it explains.
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          setOpen((v) => !v);
-        }}
-        className="flex h-4 w-4 items-center justify-center rounded-full border border-zinc-300 text-[10px] font-semibold leading-none text-zinc-500 transition hover:border-zinc-400 hover:text-zinc-700"
-      >
-        i
-      </button>
-      <span
-        role="tooltip"
-        className={`pointer-events-none absolute bottom-full left-0 right-0 z-20 mb-2 rounded-xl bg-zinc-900 px-3 py-2 text-[11px] font-normal leading-5 text-white shadow-lg ${
-          open ? "block" : "hidden group-hover:block group-focus-within:block"
-        }`}
-      >
-        {text}
-      </span>
-    </span>
+    <Link href={href} target="_blank" rel="noopener" className="font-medium text-indigo-600 underline underline-offset-2 hover:text-indigo-700">
+      {children}
+    </Link>
   );
 }
 
-function Row({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) {
+function Row({ label, value, strong = false, accent = false }: { label: string; value: string; strong?: boolean; accent?: boolean }) {
   return (
     <div className="flex items-center justify-between gap-4">
-      <span className={strong ? "text-sm font-semibold text-zinc-900" : "text-sm text-zinc-600"}>{label}</span>
-      <span className={strong ? "text-base font-semibold text-zinc-900" : "text-sm text-zinc-800"}>{value}</span>
+      <span className={strong ? "text-sm font-semibold text-zinc-900" : accent ? "text-sm text-indigo-700" : "text-sm text-zinc-600"}>{label}</span>
+      <span className={strong ? "text-base font-semibold text-zinc-900" : accent ? "text-sm font-medium text-indigo-700" : "text-sm text-zinc-800"}>{value}</span>
     </div>
   );
 }

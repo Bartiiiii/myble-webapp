@@ -180,11 +180,41 @@ describe("quoteDesign — floor & delivery", () => {
     expect(quoteDesign(tiny).deliveryCZK).toBe(DELIVERY_CZK);
   });
 
-  it("free shipping is disabled: even the dearest preset pays delivery", () => {
-    expect(FREE_SHIP_CZK).toBe(0);
-    const q = quoteDesign(presetDesign("skrinka"));
-    expect(q.deliveryCZK).toBe(DELIVERY_CZK);
-    expect(q.customerCZK).toBe(q.kitCZK + DELIVERY_CZK);
+  // 1 000 PLN at meble prices a large piece at 11 890, above the threshold.
+  it("delivery is free once the kit reaches FREE_SHIP_CZK", () => {
+    expect(FREE_SHIP_CZK).toBe(10000);
+    const cz = priceFromMeble(1000);
+    expect(cz.price).toBeGreaterThanOrEqual(FREE_SHIP_CZK);
+    expect(cz.deliveryCZK).toBe(0);
+  });
+
+  it("every preset is under the threshold and pays delivery", () => {
+    for (const id of ["police", "skrinka", "stolek"] as const) {
+      const q = quoteDesign(presetDesign(id));
+      expect(q.price).toBeLessThan(FREE_SHIP_CZK);
+      expect(q.deliveryCZK).toBe(DELIVERY_CZK);
+    }
+  });
+
+  it("a discount counts toward the threshold", () => {
+    const full = priceFromMeble(1000);
+    const pushedUnder = full.price - FREE_SHIP_CZK + 1;
+    const cz = priceFromMeble(1000, { discountCZK: pushedUnder });
+    expect(cz.discountCZK).toBe(pushedUnder);
+    expect(cz.sticker).toBe(full.sticker);
+    expect(cz.deliveryCZK).toBe(DELIVERY_CZK);
+  });
+
+  it("a discount comes off the kit in the quote total", () => {
+    const q = quoteDesign(presetDesign("police"), { discountCZK: 500 });
+    expect(q.discountCZK).toBe(500);
+    expect(q.total).toBe(q.kitCZK - 500 + DELIVERY_CZK);
+  });
+
+  it("a discount can never push the kit below zero", () => {
+    const q = quoteDesign(tiny, { discountCZK: 99999 });
+    expect(q.discountCZK).toBe(q.price);
+    expect(q.total).toBe(q.deliveryCZK);
   });
 });
 

@@ -11,6 +11,9 @@ const PAGES: Entry[] = [
   { path: "/library", changeFrequency: "daily", priority: 0.8 },
   { path: "/about", changeFrequency: "monthly", priority: 0.7 },
   { path: "/contact", changeFrequency: "yearly", priority: 0.5 },
+  { path: "/delivery", changeFrequency: "monthly", priority: 0.5 },
+  { path: "/refer", changeFrequency: "monthly", priority: 0.5 },
+  { path: "/myble-plus", changeFrequency: "monthly", priority: 0.5 },
   ...LEGAL_SLUGS.map((slug): Entry => ({ path: `/legal/${slug}`, changeFrequency: "yearly", priority: 0.2 })),
 ];
 

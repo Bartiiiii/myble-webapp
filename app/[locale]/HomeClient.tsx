@@ -142,21 +142,30 @@ function HeroShowcase() {
     <div>
       <div
         className="relative isolate h-96 overflow-hidden rounded-3xl bg-[#0b0d12] ring-1 ring-white/10 shadow-[inset_0_2px_44px_rgba(0,0,0,0.55)]"
-        style={{ clipPath: "inset(0 round 1.5rem)" }}
+        // clip-path alone is not enough: once the stage's layers are promoted
+        // to the GPU (scroll reveals, the blur swap, the WebGL canvas), Chrome
+        // and Safari can stop clipping them to the radius. The mask keeps the
+        // clip on the compositor, and the overlays below carry the radius too.
+        style={{
+          clipPath: "inset(0 round 1.5rem)",
+          WebkitMaskImage: "-webkit-radial-gradient(white, black)",
+          maskImage: "radial-gradient(white, black)",
+          transform: "translateZ(0)",
+        }}
       >
 
         {/* Soft radial highlight behind the model — grounds the piece on the dark stage. */}
         <div
-          className="pointer-events-none absolute inset-0 z-0"
+          className="pointer-events-none absolute inset-0 z-0 rounded-3xl"
           style={{
             background:
               "radial-gradient(60% 54% at 50% 43%, rgba(165,180,252,0.22), rgba(99,102,241,0.10) 30%, transparent 66%)",
           }}
         />
-        <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-[9%] bg-gradient-to-r from-black/40 to-transparent" />
-        <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-[9%] bg-gradient-to-l from-black/40 to-transparent" />
-        <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-[8%] bg-gradient-to-b from-black/35 to-transparent" />
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-[22%] bg-gradient-to-t from-black/35 to-transparent" />
+        <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-[9%] rounded-l-3xl bg-gradient-to-r from-black/40 to-transparent" />
+        <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-[9%] rounded-r-3xl bg-gradient-to-l from-black/40 to-transparent" />
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-[8%] rounded-t-3xl bg-gradient-to-b from-black/35 to-transparent" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-[22%] rounded-b-3xl bg-gradient-to-t from-black/35 to-transparent" />
 
         <div
           className="relative z-[1] h-full w-full"

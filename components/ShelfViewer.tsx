@@ -3,6 +3,7 @@
 import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, ThreeEvent, useThree, useFrame, type RootState } from "@react-three/fiber";
 import { OrbitControls, Environment, ContactShadows, Edges, Html, Line } from "@react-three/drei";
+import { createPortal } from "react-dom";
 import * as THREE from "three";
 import {
   type Design,
@@ -44,6 +45,8 @@ import {
   type MoveFrame,
   type Nudge,
 } from "../lib/viewAxes";
+import { Room, RoomLights, ROOMS } from "./rooms/Room";
+import type { RoomId } from "../lib/rooms";
 
 /** Shared empty selection, so the default prop keeps a stable identity. */
 const EMPTY_SELECTION: string[] = [];
@@ -70,6 +73,8 @@ const M = (cm: number) => cm / 100; // cm → metres
 // beside the board, which moved the buttons on every edit; it now docks to one
 // corner of the canvas (see ShelfViewer) and edits whichever board is selected.
 // It still takes the translator as a prop, the way it did in-scene.
+// `docked` is the solid variant for a page panel outside the canvas, where the
+// glass styling has nothing behind it to blur.
 function PartControls({
   translate: t,
   frame,
@@ -77,9 +82,11 @@ function PartControls({
   onDuplicate,
   onFlip,
   onDelete,
+  docked = false,
 }: {
   translate: TFn;
   frame: MoveFrame;
+  docked?: boolean;
   onNudge: (dir: Nudge) => void;
   onDuplicate: () => void;
   onFlip: () => void;
@@ -95,24 +102,30 @@ function PartControls({
     <div
       onPointerDown={stop}
       style={{ pointerEvents: "auto" }}
-      className="w-[120px] rounded-2xl bg-white/70 p-2 text-zinc-900 shadow-lg ring-1 ring-white/70 backdrop-blur-xl backdrop-saturate-150"
+      className={
+        docked
+          ? "w-full text-zinc-900"
+          : "w-[120px] rounded-2xl bg-white/70 p-2 text-zinc-900 shadow-lg ring-1 ring-white/70 backdrop-blur-xl backdrop-saturate-150"
+      }
     >
       {/* One 3×3 pad, so the whole panel is square: an inverted-T of arrows over
           a row of duplicate / flip / remove.
           Fixed pixel widths throughout (outer box + column tracks), not `1fr`,
           so the pad keeps its square shape wherever it is docked. */}
-      <div className="grid grid-cols-[repeat(3,32px)] gap-1">
+      {/* Docked in a page panel, the pad stretches to the panel's full width
+          (equal 1fr tracks) and the bottom row spells its actions out. */}
+      <div className={docked ? "grid grid-cols-3 gap-2" : "grid grid-cols-[repeat(3,32px)] gap-1"}>
         <span aria-hidden="true" />
-        <CtlBtn label="↑" title={title("up")} onClick={() => onNudge("up")} />
+        <CtlBtn label="↑" title={title("up")} onClick={() => onNudge("up")} docked={docked} />
         <span aria-hidden="true" />
-        <CtlBtn label="←" title={title("left")} onClick={() => onNudge("left")} />
-        <CtlBtn label="↓" title={title("down")} onClick={() => onNudge("down")} />
-        <CtlBtn label="→" title={title("right")} onClick={() => onNudge("right")} />
-        <CtlBtn label="⧉" title={t("viewer.duplicate")} onClick={onDuplicate} />
+        <CtlBtn label="←" title={title("left")} onClick={() => onNudge("left")} docked={docked} />
+        <CtlBtn label="↓" title={title("down")} onClick={() => onNudge("down")} docked={docked} />
+        <CtlBtn label="→" title={title("right")} onClick={() => onNudge("right")} docked={docked} />
+        <CtlBtn label={docked ? t("viewer.copyShort") : "⧉"} title={t("viewer.duplicate")} onClick={onDuplicate} docked={docked} />
         {/* Every board starts flat: flipping is how a shelf becomes a divider
             or a back panel, so one add button can produce all three. */}
-        <CtlBtn label="⟲" title={t("viewer.flip")} onClick={onFlip} />
-        <CtlBtn label="✕" title={t("viewer.remove")} onClick={onDelete} tone="danger" />
+        <CtlBtn label={docked ? t("viewer.rotateShort") : "⟲"} title={t("viewer.flip")} onClick={onFlip} docked={docked} />
+        <CtlBtn label={docked ? t("viewer.removeShort") : "✕"} title={t("viewer.remove")} onClick={onDelete} tone="danger" docked={docked} />
       </div>
     </div>
   );
@@ -123,23 +136,27 @@ function CtlBtn({
   title,
   onClick,
   tone = "plain",
+  docked = false,
 }: {
   label: string;
   title: string;
   onClick: () => void;
   tone?: "plain" | "danger";
+  docked?: boolean;
 }) {
+  const surface = docked ? "border-zinc-200 bg-white" : "border-white/70 bg-white/55";
+  const size = docked ? "h-10 w-full font-medium" : "h-8 w-8";
   const cls =
     tone === "danger"
-      ? "border-white/70 bg-white/55 text-rose-600 hover:border-rose-300/80 hover:bg-rose-50/90"
-      : "border-white/70 bg-white/55 text-zinc-700 hover:border-indigo-300/80 hover:bg-indigo-50/90";
+      ? `${surface} text-rose-600 hover:border-rose-300/80 hover:bg-rose-50/90`
+      : `${surface} text-zinc-700 hover:border-indigo-300/80 hover:bg-indigo-50/90`;
   return (
     <button
       type="button"
       onClick={onClick}
       title={title}
       aria-label={title}
-      className={`flex h-8 w-8 items-center justify-center rounded-lg border text-sm shadow-sm transition active:scale-95 ${cls}`}
+      className={`flex ${size} items-center justify-center rounded-lg border text-sm shadow-sm transition active:scale-95 ${cls}`}
     >
       {label}
     </button>
@@ -607,6 +624,29 @@ function FitCamera({ radius }: { radius: number }) {
   return null;
 }
 
+// Room scenes don't spin all the way round (there's a wall behind the piece):
+// the camera sways between these azimuths instead (radians; 0 = straight on,
+// positive = from the right, where the room's props leave the view open).
+const ROOM_AZIMUTH_CARD: [number, number] = [0.22, 0.85];
+const ROOM_AZIMUTH_DIALOG: [number, number] = [-0.12, 1.05];
+const ROOM_SWAY_SPEED = 0.45;
+
+/** Turns OrbitControls' auto-rotate into a back-and-forth sway between limits. */
+function RoomSway({ range }: { range: [number, number] }) {
+  useFrame((state) => {
+    const controls = state.controls as unknown as {
+      getAzimuthalAngle: () => number;
+      autoRotateSpeed: number;
+    } | null;
+    if (!controls) return;
+    const a = controls.getAzimuthalAngle();
+    // Positive speed turns the camera towards smaller azimuths.
+    if (a >= range[1] - 0.01) controls.autoRotateSpeed = Math.abs(controls.autoRotateSpeed);
+    else if (a <= range[0] + 0.01) controls.autoRotateSpeed = -Math.abs(controls.autoRotateSpeed);
+  });
+  return null;
+}
+
 function Scene({
   design,
   autoRotate,
@@ -624,6 +664,7 @@ function Scene({
   frame,
   onGesture,
   fitCamera,
+  room,
 }: {
   design: Design;
   autoRotate: boolean;
@@ -645,12 +686,10 @@ function Scene({
   /** True while a drag or stretch is under way, so one gesture reads as one edit. */
   onGesture?: (active: boolean) => void;
   fitCamera: boolean;
+  /** Stand the piece in a furnished room (library cards and dialog). */
+  room?: RoomId;
 }) {
   const { w, h, d } = design.outerCm;
-  const maxDim = M(Math.max(Math.max(1, w), h, d));
-  // `fit` scales how much of the frame the piece fills. Smaller = pulled back,
-  // which is what small cards need so the whole piece stays inside the tile.
-  const s = fit / maxDim;
 
   // Deterministic auto-centre + re-frame (spec §9): centre the parts' bounding box
   // ourselves rather than via drei <Center>, whose first-mount measurement of the
@@ -664,15 +703,27 @@ function Scene({
       miny = Math.min(miny, b.min.y); maxy = Math.max(maxy, b.max.y);
       minz = Math.min(minz, b.min.z); maxz = Math.max(maxz, b.max.z);
     }
-    if (!isFinite(minx)) return { x: 0, y: 0, z: 0, h: h, diag: Math.hypot(w, h, d) };
+    if (!isFinite(minx))
+      return {
+        x: 0, y: 0, z: 0, h: h, maxDim: Math.max(w, h, d), diag: Math.hypot(w, h, d),
+        box: { minx: -w / 2, maxx: w / 2, miny: -h / 2, maxy: h / 2, minz: -d / 2, maxz: d / 2 },
+      };
     return {
+      box: { minx, maxx, miny, maxy, minz, maxz },
       x: (minx + maxx) / 2,
       y: (miny + maxy) / 2,
       z: (minz + maxz) / 2,
       h: maxy - miny,
+      maxDim: Math.max(maxx - minx, maxy - miny, maxz - minz),
       diag: Math.hypot(maxx - minx, maxy - miny, maxz - minz),
     };
   }, [design, w, h, d]);
+  // Scale by the boards themselves, not the envelope: a saved design whose
+  // envelope outgrew its boards (or one rebuilt after "clear") otherwise shows
+  // up as a speck in the middle of an empty canvas.
+  // `fit` scales how much of the frame the piece fills. Smaller = pulled back,
+  // which is what small cards need so the whole piece stays inside the tile.
+  const s = fit / M(Math.max(1, centre.maxDim));
   const bottomY = -(M(centre.h) * s) / 2;
 
   // The pad and the stretch handles edit ONE board; with a group selected they
@@ -927,20 +978,27 @@ function Scene({
 
   return (
     <>
-      <ambientLight intensity={lite ? 1.15 : 0.85} />
-      <directionalLight
-        position={[4, 6, 3]}
-        intensity={lite ? 1.5 : 1.1}
-        castShadow
-        shadow-mapSize-width={1024}
-        shadow-mapSize-height={1024}
-      />
-      {!lite && <Environment preset="city" />}
+      {room ? (
+        <RoomLights id={room} />
+      ) : (
+        <>
+          <ambientLight intensity={lite ? 1.15 : 0.85} />
+          <directionalLight
+            position={[4, 6, 3]}
+            intensity={lite ? 1.5 : 1.1}
+            castShadow
+            shadow-mapSize-width={1024}
+            shadow-mapSize-height={1024}
+          />
+          {!lite && <Environment preset="city" />}
+        </>
+      )}
       {fitCamera && <FitCamera radius={(M(centre.diag) * s) / 2} />}
 
       {/* Auto-centre + re-frame as the piece changes (spec §9). */}
       <group scale={s}>
         <group position={[-M(centre.x), -M(centre.y), -M(centre.z)]}>
+          {room && <Room id={room} box={centre.box} />}
           <Unit
             design={design}
             editable={editable}
@@ -986,7 +1044,15 @@ function Scene({
         </mesh>
       )}
 
-      <ContactShadows position={[0, bottomY - 0.002, 0]} opacity={0.32} scale={3} blur={2.6} far={2} />
+      {/* In a room the floor is real geometry, so the contact shadow sits a
+          hair above it instead of under it. */}
+      <ContactShadows
+        position={[0, room ? bottomY + 0.0015 : bottomY - 0.002, 0]}
+        opacity={room ? 0.45 : 0.32}
+        scale={3}
+        blur={2.6}
+        far={2}
+      />
 
       <OrbitControls
         makeDefault
@@ -994,10 +1060,18 @@ function Scene({
         enableZoom={interactive}
         enableRotate={interactive && !dragging}
         autoRotate={autoRotate}
-        autoRotateSpeed={0.9}
+        autoRotateSpeed={room ? ROOM_SWAY_SPEED : 0.9}
         minPolarAngle={0.25}
-        maxPolarAngle={Math.PI / 2}
+        maxPolarAngle={room ? 1.42 : Math.PI / 2}
+        // A room has walls behind and to the left: keep the camera in front of
+        // them, and keep zoom from leaving the room.
+        minAzimuthAngle={room ? (interactive ? ROOM_AZIMUTH_DIALOG[0] : ROOM_AZIMUTH_CARD[0]) : -Infinity}
+        maxAzimuthAngle={room ? (interactive ? ROOM_AZIMUTH_DIALOG[1] : ROOM_AZIMUTH_CARD[1]) : Infinity}
+        maxDistance={room ? 3.6 : Infinity}
       />
+      {room && autoRotate && (
+        <RoomSway range={interactive ? ROOM_AZIMUTH_DIALOG : ROOM_AZIMUTH_CARD} />
+      )}
     </>
   );
 }
@@ -1042,6 +1116,13 @@ export interface ShelfViewerProps {
   /** True while a drag or stretch is running, so undo can treat the whole
    *  gesture as the single edit the user thinks they made. */
   onGesture?: (active: boolean) => void;
+  /** Render the selected board's control pad into this element (e.g. a page
+   *  panel) instead of docking it on the canvas. Passing the prop at all, even
+   *  as null while the element mounts, keeps the pad off the canvas. */
+  padTarget?: HTMLElement | null;
+  /** Stand the piece in a furnished 3D room instead of on a plain backdrop
+   *  (see components/rooms/Room.tsx). Overrides `background`. */
+  room?: RoomId;
 }
 
 export function ShelfViewer({
@@ -1064,6 +1145,8 @@ export function ShelfViewer({
   paused = false,
   onMoveFrame,
   onGesture,
+  padTarget,
+  room,
 }: ShelfViewerProps) {
   // Read i18n out here, in the DOM tree: <Canvas> mounts a separate R3F reconciler
   // that our LocaleProvider context does not cross, so in-scene components take the
@@ -1101,6 +1184,21 @@ export function ShelfViewer({
       ? (design.parts.find((p) => p.id === selectedIds[0]) ?? null)
       : null;
   const actions = partActions(design, { onChange, onSelect, onSnap: pulse });
+  const renderPad = (docked: boolean) =>
+    selectedPart && (
+      <PartControls
+        translate={translate}
+        frame={frame}
+        docked={docked}
+        onNudge={(dir) => {
+          const step = nudgeStep(frame, dir, STEP);
+          actions.move(selectedPart, step.x, step.y, step.z);
+        }}
+        onDuplicate={() => actions.duplicate(selectedPart)}
+        onFlip={() => actions.flip(selectedPart)}
+        onDelete={() => actions.del(selectedPart)}
+      />
+    );
 
   // Frameloop strategy: the interactive editor and auto-rotating showcases animate
   // every frame; static thumbnails render on demand to stay cheap. But every canvas
@@ -1136,7 +1234,11 @@ export function ShelfViewer({
             : undefined
         }
       >
-        {background !== "transparent" && <color attach="background" args={[background]} />}
+        {room ? (
+          <color attach="background" args={[ROOMS[room].background]} />
+        ) : (
+          background !== "transparent" && <color attach="background" args={[background]} />
+        )}
         <Suspense fallback={null}>
           <Scene
             design={design}
@@ -1155,6 +1257,7 @@ export function ShelfViewer({
             frame={frame}
             onGesture={onGesture}
             fitCamera={fitCamera}
+            room={room}
           />
           {/* Only the editor moves boards, so only the editor needs to track
               which plane the camera is on. */}
@@ -1165,21 +1268,12 @@ export function ShelfViewer({
       {/* Docked control pad: bottom-right on a phone (thumb corner, opposite
           the add button), top-right under the canvas menu button on a desktop.
           Sits under the menu's own dropdown, which the page raises above it. */}
-      {selectedPart && (
+      {selectedPart && padTarget === undefined && (
         <div className="pointer-events-none absolute bottom-3 right-3 z-10 lg:bottom-auto lg:top-[68px]">
-          <PartControls
-            translate={translate}
-            frame={frame}
-            onNudge={(dir) => {
-              const step = nudgeStep(frame, dir, STEP);
-              actions.move(selectedPart, step.x, step.y, step.z);
-            }}
-            onDuplicate={() => actions.duplicate(selectedPart)}
-            onFlip={() => actions.flip(selectedPart)}
-            onDelete={() => actions.del(selectedPart)}
-          />
+          {renderPad(false)}
         </div>
       )}
+      {selectedPart && padTarget && createPortal(renderPad(true), padTarget)}
     </div>
   );
 }
